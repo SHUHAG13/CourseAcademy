@@ -1,0 +1,72 @@
+<section class="testimonials-section">
+
+  <div class="container">
+
+    <div class="text-center mb-5">
+
+      <span class="section-badge">
+        Testimonials
+      </span>
+
+      <h2 class="section-title">
+        শিক্ষার্থীরা যা বলছেন
+      </h2>
+
+      <p class="section-subtitle">
+        আমাদের কোর্স করে যারা সফল হয়েছেন,
+        তাদের কিছু অভিজ্ঞতা।
+      </p>
+
+    </div>
+
+    <div class="row g-4">
+
+      <div
+        class="col-lg-4 col-md-6"
+        *ngFor="let testimonial of testimonials">
+
+        <div class="testimonial-card h-100">
+
+          <div class="testimonial-header">
+
+            <img
+              [src]="testimonial.image"
+              [alt]="testimonial.name"
+              class="testimonial-image">
+
+            <div>
+
+              <h5 class="mb-1">
+                {{ testimonial.name }}
+              </h5>
+
+              <small>
+                {{ testimonial.profession }}
+              </small>
+
+            </div>
+
+          </div>
+
+          <div class="testimonial-stars">
+
+            <i
+              *ngFor="let star of stars"
+              class="bi bi-star-fill">
+            </i>
+
+          </div>
+
+          <p class="testimonial-review">
+            "{{ testimonial.review }}"
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
