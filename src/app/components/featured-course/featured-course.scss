@@ -1,0 +1,35 @@
+.featured-course-section {
+    background: #f8fafc;
+}
+
+.section-badge{
+    background:#e0e7ff;
+    color:#2563eb;
+    padding:8px 16px;
+    border-radius:30px;
+    font-weight:600;
+}
+
+.course-card{
+    border-radius:20px;
+}
+
+.course-banner{
+    background:linear-gradient(135deg,#1e3a8a,#2563eb);
+}
+
+.course-features{
+    list-style:none;
+    padding-left:0;
+}
+
+.course-features li{
+    margin-bottom:12px;
+}
+
+.course-features li::before{
+    content:"✓";
+    color:#198754;
+    font-weight:bold;
+    margin-right:10px;
+}

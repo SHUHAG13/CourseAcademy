@@ -1,32 +1,75 @@
-<section class="py-5">
+<section class="py-5 course-section bg-light">
 
   <div class="container">
 
-    <h2 class="mb-4">
-      📚 সকল কোর্স
-    </h2>
+    <div class="text-center mb-5">
+      <span class="section-badge">📚 Course Catalog</span>
+
+      <h2 class="fw-bold mt-3">
+        আমাদের সকল কোর্স
+      </h2>
+
+      <p class="text-muted">
+        ক্যারিয়ার উন্নয়নের জন্য প্রফেশনাল ও ইন্ডাস্ট্রি-ফোকাসড কোর্সসমূহ।
+      </p>
+    </div>
 
     <div class="row g-4">
 
       <div
-        class="col-lg-3 col-md-6"
+        class="col-lg-4 col-md-6"
         *ngFor="let course of courses">
 
-        <div class="card h-100 shadow-sm">
+        <div class="card course-card h-100 border-0 shadow-sm">
 
+          <!-- Course Image -->
+          <div class="course-image">
+
+            <img
+              [src]="course.image"
+              [alt]="course.title"
+              class="img-fluid">
+
+            <span class="course-category">
+              {{course.category}}
+            </span>
+
+          </div>
+
+          <!-- Course Content -->
           <div class="card-body">
 
-            <div class="fs-1">
-              {{course.icon}}
-            </div>
-
-            <h5>
+            <h5 class="fw-bold">
               {{course.title}}
             </h5>
 
-            <h6 class="text-primary">
-              ৳ {{course.price}}
-            </h6>
+            <p class="text-muted small">
+              {{course.description}}
+            </p>
+
+            <div class="d-flex justify-content-between mb-3">
+
+              <span>
+                ⏱ {{course.duration}}
+              </span>
+
+              <span>
+                🎯 {{course.level}}
+              </span>
+
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+
+              <h5 class="text-primary fw-bold mb-0">
+                ৳ {{course.price}}
+              </h5>
+
+              <button class="btn btn-primary">
+                বিস্তারিত
+              </button>
+
+            </div>
 
           </div>
 
