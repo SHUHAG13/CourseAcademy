@@ -1,17 +1,11 @@
 .payment-card{
-    transition: all .3s ease;
-    border-radius: 15px;
+    transition:.3s;
 }
 
 .payment-card:hover{
-    transform: translateY(-5px);
+    transform:translateY(-5px);
 }
 
-.ca-payment-note{
-    background: #fff8e1;
-    border-left: 5px solid #ffc107;
-    padding: 16px 20px;
-    border-radius: 10px;
-    color: #444;
-    line-height: 1.7;
+.payment-note{
+    border-left:4px solid #212529;
 }

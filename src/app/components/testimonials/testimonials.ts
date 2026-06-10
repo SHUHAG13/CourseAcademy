@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+
 interface Testimonial {
   name: string;
   profession: string;
@@ -7,6 +8,7 @@ interface Testimonial {
   rating: number;
   review: string;
 }
+
 @Component({
   selector: 'app-testimonials',
   imports: [CommonModule],
@@ -14,30 +16,31 @@ interface Testimonial {
   styleUrl: './testimonials.scss',
 })
 export class Testimonials {
-testimonials: Testimonial[] = [
+
+  testimonials: Testimonial[] = [
     {
-      name: 'রাকিবুল ইসলাম',
-      profession: 'Freelancer',
-      image: 'assets/images/student-1.jpg',
+      name: 'Rakibul Islam',
+      profession: 'Freelance Developer',
+      image: 'images/sj1.jpg',
       rating: 5,
       review:
-        'কোর্সটি আমার ক্যারিয়ারে অনেক সাহায্য করেছে। প্র্যাকটিক্যাল প্রজেক্ট এবং লাইভ সাপোর্ট ছিল অসাধারণ।'
+        'This course completely changed my career path. The practical projects and real-world guidance were extremely helpful.'
     },
     {
-      name: 'সানজিদা আক্তার',
-      profession: 'Student',
-      image: 'assets/images/student-2.jpg',
+      name: 'Sanjida Akter',
+      profession: 'Computer Science Student',
+      image: 'images/sj2.jpg',
       rating: 5,
       review:
-        'শুরু থেকে শেষ পর্যন্ত প্রতিটি বিষয় খুব সুন্দরভাবে বুঝানো হয়েছে।'
+        'Every topic was explained in a very clear and structured way. I gained a lot of confidence in web development.'
     },
     {
-      name: 'তানভীর আহমেদ',
-      profession: 'Junior Developer',
-      image: 'assets/images/student-3.jpg',
+      name: 'Tanvir Ahmed',
+      profession: 'Junior Software Engineer',
+      image: 'images/sj3.jpg',
       rating: 5,
       review:
-        'লাইভ ক্লাস এবং কমিউনিটি সাপোর্ট আমার সবচেয়ে ভালো লেগেছে।'
+        'The live sessions and community support made learning much easier and more interactive.'
     }
   ];
 

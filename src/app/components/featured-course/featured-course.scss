@@ -1,21 +1,23 @@
-.featured-course-section {
-    background: #f8fafc;
+.featured-course-section{
+    background:#f8f9fa;
 }
 
 .section-badge{
-    background:#e0e7ff;
-    color:#2563eb;
-    padding:8px 16px;
-    border-radius:30px;
+    background:#111827;
+    color:#fff;
+    padding:8px 18px;
+    border-radius:50px;
+    font-size:.9rem;
     font-weight:600;
 }
 
 .course-card{
-    border-radius:20px;
+    border-radius:24px;
+    overflow:hidden;
 }
 
 .course-banner{
-    background:linear-gradient(135deg,#1e3a8a,#2563eb);
+    background:#111;
 }
 
 .course-features{
@@ -32,4 +34,25 @@
     color:#198754;
     font-weight:bold;
     margin-right:10px;
+}
+
+.price-text{
+    font-size:2rem;
+    font-weight:700;
+}
+
+.enroll-btn{
+    background:#111;
+    border:none;
+}
+
+.enroll-btn:hover{
+    background:#000;
+}
+.card{
+    transition: .3s;
+}
+
+.card:hover{
+    transform: translateY(-5px);
 }

@@ -1,63 +1,64 @@
-<section class="testimonials-section">
+<section class="py-5 bg-white">
 
   <div class="container">
 
+    <!-- Header -->
     <div class="text-center mb-5">
 
-      <span class="section-badge">
+      <span class="badge bg-dark px-3 py-2">
         Testimonials
       </span>
 
-      <h2 class="section-title">
-        শিক্ষার্থীরা যা বলছেন
+      <h2 class="fw-bold mt-3 text-dark">
+        What Our Students Say
       </h2>
 
-      <p class="section-subtitle">
-        আমাদের কোর্স করে যারা সফল হয়েছেন,
-        তাদের কিছু অভিজ্ঞতা।
+      <p class="text-muted mx-auto" style="max-width: 600px;">
+        Real experiences from students who completed our courses successfully.
       </p>
 
     </div>
 
+    <!-- Testimonials -->
     <div class="row g-4">
 
-      <div
-        class="col-lg-4 col-md-6"
-        *ngFor="let testimonial of testimonials">
+      <div class="col-lg-4 col-md-6"
+           *ngFor="let testimonial of testimonials">
 
-        <div class="testimonial-card h-100">
+        <div class="card border-0 shadow-sm h-100 p-3">
 
-          <div class="testimonial-header">
+          <!-- Header -->
+          <div class="d-flex align-items-center gap-3">
 
             <img
               [src]="testimonial.image"
               [alt]="testimonial.name"
-              class="testimonial-image">
+              class="rounded-circle"
+              width="60"
+              height="60">
 
             <div>
-
-              <h5 class="mb-1">
+              <h6 class="mb-0 fw-bold text-dark">
                 {{ testimonial.name }}
-              </h5>
+              </h6>
 
-              <small>
+              <small class="text-muted">
                 {{ testimonial.profession }}
               </small>
-
             </div>
 
           </div>
 
-          <div class="testimonial-stars">
+          <!-- Stars -->
+          <div class="mt-3 text-dark">
 
-            <i
-              *ngFor="let star of stars"
-              class="bi bi-star-fill">
-            </i>
+            <i *ngFor="let star of stars"
+               class="bi bi-star-fill me-1"></i>
 
           </div>
 
-          <p class="testimonial-review">
+          <!-- Review -->
+          <p class="mt-3 text-muted mb-0 lh-lg">
             "{{ testimonial.review }}"
           </p>
 

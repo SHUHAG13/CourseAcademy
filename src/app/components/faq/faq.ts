@@ -8,31 +8,32 @@ import { Component } from '@angular/core';
   styleUrl: './faq.scss',
 })
 export class Faq {
- faqs = [
-  {
-    question: 'কোর্সটি কি সম্পূর্ণ অনলাইন?',
-    answer: 'হ্যাঁ, কোর্সটি সম্পূর্ণ অনলাইন। আপনি যেকোনো সময় এবং যেকোনো স্থান থেকে ক্লাস করতে পারবেন।'
-  },
-  {
-    question: 'কোর্সে কতদিনের অ্যাক্সেস পাব?',
-    answer: 'একবার ভর্তি হলে নির্দিষ্ট সময় অথবা লাইফটাইম অ্যাক্সেস (কোর্স নীতিমালা অনুযায়ী) পাবেন।'
-  },
-  {
-    question: 'কোর্স শেষে কি সার্টিফিকেট দেওয়া হবে?',
-    answer: 'হ্যাঁ, সফলভাবে কোর্স সম্পন্ন করলে ডিজিটাল সার্টিফিকেট প্রদান করা হবে।'
-  },
-  {
-    question: 'আমি কি মোবাইল ফোন দিয়ে কোর্স করতে পারব?',
-    answer: 'হ্যাঁ, মোবাইল, ট্যাবলেট এবং কম্পিউটার—সব ডিভাইস থেকেই কোর্স করা যাবে।'
-  },
-  {
-    question: 'কোর্স চলাকালীন সাপোর্ট পাব কি?',
-    answer: 'হ্যাঁ, নির্ধারিত সাপোর্ট গ্রুপ এবং ইনস্ট্রাক্টর সাপোর্ট প্রদান করা হবে।'
-  },
-  {
-    question: 'পেমেন্ট করার পর কী করতে হবে?',
-    answer: 'পেমেন্ট সম্পন্ন করার পর স্ক্রিনশট পাঠাতে হবে। যাচাই শেষে দ্রুত কোর্স অ্যাক্সেস দেওয়া হবে।'
-  }
-];
+
+  faqs = [
+    {
+      question: 'Is this course fully online?',
+      answer: 'Yes, the course is completely online. You can access it anytime and from anywhere.'
+    },
+    {
+      question: 'How long will I have access to the course?',
+      answer: 'You will get access for a fixed duration or lifetime access depending on the course policy.'
+    },
+    {
+      question: 'Will I receive a certificate after completion?',
+      answer: 'Yes, you will receive a digital certificate after successfully completing the course.'
+    },
+    {
+      question: 'Can I take the course using a mobile phone?',
+      answer: 'Yes, the course is fully compatible with mobile phones, tablets, and computers.'
+    },
+    {
+      question: 'Will I get support during the course?',
+      answer: 'Yes, you will get access to a dedicated support group and instructor assistance.'
+    },
+    {
+      question: 'What should I do after making the payment?',
+      answer: 'After payment, you need to send the transaction screenshot. Access will be granted after verification.'
+    }
+  ];
 
 }

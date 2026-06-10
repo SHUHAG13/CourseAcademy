@@ -1,28 +1,33 @@
-<section class="faq-section py-5 bg-light">
+<section class="py-5 bg-white">
 
   <div class="container">
 
+    <!-- Header -->
     <div class="text-center mb-5">
-      <span class="faq-badge">❓ Frequently Asked Questions</span>
 
-      <h2 class="fw-bold mt-3">
-        প্রায়শই জিজ্ঞাসিত প্রশ্নসমূহ
+      <span class="badge bg-dark px-3 py-2">
+        FAQ
+      </span>
+
+      <h2 class="fw-bold mt-3 text-dark">
+        Frequently Asked Questions
       </h2>
 
       <p class="text-muted">
-        কোর্স সম্পর্কে আপনার সাধারণ প্রশ্নগুলোর উত্তর এখানে দেওয়া হয়েছে।
+        Here are answers to the most common questions about the course.
       </p>
+
     </div>
 
+    <!-- Accordion -->
     <div class="row justify-content-center">
 
       <div class="col-lg-8">
 
-        <div class="accordion shadow-sm" id="faqAccordion">
+        <div class="accordion" id="faqAccordion">
 
-          <div
-            class="accordion-item border-0 mb-3 rounded overflow-hidden"
-            *ngFor="let faq of faqs; let i = index">
+          <div class="accordion-item border mb-3 rounded overflow-hidden"
+               *ngFor="let faq of faqs; let i = index">
 
             <h2 class="accordion-header">
 
@@ -44,7 +49,7 @@
               class="accordion-collapse collapse"
               data-bs-parent="#faqAccordion">
 
-              <div class="accordion-body">
+              <div class="accordion-body text-muted">
 
                 {{ faq.answer }}
 
@@ -60,20 +65,19 @@
 
     </div>
 
-    <!-- Contact CTA -->
+    <!-- CTA -->
+    <div class="text-center mt-5">
 
-    <div class="faq-contact text-center mt-5">
-
-      <h5 class="fw-bold">
-        আপনার প্রশ্নের উত্তর খুঁজে পাননি?
+      <h5 class="fw-bold text-dark">
+        Didn’t find your answer?
       </h5>
 
       <p class="text-muted">
-        আমাদের সাথে WhatsApp অথবা Facebook Messenger-এ যোগাযোগ করুন।
+        Contact us via WhatsApp or Facebook Messenger for quick support.
       </p>
 
-      <button class="btn btn-primary px-4">
-        যোগাযোগ করুন
+      <button class="btn btn-dark px-4">
+        Contact Us
       </button>
 
     </div>

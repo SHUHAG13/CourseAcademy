@@ -1,0 +1,7 @@
+.card{
+    transition: .3s;
+}
+
+.card:hover{
+    transform: translateY(-6px);
+}
