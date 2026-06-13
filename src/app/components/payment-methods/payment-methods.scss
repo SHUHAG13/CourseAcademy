@@ -1,11 +1,55 @@
-.payment-card{
-    transition:.3s;
+.payment-badge {
+  background-color: #003566;
+  color: #fff;
 }
 
-.payment-card:hover{
-    transform:translateY(-5px);
+.payment-card {
+  background: #fff;
+  transition: all .25s ease;
 }
 
-.payment-note{
-    border-left:4px solid #212529;
+.payment-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, .08) !important;
+}
+
+.payment-card .display-5 {
+  color: #003566;
+}
+
+.payment-card h5 {
+  color: #003566;
+}
+
+.payment-step-card {
+  background: #E2EAFC;
+  transition: all .25s ease;
+}
+
+.payment-step-card:hover {
+  transform: translateY(-5px);
+}
+
+.payment-step-card h5 {
+  color: #003566;
+}
+
+.payment-note {
+  background: #E2EAFC !important;
+  border: none;
+  color: #003566;
+}
+
+.payment-note strong {
+  color: #003566;
+}
+
+/* Mobile */
+
+@media (max-width: 767.98px) {
+
+  .payment-card .display-5 {
+    font-size: 2rem;
+  }
+
 }

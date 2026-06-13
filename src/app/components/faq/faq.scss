@@ -1,9 +1,49 @@
-.accordion-button:focus {
-  box-shadow: none;
-  border-color: #000;
+.faq-badge {
+  background: #003566;
+  color: #fff;
+  border-radius: 50rem;
 }
 
-.accordion-button:not(.collapsed) {
-  background-color: #f8f9fa;
-  color: #000;
+.custom-faq .accordion-item {
+  background: #fff;
+}
+
+.custom-faq .accordion-button {
+  background: #fff;
+  color: #212529;
+  padding: 1.25rem;
+  box-shadow: none;
+}
+
+.custom-faq .accordion-button:not(.collapsed) {
+  background: #E2EAFC;
+  color: #003566;
+  box-shadow: none;
+}
+
+.custom-faq .accordion-button:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.custom-faq .accordion-body {
+  background: #E2EAFC;
+  color: #495057;
+  line-height: 1.7;
+}
+
+.custom-faq .accordion-button::after {
+  filter: grayscale(100%);
+}
+
+.btn-brand {
+  background: #FF9F1C;
+  border: none;
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-brand:hover {
+  background: #e58f19;
+  color: #fff;
 }

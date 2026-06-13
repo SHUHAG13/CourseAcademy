@@ -1,58 +1,68 @@
-.featured-course-section{
-    background:#f8f9fa;
+.featured-badge {
+  background: #003566;
+  color: #fff;
+  padding: .5rem 1rem;
+  border-radius: 50rem;
 }
 
-.section-badge{
-    background:#111827;
-    color:#fff;
-    padding:8px 18px;
-    border-radius:50px;
-    font-size:.9rem;
-    font-weight:600;
+.featured-card {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
 }
 
-.course-card{
-    border-radius:24px;
-    overflow:hidden;
+.course-cover {
+  object-fit: cover;
+  min-height: 100%;
 }
 
-.course-banner{
-    background:#111;
+.bestseller-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: #FF9F1C;
+  color: #fff;
 }
 
-.course-features{
-    list-style:none;
-    padding-left:0;
+.stat-box {
+  background: #E2EAFC;
+  padding: 1rem;
+  border-radius: .75rem;
 }
 
-.course-features li{
-    margin-bottom:12px;
+.stat-box h5 {
+  margin: 0;
+  color: #003566;
+  font-weight: 700;
 }
 
-.course-features li::before{
-    content:"✓";
-    color:#198754;
-    font-weight:bold;
-    margin-right:10px;
+.feature-list {
+  list-style: none;
+  padding: 0;
 }
 
-.price-text{
-    font-size:2rem;
-    font-weight:700;
+.feature-list li {
+  margin-bottom: .85rem;
 }
 
-.enroll-btn{
-    background:#111;
-    border:none;
+.feature-list i {
+  color: #003566;
+  margin-right: .5rem;
 }
 
-.enroll-btn:hover{
-    background:#000;
-}
-.card{
-    transition: .3s;
+.course-price {
+  color: #003566;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
-.card:hover{
-    transform: translateY(-5px);
+.btn-brand {
+  background: #FF9F1C;
+  color: #fff;
+  border: none;
+}
+
+.btn-brand:hover {
+  background: #e58f19;
+  color: #fff;
 }

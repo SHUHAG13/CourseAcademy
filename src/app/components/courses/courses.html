@@ -1,18 +1,18 @@
-<section class="py-5 bg-light course-section">
+<section class="py-5 bg-light">
 
-    <div class="container ">
+    <div class="container">
 
         <div class="text-center mb-5">
 
-            <span class="badge bg-dark rounded-pill px-3 py-2">
-                 Course Catalog
+            <span class="badge section-badge">
+                Course Catalog
             </span>
 
             <h2 class="fw-bold mt-3">
                 Explore Our Courses
             </h2>
 
-            <p class="text-muted">
+            <p class="text-muted mb-0">
                 Industry-focused courses designed to help you grow your career.
             </p>
 
@@ -24,53 +24,67 @@
                 class="col-lg-4 col-md-6"
                 *ngFor="let course of courses">
 
-                <div class="card h-100 border-0 shadow-sm rounded-4">
+                <div class="card course-card border-0 h-100">
 
                     <!-- Image -->
-                    <div class="course-image">
+                    <div class="position-relative">
 
                         <img
                             [src]="course.image"
-                            [alt]="course.title">
+                            [alt]="course.title"
+                            class="card-img-top course-img">
 
-                        <span class="badge bg-dark course-category">
-                            {{course.category}}
+                        <span class="badge category-badge">
+                            {{ course.category }}
                         </span>
 
                     </div>
 
-                    <!-- Content -->
-                    <div class="card-body p-4">
+                    <!-- Body -->
+                    <div class="card-body">
 
-                        <h5 class="fw-bold">
-                            {{course.title}}
+                        <h5 class="fw-bold mb-2">
+                            {{ course.title }}
                         </h5>
 
-                        <p class="text-muted small">
-                            {{course.description}}
+                        <p class="text-muted small mb-3">
+                            {{ course.description }}
                         </p>
 
-                        <div class="d-flex justify-content-between text-muted small mb-3">
+                        <div class="course-meta">
 
                             <span>
-                                ⏱ {{course.duration}}
+                                <i class="bi bi-clock"></i>
+                                {{ course.duration }}
                             </span>
 
                             <span>
-                                 {{course.level}}
+                                <i class="bi bi-bar-chart"></i>
+                                {{ course.level }}
                             </span>
 
                         </div>
 
-                        <hr>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="card-footer bg-transparent border-0">
 
                         <div class="d-flex justify-content-between align-items-center">
 
-                            <h5 class="fw-bold mb-0 text-dark">
-                                ৳ {{course.price}}
-                            </h5>
+                            <div>
 
-                            <button class="btn btn-dark rounded-pill px-3">
+                                <div class="price">
+                                    ৳ {{ course.price }}
+                                </div>
+
+                                <small class="text-muted">
+                                    One-time payment
+                                </small>
+
+                            </div>
+
+                            <button class="btn btn-brand">
                                 View Details
                             </button>
 

@@ -1,12 +1,15 @@
-<nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
+<nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top border-bottom">
   <div class="container">
 
-    <a class="navbar-brand fw-bold text-black" href="#">
+    <a
+      class="navbar-brand fw-bold brand-primary"
+      routerLink="/">
       Course Academy
     </a>
 
     <button
       class="navbar-toggler"
+      type="button"
       data-bs-toggle="collapse"
       data-bs-target="#navbarMenu">
       <span class="navbar-toggler-icon"></span>
@@ -14,38 +17,47 @@
 
     <div class="collapse navbar-collapse" id="navbarMenu">
 
-      <ul class="navbar-nav mx-auto">
+      <ul class="navbar-nav mx-auto text-center">
         <li class="nav-item">
-          <!-- <a class="nav-link fw-bold text-black" href="#" onclick="document.querySelector('.hero-section').scrollIntoView({behavior:'smooth'})">Home</a> -->
-           <a class="nav-link fw-bold text-black" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
+          <a
+            class="nav-link fw-semibold"
+            routerLink="/"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact:true}">
             Home
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link fw-bold text-black" routerLink="/courses" routerLinkActive="active">
-            Course
+          <a
+            class="nav-link fw-semibold"
+            routerLink="/courses"
+            routerLinkActive="active">
+            Courses
           </a>
         </li>
 
-        
-
-         <li class="nav-item">
-          <a class="nav-link fw-bold text-black" routerLink="/contact" routerLinkActive="active">
+        <li class="nav-item">
+          <a
+            class="nav-link fw-semibold"
+            routerLink="/contact"
+            routerLinkActive="active">
             Contact
           </a>
         </li>
 
-         <li class="nav-item">
-          <a class="nav-link fw-bold text-black" routerLink="/about" routerLinkActive="active">
+        <li class="nav-item">
+          <a
+            class="nav-link fw-semibold"
+            routerLink="/about"
+            routerLinkActive="active">
             About
           </a>
         </li>
-
       </ul>
 
       <button
-        class="btn btn-dark fw-bold text-white"
+        class="btn btn-warning text-white fw-semibold px-4 mt-3 mt-lg-0"
         onclick="document.querySelector('.ca-whatsapp-section').scrollIntoView({behavior:'smooth'})">
         Apply Now
       </button>

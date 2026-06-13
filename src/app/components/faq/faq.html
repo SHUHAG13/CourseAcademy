@@ -5,11 +5,11 @@
     <!-- Header -->
     <div class="text-center mb-5">
 
-      <span class="badge bg-dark px-3 py-2">
+      <span class="badge faq-badge px-3 py-2">
         FAQ
       </span>
 
-      <h2 class="fw-bold mt-3 text-dark">
+      <h2 class="fw-bold mt-3">
         Frequently Asked Questions
       </h2>
 
@@ -24,10 +24,11 @@
 
       <div class="col-lg-8">
 
-        <div class="accordion" id="faqAccordion">
+        <div class="accordion custom-faq" id="faqAccordion">
 
-          <div class="accordion-item border mb-3 rounded overflow-hidden"
-               *ngFor="let faq of faqs; let i = index">
+          <div
+            class="accordion-item border-0 shadow-sm mb-3 rounded-4 overflow-hidden"
+            *ngFor="let faq of faqs; let i = index">
 
             <h2 class="accordion-header">
 
@@ -49,7 +50,7 @@
               class="accordion-collapse collapse"
               data-bs-parent="#faqAccordion">
 
-              <div class="accordion-body text-muted">
+              <div class="accordion-body">
 
                 {{ faq.answer }}
 
@@ -68,15 +69,15 @@
     <!-- CTA -->
     <div class="text-center mt-5">
 
-      <h5 class="fw-bold text-dark">
-        Didn’t find your answer?
+      <h5 class="fw-bold">
+        Didn't find your answer?
       </h5>
 
       <p class="text-muted">
         Contact us via WhatsApp or Facebook Messenger for quick support.
       </p>
 
-      <button class="btn btn-dark px-4">
+      <button class="btn btn-brand px-4 rounded-pill">
         Contact Us
       </button>
 
