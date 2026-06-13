@@ -6,6 +6,8 @@ import { WhatsappCta } from './components/whatsapp-cta/whatsapp-cta';
 import { Testimonials } from './components/testimonials/testimonials';
 import { Faq } from './components/faq/faq';
 import { NotFound } from './components/not-found/not-found';
+import { Contact } from './components/contact/contact/contact';
+import { About } from './components/about/about/about';
 
 export const routes: Routes = [
 
@@ -26,7 +28,11 @@ export const routes: Routes = [
 
   {
     path: 'contact',
-    component: WhatsappCta
+    component: Contact
+  },
+  {
+     path: 'about',
+    component: About
   },
 
   {

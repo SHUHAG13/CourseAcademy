@@ -12,7 +12,7 @@ import { Hero } from '../../components/hero/hero';
 
 @Component({
   selector: 'app-home',
-  imports: [Navbar,Hero, Courses, Testimonials, Faq, WhatsappCta,Home,Footer,PaymentMethods,FeaturedCourse,Courses,Features],
+  imports: [Hero, Courses, Testimonials, Faq, WhatsappCta,Home,PaymentMethods,FeaturedCourse,Courses,Features],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

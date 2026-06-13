@@ -16,16 +16,32 @@
 
       <ul class="navbar-nav mx-auto">
         <li class="nav-item">
-          <a class="nav-link fw-bold text-black" href="#" onclick="document.querySelector('.hero-section').scrollIntoView({behavior:'smooth'})">Home</a>
+          <!-- <a class="nav-link fw-bold text-black" href="#" onclick="document.querySelector('.hero-section').scrollIntoView({behavior:'smooth'})">Home</a> -->
+           <a class="nav-link fw-bold text-black" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
+            Home
+          </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link fw-bold text-black" href="#" onclick="document.querySelector('.course-section').scrollIntoView({behavior:'smooth'})">Course</a>
+          <a class="nav-link fw-bold text-black" routerLink="/courses" routerLinkActive="active">
+            Course
+          </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link fw-bold text-black" href="#" onclick="document.querySelector('.ca-whatsapp-section').scrollIntoView({behavior:'smooth'})">Payment</a>
+        
+
+         <li class="nav-item">
+          <a class="nav-link fw-bold text-black" routerLink="/contact" routerLinkActive="active">
+            Contact
+          </a>
         </li>
+
+         <li class="nav-item">
+          <a class="nav-link fw-bold text-black" routerLink="/about" routerLinkActive="active">
+            About
+          </a>
+        </li>
+
       </ul>
 
       <button
