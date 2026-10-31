@@ -1,11 +1,50 @@
-.ca-whatsapp-section{
-    background:linear-gradient(135deg,#16a34a,#22c55e);
+.wa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 1.5rem;
+  padding: 1.75rem;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius-lg);
+  background: var(--ca-surface);
+
+  h2 {
+    margin-bottom: 0.3rem;
+    font-size: 1.3rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--ca-muted);
+  }
 }
 
-.ca-whatsapp-section .btn{
-    transition:.3s;
+.wa-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 1.6rem;
 }
 
-.ca-whatsapp-section .btn:hover{
-    transform:translateY(-3px);
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+// WhatsApp brand green is used only for WhatsApp actions.
+.btn-wa {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: #16a34a;
+  --bs-btn-border-color: #16a34a;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #15803d;
+  --bs-btn-hover-border-color: #15803d;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #15803d;
 }

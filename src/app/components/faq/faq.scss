@@ -1,49 +1,61 @@
-.faq-badge {
-  background: #003566;
-  color: #fff;
-  border-radius: 50rem;
+.faq-list {
+  border-top: 1px solid var(--ca-border);
 }
 
-.custom-faq .accordion-item {
-  background: #fff;
+.faq-item {
+  border-bottom: 1px solid var(--ca-border);
 }
 
-.custom-faq .accordion-button {
-  background: #fff;
-  color: #212529;
-  padding: 1.25rem;
-  box-shadow: none;
-}
-
-.custom-faq .accordion-button:not(.collapsed) {
-  background: #E2EAFC;
-  color: #003566;
-  box-shadow: none;
-}
-
-.custom-faq .accordion-button:focus {
-  box-shadow: none;
-  border-color: transparent;
-}
-
-.custom-faq .accordion-body {
-  background: #E2EAFC;
-  color: #495057;
-  line-height: 1.7;
-}
-
-.custom-faq .accordion-button::after {
-  filter: grayscale(100%);
-}
-
-.btn-brand {
-  background: #FF9F1C;
-  border: none;
-  color: #fff;
+.faq-q {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 0.25rem;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-family: var(--ca-font-display);
+  font-size: 1.02rem;
   font-weight: 600;
+  color: var(--ca-text);
+
+  &:hover {
+    color: var(--ca-blue);
+  }
+
+  i {
+    flex-shrink: 0;
+    color: var(--ca-muted);
+    transition: transform 0.2s var(--ca-ease);
+  }
 }
 
-.btn-brand:hover {
-  background: #e58f19;
-  color: #fff;
+// Height animation via grid rows avoids measuring content in JS.
+.faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s var(--ca-ease);
+
+  .inner {
+    overflow: hidden;
+  }
+
+  p {
+    margin: 0;
+    padding: 0 2.5rem 1.2rem 0.25rem;
+    color: var(--ca-muted);
+  }
+}
+
+.faq-item.open {
+  .faq-a {
+    grid-template-rows: 1fr;
+  }
+
+  .faq-q i {
+    transform: rotate(45deg);
+    color: var(--ca-blue);
+  }
 }

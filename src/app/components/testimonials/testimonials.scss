@@ -1,10 +1,53 @@
-.bi-star-fill {
-  color: #000;
+.quote {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  padding: 1.5rem;
 }
-@media(max-width:768px){
 
-  .section-title{
-    font-size:1.8rem;
+.quote-mark {
+  position: absolute;
+  top: 0.5rem;
+  right: 1.1rem;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--ca-blue-100);
+}
+
+blockquote {
+  flex: 1;
+  margin: 0.9rem 0 1.25rem;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--ca-text-2);
+}
+
+figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ca-border);
+
+  strong {
+    display: block;
+    color: var(--ca-text);
   }
 
+  span {
+    font-size: 0.82rem;
+    color: var(--ca-muted);
+  }
+}
+
+.outcome {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ca-success);
 }

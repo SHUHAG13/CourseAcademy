@@ -1,0 +1,120 @@
+:host {
+  --cover-bg: #14213d;
+  --cover-accent: #f97316;
+  --cover-glyph: rgba(249, 115, 22, 0.9);
+
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  container-type: inline-size;
+  background-color: var(--cover-bg);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: #fff;
+}
+
+:host(.cat-sports-journalism) {
+  --cover-bg: #1d4ed8;
+  --cover-accent: #fdba74;
+  --cover-glyph: rgba(255, 255, 255, 0.92);
+}
+
+:host(.cat-software-development) {
+  --cover-bg: #0f172a;
+  --cover-accent: #60a5fa;
+  --cover-glyph: rgba(96, 165, 250, 0.95);
+}
+
+.accent-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--cover-accent);
+}
+
+.glyph {
+  position: absolute;
+  right: 7%;
+  top: 50%;
+  transform: translateY(-58%);
+  font-size: 30cqi;
+  line-height: 1;
+  color: var(--cover-glyph);
+  opacity: 0.9;
+}
+
+.label {
+  position: absolute;
+  left: 8%;
+  right: 42%;
+  bottom: 12%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.kicker {
+  font-size: max(9px, 3.4cqi);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cover-accent);
+}
+
+.name {
+  font-family: var(--ca-font-display);
+  font-size: max(15px, 8cqi);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.brand-tag {
+  position: absolute;
+  left: 8%;
+  top: 10%;
+  padding: 0.2em 0.45em;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  font-size: max(9px, 3cqi);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+// Thumbnail-sized covers show only the icon.
+@container (max-width: 200px) {
+  .label,
+  .brand-tag {
+    display: none;
+  }
+
+  .glyph {
+    right: 50%;
+    font-size: 40cqi;
+    transform: translate(50%, -50%);
+  }
+}
+
+// Takes the glyph's place so it never covers the cover title.
+.play {
+  position: absolute;
+  left: 77%;
+  top: 46%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  color: var(--ca-navy);
+  font-size: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s var(--ca-ease);
+}

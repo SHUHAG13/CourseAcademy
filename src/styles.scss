@@ -1,15 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap');
-
-:root {
-  --primary-color: #003566;
-  --accent-color: #FF9F1C;
-  --background-color: #F8F9FA;
-  --text-color: #212529;
-}
-
-html,
-body {
-  font-family: 'Roboto Condensed', sans-serif;
-  background-color: var(--background-color);
-  color: var(--text-color);
-}
+// Global design system. Component-specific styles live next to each component.
+@use 'styles/bootstrap';
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/components';

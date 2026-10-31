@@ -1,88 +1,37 @@
-<section class="py-5 bg-white">
-
+<section class="section bg-surface" aria-labelledby="faq-title">
   <div class="container">
-
-    <!-- Header -->
-    <div class="text-center mb-5">
-
-      <span class="badge faq-badge px-3 py-2">
-        FAQ
-      </span>
-
-      <h2 class="fw-bold mt-3">
-        Frequently Asked Questions
-      </h2>
-
-      <p class="text-muted">
-        Here are answers to the most common questions about the course.
-      </p>
-
-    </div>
-
-    <!-- Accordion -->
-    <div class="row justify-content-center">
-
-      <div class="col-lg-8">
-
-        <div class="accordion custom-faq" id="faqAccordion">
-
-          <div
-            class="accordion-item border-0 shadow-sm mb-3 rounded-4 overflow-hidden"
-            *ngFor="let faq of faqs; let i = index">
-
-            <h2 class="accordion-header">
-
-              <button
-                class="accordion-button collapsed fw-semibold"
-                type="button"
-                data-bs-toggle="collapse"
-                [attr.data-bs-target]="'#faq' + i"
-                [attr.aria-controls]="'faq' + i">
-
-                {{ faq.question }}
-
-              </button>
-
-            </h2>
-
-            <div
-              [id]="'faq' + i"
-              class="accordion-collapse collapse"
-              data-bs-parent="#faqAccordion">
-
-              <div class="accordion-body">
-
-                {{ faq.answer }}
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-4">
+        <span class="eyebrow">FAQ</span>
+        @if (asPage()) {
+          <h1 id="faq-title" class="section-title">Frequently asked questions</h1>
+        } @else {
+          <h2 id="faq-title" class="section-title">Frequently asked questions</h2>
+        }
+        <p class="section-sub mb-4">Can't find your answer? Our team replies quickly on WhatsApp.</p>
+        <a routerLink="/contact" class="btn btn-outline">Contact Us</a>
       </div>
 
+      <div class="col-lg-8">
+        <div class="faq-list">
+          @for (faq of faqs; track faq.question; let i = $index) {
+            <div class="faq-item" [class.open]="open() === i">
+              <h3 class="m-0">
+                <button type="button" class="faq-q" (click)="toggle(i)" [attr.aria-expanded]="open() === i"
+                  [attr.aria-controls]="'faq-a-' + i" [id]="'faq-q-' + i">
+                  {{ faq.question }}
+                  <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                </button>
+              </h3>
+              <div class="faq-a" [id]="'faq-a-' + i" role="region" [attr.aria-labelledby]="'faq-q-' + i">
+                <div class="inner">
+                  <p>{{ faq.answer }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
     </div>
-
-    <!-- CTA -->
-    <div class="text-center mt-5">
-
-      <h5 class="fw-bold">
-        Didn't find your answer?
-      </h5>
-
-      <p class="text-muted">
-        Contact us via WhatsApp or Facebook Messenger for quick support.
-      </p>
-
-      <button class="btn btn-brand px-4 rounded-pill">
-        Contact Us
-      </button>
-
-    </div>
-
   </div>
-
 </section>

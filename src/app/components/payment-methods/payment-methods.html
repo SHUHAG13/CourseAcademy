@@ -1,223 +1,86 @@
-<section class="py-5 bg-light">
-
-    <div class="container">
-
-        <!-- Section Header -->
-        <div class="text-center mb-5">
-
-            <span class="badge payment-badge rounded-pill px-3 py-2">
-                <i class="bi bi-credit-card me-1"></i>
-                Payment Options
-            </span>
-
-            <h2 class="fw-bold mt-3">
-                Easy Payment Methods
-            </h2>
-
-            <p class="text-muted">
-                Choose your preferred payment method and complete your enrollment securely.
-            </p>
-
-        </div>
-
-        <!-- Payment Methods -->
-        <div class="row g-4">
-
-            <!-- bKash -->
-            <div class="col-md-3">
-
-                <div class="card payment-card h-100 border-0 shadow-sm rounded-4">
-
-                    <div class="card-body text-center p-4">
-
-                        <div class="display-5 mb-3">
-                            <i class="bi bi-phone"></i>
-                        </div>
-
-                        <h5 class="fw-bold">
-                            bKash
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Fast and secure mobile banking payment.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- Nagad -->
-            <div class="col-md-3">
-
-                <div class="card payment-card h-100 border-0 shadow-sm rounded-4">
-
-                    <div class="card-body text-center p-4">
-
-                        <div class="display-5 mb-3">
-                            <i class="bi bi-wallet2"></i>
-                        </div>
-
-                        <h5 class="fw-bold">
-                            Nagad
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Complete payment directly from your mobile.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- Bank Transfer -->
-            <div class="col-md-3">
-
-                <div class="card payment-card h-100 border-0 shadow-sm rounded-4">
-
-                    <div class="card-body text-center p-4">
-
-                        <div class="display-5 mb-3">
-                            <i class="bi bi-bank"></i>
-                        </div>
-
-                        <h5 class="fw-bold">
-                            Bank Transfer
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Transfer securely from any bank account.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- Cash Payment -->
-            <div class="col-md-3">
-
-                <div class="card payment-card h-100 border-0 shadow-sm rounded-4">
-
-                    <div class="card-body text-center p-4">
-
-                        <div class="display-5 mb-3">
-                            <i class="bi bi-cash-stack"></i>
-                        </div>
-
-                        <h5 class="fw-bold">
-                            Cash Payment
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Offline payment through direct contact.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- Payment Process -->
-        <div class="mt-5">
-
-            <div class="text-center mb-4">
-
-                <h3 class="fw-bold payment-section-title">
-                    Payment Process
-                </h3>
-
-            </div>
-
-            <div class="row g-4">
-
-                <!-- Step 1 -->
-                <div class="col-md-4">
-
-                    <div class="card payment-step-card h-100 border-0 shadow-sm rounded-4">
-
-                        <div class="card-body p-4">
-
-                            <h5 class="fw-bold">
-                                01. Contact Us
-                            </h5>
-
-                            <p class="text-muted mb-0">
-                                Reach us via WhatsApp or Facebook Messenger.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- Step 2 -->
-                <div class="col-md-4">
-
-                    <div class="card payment-step-card h-100 border-0 shadow-sm rounded-4">
-
-                        <div class="card-body p-4">
-
-                            <h5 class="fw-bold">
-                                02. Complete Payment
-                            </h5>
-
-                            <p class="text-muted mb-0">
-                                Pay through your preferred payment method.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- Step 3 -->
-                <div class="col-md-4">
-
-                    <div class="card payment-step-card h-100 border-0 shadow-sm rounded-4">
-
-                        <div class="card-body p-4">
-
-                            <h5 class="fw-bold">
-                                03. Get Access
-                            </h5>
-
-                            <p class="text-muted mb-0">
-                                Send your payment screenshot and receive instant access.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <!-- Important Note -->
-        <div class="alert payment-note shadow-sm rounded-4 mt-5 mb-0">
-
-            <strong>
-                Important:
-            </strong>
-
-            Payment details such as mobile number, bank account information,
-            and reference instructions will be shared after contacting us.
-            Once payment is confirmed, course access will be provided promptly.
-
-        </div>
-
-    </div>
-
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
+      <li><a routerLink="/">Home</a></li>
+      @if (selected(); as c) {
+        <li><a [routerLink]="['/courses', c.slug]">Course</a></li>
+      }
+      <li aria-current="page">Enroll</li>
+    </ol>
+    <h1>{{ selected() ? 'Complete your enrollment' : 'How to enroll & pay' }}</h1>
+    <p>Enrolling takes a few minutes. Pay with bKash, Nagad or bank transfer and get access after a quick verification.</p>
+  </div>
 </section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-7">
+        <h2 class="h4 mb-3">Enrollment steps</h2>
+        <ol class="steps">
+          @for (step of steps; track step.title; let i = $index) {
+            <li>
+              <span class="n">{{ i + 1 }}</span>
+              <div>
+                <h3 class="h6 mb-1">{{ step.title }}</h3>
+                <p class="mb-0 text-muted">{{ step.text }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+
+        <h2 class="h4 mt-5 mb-3">Payment methods</h2>
+        <div class="row g-3">
+          @for (m of methods; track m.name) {
+            <div class="col-sm-4">
+              <div class="method ca-card">
+                <span class="logo"><img [src]="m.logo" [alt]="m.name + ' logo'" loading="lazy" /></span>
+                <strong>{{ m.name }}</strong>
+                <small>{{ m.text }}</small>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="note">
+          <i class="bi bi-shield-check" aria-hidden="true"></i>
+          <p class="mb-0">
+            <strong>Important:</strong> For your security, payment numbers and bank details are shared only
+            through our official WhatsApp after you contact us. Online card checkout is not available yet.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="summary ca-card">
+          @if (selected(); as c) {
+            <h2 class="h6 text-uppercase text-muted mb-3">Order summary</h2>
+            <div class="d-flex gap-3 align-items-center mb-3">
+              <app-course-cover class="mini" [course]="c" />
+              <div>
+                <a [routerLink]="['/courses', c.slug]" class="title">{{ c.title }}</a>
+                <small class="d-block text-muted">{{ c.durationHours }} hours · {{ c.level }}</small>
+              </div>
+            </div>
+            <dl class="lines">
+              <div><dt>Original price</dt><dd class="price-was">{{ c.originalPrice | bdt }}</dd></div>
+              <div><dt>Discount</dt><dd class="text-success">−{{ c.originalPrice - c.price | bdt }}</dd></div>
+              <div class="total"><dt>Total</dt><dd class="price-now">{{ c.price | bdt }}</dd></div>
+            </dl>
+          } @else {
+            <h2 class="h5">Haven't chosen a course yet?</h2>
+            <p class="text-muted">Browse our catalogue and pick a course — then come back here to enroll.</p>
+            <a routerLink="/courses" class="btn btn-outline w-100 mb-3">Browse courses</a>
+          }
+
+          <a [href]="whatsappLink()" target="_blank" rel="noopener" class="btn btn-accent btn-lg w-100">
+            <i class="bi bi-whatsapp" aria-hidden="true"></i> Enroll via WhatsApp
+          </a>
+          <p class="small text-muted text-center mt-2 mb-0">Opens WhatsApp with a pre-filled message.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<app-whatsapp-cta />

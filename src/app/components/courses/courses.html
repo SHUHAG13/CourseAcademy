@@ -1,103 +1,33 @@
-<section class="py-5 bg-light">
-
-    <div class="container">
-
-        <div class="text-center mb-5">
-
-            <span class="badge section-badge">
-                Course Catalog
-            </span>
-
-            <h2 class="fw-bold mt-3">
-                Explore Our Courses
-            </h2>
-
-            <p class="text-muted mb-0">
-                Industry-focused courses designed to help you grow your career.
-            </p>
-
-        </div>
-
-        <div class="row g-4">
-
-            <div
-                class="col-lg-4 col-md-6"
-                *ngFor="let course of courses">
-
-                <div class="card course-card border-0 h-100">
-
-                    <!-- Image -->
-                    <div class="position-relative">
-
-                        <img
-                            [src]="course.image"
-                            [alt]="course.title"
-                            class="card-img-top course-img">
-
-                        <span class="badge category-badge">
-                            {{ course.category }}
-                        </span>
-
-                    </div>
-
-                    <!-- Body -->
-                    <div class="card-body">
-
-                        <h5 class="fw-bold mb-2">
-                            {{ course.title }}
-                        </h5>
-
-                        <p class="text-muted small mb-3">
-                            {{ course.description }}
-                        </p>
-
-                        <div class="course-meta">
-
-                            <span>
-                                <i class="bi bi-clock"></i>
-                                {{ course.duration }}
-                            </span>
-
-                            <span>
-                                <i class="bi bi-bar-chart"></i>
-                                {{ course.level }}
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                    <!-- Footer -->
-                    <div class="card-footer bg-transparent border-0">
-
-                        <div class="d-flex justify-content-between align-items-center">
-
-                            <div>
-
-                                <div class="price">
-                                    ৳ {{ course.price }}
-                                </div>
-
-                                <small class="text-muted">
-                                    One-time payment
-                                </small>
-
-                            </div>
-
-                            <button class="btn btn-brand">
-                                View Details
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
+<section class="section bg-surface" aria-labelledby="featured-title">
+  <div class="container">
+    <div class="section-head-row">
+      <div class="section-head">
+        <span class="eyebrow">Featured courses</span>
+        <h2 id="featured-title" class="section-title">Most popular with our students</h2>
+        <p class="section-sub">Practical, project-based courses taught in Bangla by working professionals.</p>
+      </div>
+      <a routerLink="/courses" class="btn-link-arrow">View all courses <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
     </div>
 
+    <div class="tabs" role="tablist" aria-label="Filter featured courses">
+      <button type="button" role="tab" class="chip" [class.active]="active() === 'featured'"
+        [attr.aria-selected]="active() === 'featured'" (click)="active.set('featured')">
+        Featured
+      </button>
+      @for (cat of categories; track cat.id) {
+        <button type="button" role="tab" class="chip" [class.active]="active() === cat.id"
+          [attr.aria-selected]="active() === cat.id" (click)="active.set(cat.id)">
+          {{ cat.name }}
+        </button>
+      }
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4" role="tabpanel">
+      @for (course of courses(); track course.id) {
+        <div class="col">
+          <app-course-card [course]="course" />
+        </div>
+      }
+    </div>
+  </div>
 </section>

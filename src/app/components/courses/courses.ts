@@ -1,50 +1,28 @@
-import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { CategoryId } from '../../core/models/course.model';
+import { CourseService } from '../../core/services/course.service';
+import { CourseCard } from '../../shared/components/course-card/course-card';
 
+/** Home page "Featured Courses" section with quick category tabs. */
 @Component({
   selector: 'app-courses',
-  imports: [CommonModule],
+  imports: [RouterLink, CourseCard],
   templateUrl: './courses.html',
   styleUrl: './courses.scss',
 })
 export class Courses {
-courses = [
-  {
-    title: 'Sports Journalism Masterclass',
-    category: 'Journalism',
-    duration: '8 Weeks',
-    level: 'Beginner',
-    price: 3999,
-    image: '/images/sj1.jpg',
-    description: 'Sports reporting, match analysis, interviewing and digital journalism.'
-  },
-  {
-    title: 'Sports Content Writing',
-    category: 'Content Writing',
-    duration: '6 Weeks',
-    level: 'Beginner',
-    price: 2499,
-    image: '/images/sj2.jpg',
-    description: 'Learn article writing, match reports and social media content creation.'
-  },
-  {
-    title: 'Sports Video Production',
-    category: 'Media Production',
-    duration: '8 Weeks',
-    level: 'Intermediate',
-    price: 4499,
-    image: '/images/sj3.jpg',
-    description: 'Create professional sports highlights, reels and video reports.'
-  },
-  {
-    title: 'Digital Sports Media',
-    category: 'Digital Media',
-    duration: '5 Weeks',
-    level: 'Beginner',
-    price: 2999,
-    image: '/images/sj1.jpg',
-    description: 'Learn sports publishing, audience growth and media branding.'
-  }
-];
+  private readonly courseService = inject(CourseService);
 
+  protected readonly categories = this.courseService.categories;
+  protected readonly active = signal<CategoryId | 'featured'>('featured');
+
+  protected readonly courses = computed(() => {
+    const tab = this.active();
+    if (tab === 'featured') return this.courseService.featured();
+    return this.courseService.all
+      .filter((c) => c.category === tab)
+      .sort((a, b) => b.students - a.students)
+      .slice(0, 4);
+  });
 }

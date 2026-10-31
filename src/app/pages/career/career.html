@@ -1,0 +1,149 @@
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
+      <li><a routerLink="/">Home</a></li>
+      <li aria-current="page">Career</li>
+    </ol>
+    <h1>Learn With Us. Grow With Us.</h1>
+    <p>Skilled students can work on our sports media channel, digital platform and software projects — real work, real pay.</p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="section-head">
+      <span class="eyebrow">How it works</span>
+      <h2 class="section-title">From student to team member</h2>
+    </div>
+    <ol class="steps">
+      @for (s of steps; track s.title; let i = $index) {
+        <li class="ca-card">
+          <span class="icon-tile" [class.orange]="i === steps.length - 1"><i class="bi" [class]="s.icon" aria-hidden="true"></i></span>
+          <h3 class="h6 mt-3 mb-1">{{ i + 1 }}. {{ s.title }}</h3>
+          <p class="mb-0 small text-muted">{{ s.text }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<section class="section-tight bg-surface border-top border-bottom">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+      <div>
+        <span class="eyebrow">Open opportunities</span>
+        <h2 class="section-title mb-0">Current roles for students</h2>
+      </div>
+      <div class="teams" role="tablist" aria-label="Filter by team">
+        @for (t of teams; track t) {
+          <button type="button" role="tab" class="chip" [class.active]="team() === t" [attr.aria-selected]="team() === t"
+            (click)="team.set(t)">{{ t }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="row g-4">
+      @for (r of roles(); track r.id) {
+        <div class="col-md-6">
+          <article class="role ca-card">
+            <div class="d-flex gap-3 align-items-start">
+              <span class="icon-tile"><i class="bi" [class]="r.icon" aria-hidden="true"></i></span>
+              <div class="flex-grow-1">
+                <h3 class="h5 mb-1">{{ r.role }}</h3>
+                <p class="small text-muted mb-0">{{ r.team }}</p>
+              </div>
+              <span class="tag blue">{{ r.type }}</span>
+            </div>
+            <p class="desc">{{ r.description }}</p>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div class="d-flex flex-wrap gap-2">
+                @for (s of r.skills; track s) {
+                  <span class="tag">{{ s }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" (click)="apply(r)">Apply</button>
+            </div>
+          </article>
+        </div>
+      }
+    </div>
+    <p class="small text-muted mt-4 mb-0">
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+      Roles shown are examples. Opportunities are offered to selected students based on skills and portfolio.
+    </p>
+  </div>
+</section>
+
+<section class="section" id="apply">
+  <div class="container">
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-5">
+        <span class="eyebrow">Apply</span>
+        <h2 class="section-title">Send your application</h2>
+        <p class="section-sub mb-4">Tell us which role interests you and share your best work.</p>
+        <ul class="check-list">
+          <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Open to current and past students</li>
+          <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Flexible, remote-friendly work</li>
+          <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Mentoring from senior team members</li>
+        </ul>
+        <p class="mt-4 small text-muted">Not a student yet? <a routerLink="/courses">Start with a course</a>.</p>
+      </div>
+
+      <div class="col-lg-7">
+        <form class="ca-card form-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="a-name" class="form-label">Full name</label>
+              <input id="a-name" class="form-control" formControlName="name" autocomplete="name"
+                [class.is-invalid]="showError('name')" />
+              <div class="invalid-feedback">Please enter your name.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="a-email" class="form-label">Email</label>
+              <input id="a-email" type="email" class="form-control" formControlName="email" autocomplete="email"
+                [class.is-invalid]="showError('email')" />
+              <div class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="a-phone" class="form-label">Phone</label>
+              <input id="a-phone" type="tel" class="form-control" formControlName="phone" placeholder="01XXXXXXXXX"
+                autocomplete="tel" [class.is-invalid]="showError('phone')" />
+              <div class="invalid-feedback">Enter a valid Bangladeshi mobile number.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="a-role" class="form-label">Role</label>
+              <select id="a-role" class="form-select" formControlName="role" [class.is-invalid]="showError('role')">
+                <option value="" disabled>Select a role</option>
+                @for (r of allRoles; track r.id) {
+                  <option [value]="r.role">{{ r.role }}</option>
+                }
+              </select>
+              <div class="invalid-feedback">Please choose a role.</div>
+            </div>
+            <div class="col-12">
+              <label for="a-portfolio" class="form-label">Portfolio link <span class="text-muted fw-normal">(optional)</span></label>
+              <input id="a-portfolio" type="url" class="form-control" formControlName="portfolio"
+                placeholder="https://" [class.is-invalid]="showError('portfolio')" />
+              <div class="invalid-feedback">Enter a full link starting with http:// or https://</div>
+            </div>
+            <div class="col-12">
+              <label for="a-message" class="form-label">Why are you a good fit? <span class="text-muted fw-normal">(optional)</span></label>
+              <textarea id="a-message" rows="4" class="form-control" formControlName="message"
+                [class.is-invalid]="showError('message')"></textarea>
+              <div class="invalid-feedback">Please keep it under 600 characters.</div>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-accent btn-lg" [disabled]="submitting()">
+                @if (submitting()) {
+                  <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Submitting…
+                } @else {
+                  Submit application
+                }
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>

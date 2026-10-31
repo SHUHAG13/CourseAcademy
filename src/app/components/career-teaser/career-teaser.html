@@ -1,0 +1,38 @@
+<section class="section bg-surface" aria-labelledby="career-title">
+  <div class="container">
+    <div class="panel">
+      <div class="row g-4 g-lg-5 align-items-center">
+        <div class="col-lg-6">
+          <span class="eyebrow">Career opportunities</span>
+          <h2 id="career-title" class="section-title">Learn With Us. Grow With Us.</h2>
+          <p class="section-sub mb-4">
+            Selected students with strong skills and portfolios may be invited to work with our own teams —
+            paid, real-world experience that starts your career.
+          </p>
+          <ul class="check-list mb-4">
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Report and edit for our sports media channel</li>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Create content for our digital learning platform</li>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Build features on our software projects</li>
+          </ul>
+          <a routerLink="/career" class="btn btn-navy">Explore Opportunities <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        </div>
+
+        <div class="col-lg-6">
+          <ul class="roles">
+            @for (role of roles; track role.id) {
+              <li class="role">
+                <span class="icon-tile sm"><i class="bi" [class]="role.icon" aria-hidden="true"></i></span>
+                <div class="flex-grow-1">
+                  <strong>{{ role.role }}</strong>
+                  <span>{{ role.team }}</span>
+                </div>
+                <span class="tag blue">{{ role.type }}</span>
+              </li>
+            }
+          </ul>
+          <p class="note"><i class="bi bi-info-circle" aria-hidden="true"></i> Opportunities are offered to selected students based on skills and portfolio.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

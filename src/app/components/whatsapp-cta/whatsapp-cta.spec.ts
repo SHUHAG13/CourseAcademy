@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { provideRouter } from '@angular/router';
 import { WhatsappCta } from './whatsapp-cta';
 
 describe('WhatsappCta', () => {
@@ -8,7 +9,8 @@ describe('WhatsappCta', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [WhatsappCta]
+      imports: [WhatsappCta],
+      providers: [provideRouter([])],
     })
     .compileComponents();
 

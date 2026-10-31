@@ -1,0 +1,15 @@
+<span class="accent-bar" aria-hidden="true"></span>
+@if (!showPlay()) {
+  <i class="bi glyph {{ course().coverIcon }}" aria-hidden="true"></i>
+}
+
+<span class="label" aria-hidden="true">
+  <span class="kicker">{{ categoryName() }}</span>
+  <span class="name">{{ course().coverLabel }}</span>
+</span>
+
+<span class="brand-tag" aria-hidden="true">CA</span>
+
+@if (showPlay()) {
+  <span class="play" aria-hidden="true"><i class="bi bi-play-fill"></i></span>
+}

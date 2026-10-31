@@ -1,0 +1,65 @@
+// Design tokens — the single source of truth for colour, type, spacing and elevation.
+:root {
+  // Brand
+  --ca-navy: #14213d;
+  --ca-navy-800: #1b2a4a;
+  --ca-navy-700: #24365c;
+  --ca-blue: #2563eb;
+  --ca-blue-600: #1d4ed8;
+  --ca-blue-50: #eff6ff;
+  --ca-blue-100: #dbeafe;
+  --ca-orange: #f97316;
+  --ca-orange-600: #ea580c;
+  --ca-orange-50: #fff7ed;
+
+  // Neutrals
+  --ca-bg: #f8fafc;
+  --ca-surface: #ffffff;
+  --ca-surface-muted: #f1f5f9;
+  --ca-border: #e2e8f0;
+  --ca-border-strong: #cbd5e1;
+  --ca-text: #0f172a;
+  --ca-text-2: #334155;
+  --ca-muted: #64748b;
+  --ca-on-dark: #e2e8f0;
+  --ca-on-dark-muted: #94a3b8;
+
+  // Feedback
+  --ca-success: #16a34a;
+  --ca-success-50: #f0fdf4;
+  --ca-danger: #dc2626;
+  --ca-danger-50: #fef2f2;
+  --ca-star: #f59e0b;
+
+  // Type
+  --ca-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', sans-serif;
+  --ca-font-display: 'Plus Jakarta Sans', var(--ca-font-sans);
+
+  // Shape & elevation
+  --ca-radius-sm: 6px;
+  --ca-radius: 10px;
+  --ca-radius-lg: 14px;
+  --ca-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --ca-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 23, 42, 0.06);
+  --ca-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+  // Layout
+  --ca-nav-height: 68px;
+  --ca-section-y: 80px;
+  --ca-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  // Bootstrap bridge
+  --bs-body-font-family: var(--ca-font-sans);
+  --bs-body-color: var(--ca-text-2);
+  --bs-body-bg: var(--ca-bg);
+  --bs-border-color: var(--ca-border);
+  --bs-link-color-rgb: 37, 99, 235;
+  --bs-link-hover-color-rgb: 29, 78, 216;
+  --bs-secondary-color: var(--ca-muted);
+  --bs-emphasis-color: var(--ca-text);
+
+  @media (max-width: 767.98px) {
+    --ca-section-y: 56px;
+    --ca-nav-height: 62px;
+  }
+}

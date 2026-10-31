@@ -1,48 +1,17 @@
-import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
-
-interface Testimonial {
-  name: string;
-  profession: string;
-  image: string;
-  rating: number;
-  review: string;
-}
+import { Component, input } from '@angular/core';
+import { TESTIMONIALS } from '../../core/data/site.data';
+import { Avatar } from '../../shared/components/avatar/avatar';
+import { RatingStars } from '../../shared/components/rating-stars/rating-stars';
 
 @Component({
   selector: 'app-testimonials',
-  imports: [CommonModule],
+  imports: [Avatar, RatingStars],
   templateUrl: './testimonials.html',
   styleUrl: './testimonials.scss',
 })
 export class Testimonials {
+  /** True on the standalone /testimonials route, where this section is the page. */
+  readonly asPage = input(false);
 
-  testimonials: Testimonial[] = [
-    {
-      name: 'Rakibul Islam',
-      profession: 'Freelance Developer',
-      image: 'images/sj1.jpg',
-      rating: 5,
-      review:
-        'This course completely changed my career path. The practical projects and real-world guidance were extremely helpful.'
-    },
-    {
-      name: 'Sanjida Akter',
-      profession: 'Computer Science Student',
-      image: 'images/sj2.jpg',
-      rating: 5,
-      review:
-        'Every topic was explained in a very clear and structured way. I gained a lot of confidence in web development.'
-    },
-    {
-      name: 'Tanvir Ahmed',
-      profession: 'Junior Software Engineer',
-      image: 'images/sj3.jpg',
-      rating: 5,
-      review:
-        'The live sessions and community support made learning much easier and more interactive.'
-    }
-  ];
-
-  stars = [1, 2, 3, 4, 5];
+  protected readonly testimonials = TESTIMONIALS;
 }

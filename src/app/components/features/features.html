@@ -1,91 +1,33 @@
-<section class="py-5 bg-white">
-
+<section class="section" aria-labelledby="why-title">
   <div class="container">
-
-    <div class="row g-4">
-
-      <div class="col-6 col-lg-3">
-
-        <div class="feature-box h-100 text-center">
-
-          <div class="feature-icon mx-auto mb-3">
-            <i class="bi bi-journal-check"></i>
-          </div>
-
-          <h5 class="fw-bold mb-2">
-            Learn by Doing
-          </h5>
-
-          <p class="text-muted mb-0">
-            Build practical projects and create a strong portfolio.
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-4">
+        <div class="intro">
+          <span class="eyebrow">Why learn with us?</span>
+          <h2 id="why-title" class="section-title">Skills you can use from day one</h2>
+          <p class="section-sub mb-4">
+            We teach the way the industry works: practical projects, honest feedback and a clear path from
+            learning to earning.
           </p>
-
+          <a routerLink="/about" class="btn-link-arrow">More about us <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
         </div>
-
       </div>
 
-      <div class="col-6 col-lg-3">
-
-        <div class="feature-box h-100 text-center">
-
-          <div class="feature-icon mx-auto mb-3">
-            <i class="bi bi-person-workspace"></i>
-          </div>
-
-          <h5 class="fw-bold mb-2">
-            Expert Mentorship
-          </h5>
-
-          <p class="text-muted mb-0">
-            Learn directly from industry professionals.
-          </p>
-
+      <div class="col-lg-8">
+        <div class="grid">
+          @for (r of reasons; track r.title; let i = $index) {
+            <div class="reason">
+              <span class="icon-tile" [class.orange]="i % 3 === 1" [class.navy]="i % 3 === 2">
+                <i class="bi" [class]="r.icon" aria-hidden="true"></i>
+              </span>
+              <div>
+                <h3 class="h6">{{ r.title }}</h3>
+                <p>{{ r.text }}</p>
+              </div>
+            </div>
+          }
         </div>
-
       </div>
-
-      <div class="col-6 col-lg-3">
-
-        <div class="feature-box h-100 text-center">
-
-          <div class="feature-icon mx-auto mb-3">
-            <i class="bi bi-trophy"></i>
-          </div>
-
-          <h5 class="fw-bold mb-2">
-            Career Focused
-          </h5>
-
-          <p class="text-muted mb-0">
-            Develop skills employers actually look for.
-          </p>
-
-        </div>
-
-      </div>
-
-      <div class="col-6 col-lg-3">
-
-        <div class="feature-box h-100 text-center">
-
-          <div class="feature-icon mx-auto mb-3">
-            <i class="bi bi-patch-check"></i>
-          </div>
-
-          <h5 class="fw-bold mb-2">
-            Certificate Included
-          </h5>
-
-          <p class="text-muted mb-0">
-            Receive a professional certificate after completion.
-          </p>
-
-        </div>
-
-      </div>
-
     </div>
-
   </div>
-
 </section>

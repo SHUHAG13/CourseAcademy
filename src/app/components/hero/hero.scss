@@ -1,30 +1,238 @@
-.bg-primary-brand {
-  background-color: var(--primary-color);
+.hero {
+  position: relative;
+  padding-block: 72px 88px;
+  background: var(--ca-surface);
+  border-bottom: 1px solid var(--ca-border);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(var(--ca-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ca-border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 60% 70% at 85% 40%, #000 20%, transparent 75%);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  > .container {
+    position: relative;
+  }
+
+  @media (max-width: 991.98px) {
+    padding-block: 48px 64px;
+  }
 }
 
-.text-primary-brand {
-  color: var(--primary-color);
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ca-blue-100);
+  border-radius: 999px;
+  background: var(--ca-blue-50);
+  color: var(--ca-blue-600);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.btn-brand {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  color: #fff;
+.title {
+  margin: 1.25rem 0 1.1rem;
+  font-size: clamp(2.3rem, 1.6rem + 3vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+
+  span {
+    display: block;
+    color: var(--ca-blue);
+  }
 }
 
-.btn-brand:hover {
-  background: #e58f19;
-  border-color: #e58f19;
-  color: #fff;
+.lead-text {
+  max-width: 540px;
+  font-size: 1.12rem;
+  color: var(--ca-muted);
 }
 
-.btn-outline-brand {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+
+  @media (max-width: 575.98px) {
+    .btn {
+      flex: 1 1 100%;
+    }
+  }
 }
 
-.btn-outline-brand:hover {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  color: #fff;
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.5rem;
+  margin: 2.5rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--ca-border);
+
+  dt {
+    font-family: var(--ca-font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--ca-navy);
+
+    i {
+      color: var(--ca-star);
+      font-size: 1.1rem;
+    }
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--ca-muted);
+  }
+}
+
+// ─── Visual ─────────────────────────────────────────────────
+.visual {
+  position: relative;
+  max-width: 540px;
+  margin-inline: auto;
+  padding: 24px 0 24px 24px;
+
+  @media (max-width: 575.98px) {
+    padding: 0;
+  }
+}
+
+.player {
+  overflow: hidden;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius-lg);
+  background: var(--ca-surface);
+  box-shadow: var(--ca-shadow-lg);
+}
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ca-border);
+
+  span {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--ca-border-strong);
+  }
+
+  em {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-style: normal;
+    color: var(--ca-muted);
+  }
+}
+
+.player-body {
+  padding: 1rem 1.1rem 1.1rem;
+  font-size: 0.88rem;
+
+  strong {
+    color: var(--ca-text);
+  }
+
+  small {
+    font-weight: 600;
+    color: var(--ca-blue);
+  }
+}
+
+.progress-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--ca-surface-muted);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ca-blue);
+  }
+}
+
+.lessons {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ca-muted);
+
+  li {
+    display: flex;
+    gap: 0.55rem;
+  }
+
+  .done i {
+    color: var(--ca-success);
+  }
+
+  .current {
+    color: var(--ca-text);
+    font-weight: 600;
+
+    i {
+      color: var(--ca-orange);
+    }
+  }
+}
+
+.float-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 0.9rem 0.65rem 0.7rem;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius);
+  background: var(--ca-surface);
+  box-shadow: var(--ca-shadow-lg);
+  font-size: 0.82rem;
+  line-height: 1.3;
+
+  strong {
+    display: block;
+    color: var(--ca-text);
+  }
+
+  small {
+    color: var(--ca-muted);
+  }
+
+  img {
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  @media (max-width: 575.98px) {
+    display: none;
+  }
+}
+
+.fc-cert {
+  top: 0;
+  right: -12px;
+}
+
+// Sits in the empty space to the right of the lesson list.
+.fc-project {
+  right: -12px;
+  bottom: 4px;
 }

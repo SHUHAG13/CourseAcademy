@@ -1,0 +1,119 @@
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
+      <li><a routerLink="/">Home</a></li>
+      <li aria-current="page">Contact</li>
+    </ol>
+    <h1>Contact us</h1>
+    <p>Questions about courses, payment or careers? Our team is happy to help you choose the right path.</p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-7">
+        <div class="ca-card form-card">
+          <h2 class="h4 mb-1">Send us a message</h2>
+          <p class="text-muted mb-4">We usually reply within one working day.</p>
+
+          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="c-name" class="form-label">Full name</label>
+                <input id="c-name" type="text" class="form-control" formControlName="name" autocomplete="name"
+                  [class.is-invalid]="showError('name')" aria-describedby="c-name-err" />
+                <div id="c-name-err" class="invalid-feedback">Please enter your name.</div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="c-email" class="form-label">Email address</label>
+                <input id="c-email" type="email" class="form-control" formControlName="email" autocomplete="email"
+                  [class.is-invalid]="showError('email')" aria-describedby="c-email-err" />
+                <div id="c-email-err" class="invalid-feedback">Please enter a valid email address.</div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="c-phone" class="form-label">Phone <span class="text-muted fw-normal">(optional)</span></label>
+                <input id="c-phone" type="tel" class="form-control" formControlName="phone" placeholder="01XXXXXXXXX"
+                  autocomplete="tel" [class.is-invalid]="showError('phone')" aria-describedby="c-phone-err" />
+                <div id="c-phone-err" class="invalid-feedback">Enter a valid Bangladeshi mobile number.</div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="c-topic" class="form-label">I'm asking about</label>
+                <select id="c-topic" class="form-select" formControlName="topic" [class.is-invalid]="showError('topic')"
+                  aria-describedby="c-topic-err">
+                  <option value="" disabled>Select a topic</option>
+                  <optgroup label="Courses">
+                    @for (c of courses; track c.id) {
+                      <option [value]="c.slug">{{ c.title }}</option>
+                    }
+                  </optgroup>
+                  <option value="payment">Payment &amp; enrollment</option>
+                  <option value="career">Career opportunities</option>
+                  <option value="other">Something else</option>
+                </select>
+                <div id="c-topic-err" class="invalid-feedback">Please choose a topic.</div>
+              </div>
+
+              <div class="col-12">
+                <label for="c-message" class="form-label">Message</label>
+                <textarea id="c-message" rows="5" class="form-control" formControlName="message"
+                  placeholder="Tell us how we can help" [class.is-invalid]="showError('message')"
+                  aria-describedby="c-message-err"></textarea>
+                <div id="c-message-err" class="invalid-feedback">Please write at least 10 characters.</div>
+              </div>
+
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-lg" [disabled]="sending()">
+                  @if (sending()) {
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Sending…
+                  } @else {
+                    Send message
+                  }
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="ca-card info">
+          <h2 class="h5 mb-3">Get in touch</h2>
+          <ul class="info-list">
+            <li>
+              <span class="icon-tile sm"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+              <div><small>Phone</small><a [href]="contact.phoneHref">{{ contact.phone }}</a></div>
+            </li>
+            <li>
+              <span class="icon-tile sm"><i class="bi bi-whatsapp" aria-hidden="true"></i></span>
+              <div><small>WhatsApp</small><a [href]="'https://wa.me/' + contact.whatsapp" target="_blank" rel="noopener">Chat with us</a></div>
+            </li>
+            <li>
+              <span class="icon-tile sm"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+              <div><small>Email</small><a [href]="'mailto:' + contact.email">{{ contact.email }}</a></div>
+            </li>
+            <li>
+              <span class="icon-tile sm"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
+              <div><small>Location</small><span>{{ contact.address }}</span></div>
+            </li>
+          </ul>
+
+          <h2 class="h6 mt-4 mb-2">Follow our community</h2>
+          <p class="small text-muted">Course updates, career tips and student success stories.</p>
+          <div class="social">
+            @for (s of contact.social; track s.label) {
+              <a [href]="s.href" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
+                <i class="bi" [class]="s.icon" aria-hidden="true"></i> {{ s.label }}
+              </a>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<app-whatsapp-cta />

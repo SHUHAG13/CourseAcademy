@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { provideRouter } from '@angular/router';
 import { PaymentMethods } from './payment-methods';
 
 describe('PaymentMethods', () => {
@@ -8,7 +9,8 @@ describe('PaymentMethods', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PaymentMethods]
+      imports: [PaymentMethods],
+      providers: [provideRouter([])],
     })
     .compileComponents();
 

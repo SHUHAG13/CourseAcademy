@@ -1,133 +1,72 @@
-<footer class="footer-section text-light py-5">
-
+<footer class="site-footer">
   <div class="container">
-
-    <div class="row g-4">
-
-      <!-- Brand -->
-      <div class="col-lg-4 col-md-6">
-
-        <h4 class="fw-bold mb-3">
-          Course Academy
-        </h4>
-
-        <p class="footer-text">
-          A modern skill development platform where you can learn
-          web development, digital marketing, graphic design,
-          and other professional skills.
+    <div class="row g-4 g-lg-5">
+      <div class="col-lg-4">
+        <a class="brand" routerLink="/">
+          <span class="brand-mark" aria-hidden="true">CA</span>
+          <span class="brand-name">Course Academy</span>
+        </a>
+        <p class="about">
+          Practical online courses in video editing, sports journalism and software development —
+          built to help students in Bangladesh learn, work and earn.
         </p>
-
-      </div>
-
-      <!-- Quick Links -->
-      <div class="col-lg-2 col-md-6">
-
-        <h6 class="fw-bold mb-3">
-          Quick Links
-        </h6>
-
-        <ul class="list-unstyled">
-
-          <li><a href="#" class="footer-link">Home</a></li>
-          <li><a href="#" class="footer-link">Courses</a></li>
-          <li><a href="#" class="footer-link">Payment</a></li>
-          <li><a href="#" class="footer-link">Contact</a></li>
-
-        </ul>
-
-      </div>
-
-      <!-- Courses -->
-      <div class="col-lg-3 col-md-6">
-
-        <h6 class="fw-bold mb-3">
-          Popular Courses
-        </h6>
-
-        <ul class="list-unstyled">
-
-          <li><a href="#" class="footer-link">Web Development</a></li>
-          <li><a href="#" class="footer-link">Graphic Design</a></li>
-          <li><a href="#" class="footer-link">Digital Marketing</a></li>
-          <li><a href="#" class="footer-link">Freelancing Masterclass</a></li>
-
-        </ul>
-
-      </div>
-
-      <!-- Contact -->
-      <div class="col-lg-3 col-md-6">
-
-        <h6 class="fw-bold mb-3">
-          Contact Us
-        </h6>
-
-        <ul class="list-unstyled footer-text">
-
-          <li class="mb-2">
-            <i class="bi bi-telephone-fill me-2"></i>
-            +880 1700 000000
-          </li>
-
-          <li class="mb-2">
-            <i class="bi bi-envelope-fill me-2"></i>
-            support@courseacademy.com
-          </li>
-
-          <li>
-            <i class="bi bi-geo-alt-fill me-2"></i>
-            Dhaka, Bangladesh
-          </li>
-
-        </ul>
-
-        <!-- Social -->
-        <div class="d-flex gap-2 mt-3">
-
-          <a href="#" class="social-btn">
-            <i class="bi bi-facebook"></i>
-          </a>
-
-          <a href="#" class="social-btn">
-            <i class="bi bi-youtube"></i>
-          </a>
-
-          <a href="#" class="social-btn">
-            <i class="bi bi-linkedin"></i>
-          </a>
-
-          <a href="#" class="social-btn">
-            <i class="bi bi-whatsapp"></i>
-          </a>
-
+        <p class="motto">Learn → Build Skills → Work → Earn → Grow</p>
+        <div class="social">
+          @for (s of contact.social; track s.label) {
+            <a [href]="s.href" target="_blank" rel="noopener" [attr.aria-label]="s.label">
+              <i class="bi" [class]="s.icon" aria-hidden="true"></i>
+            </a>
+          }
         </div>
-
       </div>
 
-    </div>
-
-    <hr class="footer-divider my-4">
-
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-
-      <p class="footer-text mb-2 mb-md-0">
-        © 2026 Course Academy. All Rights Reserved.
-      </p>
-
-      <div class="d-flex gap-3">
-
-        <a href="#" class="footer-link">
-          Privacy Policy
-        </a>
-
-        <a href="#" class="footer-link">
-          Terms & Conditions
-        </a>
-
+      <div class="col-6 col-md-3 col-lg-2">
+        <h2 class="col-title">Courses</h2>
+        <ul>
+          <li><a routerLink="/courses">All Courses</a></li>
+          @for (cat of categories; track cat.id) {
+            <li><a routerLink="/courses" [queryParams]="{ category: cat.id }">{{ cat.name }}</a></li>
+          }
+        </ul>
       </div>
 
+      <div class="col-6 col-md-3 col-lg-2">
+        <h2 class="col-title">Quick Links</h2>
+        <ul>
+          <li><a routerLink="/about">About Us</a></li>
+          <li><a routerLink="/payment">How to Pay</a></li>
+          <li><a routerLink="/faq">FAQ</a></li>
+          <li><a routerLink="/login">Login</a></li>
+          <li><a routerLink="/register">Sign Up</a></li>
+        </ul>
+      </div>
+
+      <div class="col-6 col-md-3 col-lg-2">
+        <h2 class="col-title">Community</h2>
+        <ul>
+          <li><a routerLink="/sports">Sports Media</a></li>
+          <li><a routerLink="/career">Career</a></li>
+          <li><a routerLink="/testimonials">Student Stories</a></li>
+          <li><a routerLink="/contact">Contact</a></li>
+        </ul>
+      </div>
+
+      <div class="col-6 col-md-3 col-lg-2">
+        <h2 class="col-title">Contact</h2>
+        <ul class="contact">
+          <li><i class="bi bi-telephone" aria-hidden="true"></i><a [href]="contact.phoneHref">{{ contact.phone }}</a></li>
+          <li><i class="bi bi-envelope" aria-hidden="true"></i><a [href]="'mailto:' + contact.email">{{ contact.email }}</a></li>
+          <li><i class="bi bi-geo-alt" aria-hidden="true"></i><span>{{ contact.address }}</span></li>
+        </ul>
+      </div>
     </div>
 
+    <div class="bottom">
+      <p class="mb-0">© {{ year }} Course Academy. All rights reserved.</p>
+      <div class="legal">
+        <a routerLink="/privacy">Privacy Policy</a>
+        <a routerLink="/terms">Terms &amp; Conditions</a>
+      </div>
+    </div>
   </div>
-
 </footer>

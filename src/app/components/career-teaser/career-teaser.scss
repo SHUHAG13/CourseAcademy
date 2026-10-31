@@ -1,0 +1,42 @@
+.panel {
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius-lg);
+  background: var(--ca-bg);
+}
+
+.roles {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius);
+  background: var(--ca-surface);
+  box-shadow: var(--ca-shadow-sm);
+
+  strong {
+    display: block;
+    color: var(--ca-text);
+    font-size: 0.95rem;
+  }
+
+  span:not(.tag):not(.icon-tile) {
+    font-size: 0.82rem;
+    color: var(--ca-muted);
+  }
+}
+
+.note {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ca-muted);
+}

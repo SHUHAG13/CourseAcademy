@@ -1,22 +1,30 @@
 import { Component } from '@angular/core';
-import { WhatsappCta } from '../../components/whatsapp-cta/whatsapp-cta';
-import { Faq } from '../../components/faq/faq';
-import { Testimonials } from '../../components/testimonials/testimonials';
-import { Courses } from '../../components/courses/courses';
-import { Navbar } from '../../components/navbar/navbar';
-import { Footer } from '../../components/footer/footer';
-import { PaymentMethods } from '../../components/payment-methods/payment-methods';
-import { FeaturedCourse } from '../../components/featured-course/featured-course';
-import { Features } from '../../components/features/features';
 import { Hero } from '../../components/hero/hero';
+import { Categories } from '../../components/categories/categories';
+import { Courses } from '../../components/courses/courses';
+import { Features } from '../../components/features/features';
+import { LearningJourney } from '../../components/learning-journey/learning-journey';
+import { SportsTeaser } from '../../components/sports-teaser/sports-teaser';
+import { CareerTeaser } from '../../components/career-teaser/career-teaser';
+import { Testimonials } from '../../components/testimonials/testimonials';
+import { Faq } from '../../components/faq/faq';
+import { FinalCta } from '../../components/final-cta/final-cta';
 
 @Component({
   selector: 'app-home',
-  imports: [Hero, Courses, Testimonials, Faq, WhatsappCta,Home,PaymentMethods,FeaturedCourse,Courses,Features],
+  imports: [
+    Hero,
+    Categories,
+    Courses,
+    Features,
+    LearningJourney,
+    SportsTeaser,
+    CareerTeaser,
+    Testimonials,
+    Faq,
+    FinalCta,
+  ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
-export class Home {
-
-
-}
+export class Home {}

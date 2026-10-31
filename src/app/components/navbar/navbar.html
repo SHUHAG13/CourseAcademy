@@ -1,67 +1,100 @@
-<nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top border-bottom">
-  <div class="container">
-
-    <a
-      class="navbar-brand fw-bold brand-primary"
-      routerLink="/">
-      Course Academy
+<header class="site-header" [class.scrolled]="scrolled()">
+  <nav class="container nav-inner" aria-label="Main">
+    <a class="navbar-brand brand" routerLink="/" aria-label="Course Academy home">
+      <span class="brand-mark" aria-hidden="true">CA</span>
+      <span class="brand-name">Course Academy</span>
     </a>
 
-    <button
-      class="navbar-toggler"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#navbarMenu">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarMenu">
-
-      <ul class="navbar-nav mx-auto text-center">
-        <li class="nav-item">
-          <a
-            class="nav-link fw-semibold"
-            routerLink="/"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{exact:true}">
-            Home
-          </a>
+    <!-- Desktop -->
+    <ul class="nav-links d-none d-xl-flex">
+      <li>
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+      </li>
+      @for (link of courseLinks; track link.label) {
+        <li>
+          <a [routerLink]="link.path" [queryParams]="link.query" routerLinkActive="active"
+            [routerLinkActiveOptions]="activeOptions(link)">{{ link.label }}</a>
         </li>
-
-        <li class="nav-item">
-          <a
-            class="nav-link fw-semibold"
-            routerLink="/courses"
-            routerLinkActive="active">
-            Courses
-          </a>
+      }
+      @for (link of siteLinks; track link.label) {
+        <li>
+          <a [routerLink]="link.path" routerLinkActive="active">{{ link.label }}</a>
         </li>
+      }
+    </ul>
 
-        <li class="nav-item">
-          <a
-            class="nav-link fw-semibold"
-            routerLink="/contact"
-            routerLinkActive="active">
-            Contact
-          </a>
-        </li>
+    <div class="nav-actions">
+      @if (auth.user(); as user) {
+        <div class="user d-none d-md-flex">
+          <app-avatar [name]="user.name" [size]="34" />
+          <span class="user-name">{{ user.name }}</span>
+          <button type="button" class="btn btn-sm btn-outline" (click)="logout()">Log out</button>
+        </div>
+      } @else {
+        <a routerLink="/login" class="btn btn-sm btn-outline d-none d-md-inline-flex">Login</a>
+        <a routerLink="/register" class="btn btn-sm btn-accent d-none d-sm-inline-flex">Sign Up</a>
+      }
 
-        <li class="nav-item">
-          <a
-            class="nav-link fw-semibold"
-            routerLink="/about"
-            routerLinkActive="active">
-            About
-          </a>
-        </li>
-      </ul>
-
-      <button
-        class="btn btn-warning text-white fw-semibold px-4 mt-3 mt-lg-0"
-        onclick="document.querySelector('.ca-whatsapp-section').scrollIntoView({behavior:'smooth'})">
-        Apply Now
+      <button type="button" class="menu-toggle d-xl-none" (click)="menuOpen.set(true)"
+        aria-label="Open menu" [attr.aria-expanded]="menuOpen()" aria-controls="mobile-drawer">
+        <i class="bi bi-list" aria-hidden="true"></i>
       </button>
-
     </div>
+  </nav>
+</header>
+
+<!-- Mobile drawer -->
+<div class="drawer-backdrop" [class.open]="menuOpen()" (click)="menuOpen.set(false)" aria-hidden="true"></div>
+
+<aside id="mobile-drawer" class="drawer" [class.open]="menuOpen()" [attr.aria-hidden]="!menuOpen()"
+  [attr.inert]="menuOpen() ? null : ''" aria-label="Mobile menu">
+  <div class="drawer-head">
+    <span class="brand">
+      <span class="brand-mark" aria-hidden="true">CA</span>
+      <span class="brand-name">Course Academy</span>
+    </span>
+    <button type="button" class="menu-toggle" (click)="menuOpen.set(false)" aria-label="Close menu">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
   </div>
-</nav>
+
+  <div class="drawer-body">
+    <a class="drawer-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <i class="bi bi-house" aria-hidden="true"></i>Home
+    </a>
+
+    <p class="drawer-label">Courses</p>
+    @for (link of courseLinks; track link.label) {
+      <a class="drawer-link" [routerLink]="link.path" [queryParams]="link.query" routerLinkActive="active"
+        [routerLinkActiveOptions]="activeOptions(link)">
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label }}
+      </a>
+    }
+
+    <p class="drawer-label">Explore</p>
+    @for (link of siteLinks; track link.label) {
+      <a class="drawer-link" [routerLink]="link.path" routerLinkActive="active">
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label }}
+      </a>
+    }
+    <a class="drawer-link" routerLink="/contact" routerLinkActive="active">
+      <i class="bi bi-chevron-right" aria-hidden="true"></i>Contact
+    </a>
+  </div>
+
+  <div class="drawer-foot">
+    @if (auth.user(); as user) {
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <app-avatar [name]="user.name" [size]="36" />
+        <div class="small">
+          <strong class="d-block text-navy">{{ user.name }}</strong>
+          <span class="text-muted">{{ user.email }}</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline w-100" (click)="logout()">Log out</button>
+    } @else {
+      <a routerLink="/register" class="btn btn-accent w-100 mb-2">Sign Up — it's free</a>
+      <a routerLink="/login" class="btn btn-outline w-100">Login</a>
+    }
+  </div>
+</aside>

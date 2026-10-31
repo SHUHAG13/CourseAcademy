@@ -1,0 +1,41 @@
+<article class="course-card ca-card ca-card-hover">
+  <a class="thumb" [routerLink]="link()" tabindex="-1" aria-hidden="true">
+    <app-course-cover [course]="course()" />
+    @if (course().badge) {
+      <span class="badge-flag" [class.new]="course().badge === 'New'">{{ course().badge }}</span>
+    }
+  </a>
+
+  <div class="body">
+    <span class="category">{{ categoryName() }}</span>
+
+    <h3 class="title">
+      <a [routerLink]="link()">{{ course().title }}</a>
+    </h3>
+
+    <p class="instructor">{{ instructor().name }}</p>
+
+    <div class="rating">
+      <strong>{{ course().rating | number: '1.1-1' }}</strong>
+      <app-rating-stars [rating]="course().rating" />
+      <span class="count">({{ course().ratingCount | number }})</span>
+    </div>
+
+    <ul class="meta" aria-label="Course details">
+      <li><i class="bi bi-people" aria-hidden="true"></i>{{ course().students | number }} students</li>
+      <li><i class="bi bi-clock" aria-hidden="true"></i>{{ course().durationHours }} hours</li>
+      <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ course().level }}</li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    <div class="price">
+      <span class="price-now">{{ course().price | bdt }}</span>
+      <span class="price-was">{{ course().originalPrice | bdt }}</span>
+      <span class="off">{{ discount() }}% off</span>
+    </div>
+    <a class="btn btn-sm btn-outline" [routerLink]="link()" [attr.aria-label]="'View course: ' + course().title">
+      View Course
+    </a>
+  </div>
+</article>

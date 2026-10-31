@@ -1,73 +1,36 @@
-<section class="py-5 bg-white">
-
+<section class="section" aria-labelledby="testimonials-title">
   <div class="container">
-
-    <!-- Header -->
-    <div class="text-center mb-5">
-
-      <span class="badge bg-dark px-3 py-2">
-        Testimonials
-      </span>
-
-      <h2 class="fw-bold mt-3 text-dark">
-        What Our Students Say
-      </h2>
-
-      <p class="text-muted mx-auto" style="max-width: 600px;">
-        Real experiences from students who completed our courses successfully.
+    <div class="section-head centered">
+      <span class="eyebrow">Student stories</span>
+      @if (asPage()) {
+        <h1 id="testimonials-title" class="section-title">What our students say</h1>
+      } @else {
+        <h2 id="testimonials-title" class="section-title">What our students say</h2>
+      }
+      <p class="section-sub">
+        <span class="tag">Demo content</span>
+        Sample testimonials shown for demonstration until real student reviews are collected.
       </p>
-
     </div>
 
-    <!-- Testimonials -->
     <div class="row g-4">
-
-      <div class="col-lg-4 col-md-6"
-           *ngFor="let testimonial of testimonials">
-
-        <div class="card border-0 shadow-sm h-100 p-3">
-
-          <!-- Header -->
-          <div class="d-flex align-items-center gap-3">
-
-            <img
-              [src]="testimonial.image"
-              [alt]="testimonial.name"
-              class="rounded-circle"
-              width="60"
-              height="60">
-
-            <div>
-              <h6 class="mb-0 fw-bold text-dark">
-                {{ testimonial.name }}
-              </h6>
-
-              <small class="text-muted">
-                {{ testimonial.profession }}
-              </small>
-            </div>
-
-          </div>
-
-          <!-- Stars -->
-          <div class="mt-3 text-dark">
-
-            <i *ngFor="let star of stars"
-               class="bi bi-star-fill me-1"></i>
-
-          </div>
-
-          <!-- Review -->
-          <p class="mt-3 text-muted mb-0 lh-lg">
-            "{{ testimonial.review }}"
-          </p>
-
+      @for (t of testimonials; track t.name) {
+        <div class="col-md-6 col-lg-4">
+          <figure class="quote ca-card">
+            <i class="bi bi-quote quote-mark" aria-hidden="true"></i>
+            <app-rating-stars [rating]="t.rating" />
+            <blockquote>{{ t.text }}</blockquote>
+            <figcaption>
+              <app-avatar [name]="t.name" [size]="44" />
+              <div>
+                <strong>{{ t.name }}</strong>
+                <span>{{ t.course }}</span>
+              </div>
+            </figcaption>
+            <p class="outcome"><i class="bi bi-arrow-up-right-circle" aria-hidden="true"></i>{{ t.outcome }}</p>
+          </figure>
         </div>
-
-      </div>
-
+      }
     </div>
-
   </div>
-
 </section>

@@ -1,0 +1,42 @@
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 1.4rem;
+  }
+
+  @media (max-width: 991.98px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 575.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.teams {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.role {
+  height: 100%;
+  padding: 1.5rem;
+}
+
+.desc {
+  margin: 1rem 0;
+  color: var(--ca-text-2);
+}
+
+.form-card {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}

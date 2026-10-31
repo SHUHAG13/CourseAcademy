@@ -1,72 +1,19 @@
-<section
-  class="py-5 text-white position-relative overflow-hidden"
-  style="background: linear-gradient(135deg, #16a34a, #22c55e);">
-
+<section class="section-tight" aria-labelledby="wa-title">
   <div class="container">
-
-    <div class="row justify-content-center">
-
-      <div class="col-lg-8">
-
-        <div class="text-center">
-
-         
-
-          <!-- Icon -->
-          <div
-            class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-10 mb-4"
-            style="width: 90px; height: 90px;">
-
-            <i class="bi bi-whatsapp fs-1"></i>
-
-          </div>
-
-          <!-- Heading -->
-          <h2 class="fw-bold display-6 mb-3">
-            Contact Us on WhatsApp
-          </h2>
-
-          <!-- Description -->
-          <p
-            class="lead opacity-75 mx-auto mb-4"
-            style="max-width: 650px;">
-
-            Get instant answers about course details,
-            enrollment process, payment information, and
-            career guidance directly from our team.
-
-          </p>
-
-          <!-- Actions -->
-          <div class="d-flex justify-content-center gap-3 flex-wrap">
-
-            <a
-              href="https://wa.me/8801700000000"
-              target="_blank"
-              class="btn btn-light btn-lg px-4 rounded-pill fw-semibold">
-
-              <i class="bi bi-whatsapp me-2"></i>
-              Chat on WhatsApp
-
-            </a>
-
-            <a
-              href="tel:+8801700000000"
-              class="btn btn-outline-light btn-lg px-4 rounded-pill">
-
-              <i class="bi bi-telephone-fill me-2"></i>
-              Call Now
-
-            </a>
-
-          </div>
-
-        </div>
-
+    <div class="wa">
+      <span class="wa-icon" aria-hidden="true"><i class="bi bi-whatsapp"></i></span>
+      <div class="flex-grow-1">
+        <h2 id="wa-title">Questions before you enroll?</h2>
+        <p>Get answers about courses, payment and career guidance directly from our team on WhatsApp.</p>
       </div>
-
+      <div class="actions">
+        <a [href]="whatsappLink" target="_blank" rel="noopener" class="btn btn-wa">
+          <i class="bi bi-whatsapp" aria-hidden="true"></i> Chat on WhatsApp
+        </a>
+        <a [href]="phoneLink" class="btn btn-outline">
+          <i class="bi bi-telephone" aria-hidden="true"></i> Call Now
+        </a>
+      </div>
     </div>
-
   </div>
-
 </section>
