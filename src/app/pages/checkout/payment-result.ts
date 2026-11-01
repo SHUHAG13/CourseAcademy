@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PaymentStatus, paymentMethod } from '../../core/payments/payment.model';
@@ -9,6 +8,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 const OUTCOMES: Record<PaymentStatus, { icon: string; tone: string; title: string; message: string }> = {
   success: {
@@ -46,7 +46,7 @@ const OUTCOMES: Record<PaymentStatus, { icon: string; tone: string; title: strin
 /** Final step of checkout, and the receipt reopened from the dashboard. */
 @Component({
   selector: 'app-payment-result',
-  imports: [DatePipe, RouterLink, BdtPipe, EmptyState, StatusPill],
+  imports: [TranslatePipe, LocalDatePipe, RouterLink, BdtPipe, EmptyState, StatusPill],
   templateUrl: './payment-result.html',
   styleUrl: './payment-result.scss',
 })

@@ -3,11 +3,12 @@ import { RouterLink } from '@angular/router';
 import { CategoryId } from '../../core/models/course.model';
 import { CourseService } from '../../core/services/course.service';
 import { CourseCard } from '../../shared/components/course-card/course-card';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** Home page "Featured Courses" section with quick category tabs. */
 @Component({
   selector: 'app-courses',
-  imports: [RouterLink, CourseCard],
+  imports: [TranslatePipe, RouterLink, CourseCard],
   templateUrl: './courses.html',
   styleUrl: './courses.scss',
 })

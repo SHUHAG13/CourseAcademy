@@ -2,22 +2,22 @@
   <div class="container">
     <div class="section-head-row">
       <div class="section-head">
-        <span class="eyebrow">Featured courses</span>
-        <h2 id="featured-title" class="section-title">Most popular with our students</h2>
-        <p class="section-sub">Practical, project-based courses taught in Bangla by working professionals.</p>
+        <span class="eyebrow">{{ 'Featured courses' | t }}</span>
+        <h2 id="featured-title" class="section-title">{{ 'Most popular with our students' | t }}</h2>
+        <p class="section-sub">{{ 'Practical, project-based courses taught in Bangla by working professionals.' | t }}</p>
       </div>
-      <a routerLink="/courses" class="btn-link-arrow">View all courses <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+      <a routerLink="/courses" class="btn-link-arrow">{{ 'View all courses' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
     </div>
 
-    <div class="tabs" role="tablist" aria-label="Filter featured courses">
+    <div class="tabs" role="tablist" [attr.aria-label]="'Filter featured courses' | t">
       <button type="button" role="tab" class="chip" [class.active]="active() === 'featured'"
         [attr.aria-selected]="active() === 'featured'" (click)="active.set('featured')">
-        Featured
+        {{ 'Featured' | t }}
       </button>
       @for (cat of categories; track cat.id) {
         <button type="button" role="tab" class="chip" [class.active]="active() === cat.id"
           [attr.aria-selected]="active() === cat.id" (click)="active.set(cat.id)">
-          {{ cat.name }}
+          {{ cat.name | t }}
         </button>
       }
     </div>

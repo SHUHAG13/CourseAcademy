@@ -2,7 +2,7 @@
   <section class="page-hero">
     <div class="container">
       <div class="row">
-        <div class="col-lg-8" aria-busy="true" aria-label="Loading course">
+        <div class="col-lg-8" aria-busy="true" [attr.aria-label]="'Loading course' | t">
           <span class="skeleton dark" style="width: 30%; height: 12px"></span>
           <span class="skeleton dark mt-3" style="width: 90%; height: 34px"></span>
           <span class="skeleton dark mt-2" style="width: 60%; height: 34px"></span>
@@ -24,42 +24,42 @@
       <div class="row">
         <div class="col-lg-8">
           @if (!c.published) {
-            <p class="unpublished-note"><i class="bi bi-eye-slash" aria-hidden="true"></i> Unpublished: only admins can see this page.</p>
+            <p class="unpublished-note"><i class="bi bi-eye-slash" aria-hidden="true"></i> {{ 'Unpublished: only admins can see this page.' | t }}</p>
           }
-          <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-            <li><a routerLink="/">Home</a></li>
-            <li><a routerLink="/courses">Courses</a></li>
-            <li><a routerLink="/courses" [queryParams]="{ category: c.category }">{{ category()?.name }}</a></li>
+          <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+            <li><a routerLink="/">{{ 'Home' | t }}</a></li>
+            <li><a routerLink="/courses">{{ 'Courses' | t }}</a></li>
+            <li><a routerLink="/courses" [queryParams]="{ category: c.category }">{{ category()?.name | t }}</a></li>
           </ol>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
             @if (c.badge) {
-              <span class="tag orange">{{ c.badge }}</span>
+              <span class="tag orange">{{ c.badge | t }}</span>
             }
             <app-format-badge [format]="c.format" />
-            <span class="tag on-dark">{{ c.level }}</span>
+            <span class="tag on-dark">{{ c.level | t }}</span>
           </div>
 
-          <h1>{{ c.title }}</h1>
-          <p class="subtitle">{{ c.subtitle }}</p>
+          <h1>{{ c.title | t }}</h1>
+          <p class="subtitle">{{ c.subtitle | t }}</p>
 
           <div class="hero-meta">
             @if (c.ratingCount) {
               <span class="rating">
-                <strong>{{ c.rating | number: '1.1-1' }}</strong>
+                <strong>{{ c.rating | n: '1.1-1' }}</strong>
                 <app-rating-stars [rating]="c.rating" />
-                <a href="#reviews">({{ c.ratingCount | number }} ratings)</a>
+                <a href="#reviews">{{ '({0} ratings)' | t: [(c.ratingCount | n)] }}</a>
               </span>
             }
             @if (c.students) {
-              <span><i class="bi bi-people" aria-hidden="true"></i>{{ c.students | number }} students</span>
+              <span><i class="bi bi-people" aria-hidden="true"></i>{{ '{0} students' | t: [(c.students | n)] }}</span>
             }
           </div>
 
           <div class="hero-meta small-meta">
-            <span>Created by <a href="#instructor">{{ instructor()?.name }}</a></span>
-            <span><i class="bi bi-calendar3" aria-hidden="true"></i>Updated {{ c.updated + '-01' | date: 'MMM y' }}</span>
-            <span><i class="bi bi-translate" aria-hidden="true"></i>{{ c.language }}</span>
+            <span>{{ 'Created by' | t }} <a href="#instructor">{{ instructor()?.name | t }}</a></span>
+            <span><i class="bi bi-calendar3" aria-hidden="true"></i>{{ 'Updated {0}' | t: [(c.updated + '-01' | ldate: 'MMM y')] }}</span>
+            <span><i class="bi bi-translate" aria-hidden="true"></i>{{ c.language | t }}</span>
           </div>
         </div>
       </div>
@@ -69,9 +69,9 @@
   <div class="container">
     <div class="row g-4 g-lg-5 layout">
       <!-- Enroll card -->
-      <aside class="col-lg-4 order-lg-2" aria-label="Enrollment">
+      <aside class="col-lg-4 order-lg-2" [attr.aria-label]="'Enrollment' | t">
         <div class="enroll ca-card">
-          <button type="button" class="preview" (click)="playPreview()" aria-label="Play course preview">
+          <button type="button" class="preview" (click)="playPreview()" [attr.aria-label]="'Play course preview' | t">
             <app-course-cover [course]="c" [showPlay]="true" />
           </button>
 
@@ -80,47 +80,47 @@
               <span class="price-now">{{ c.price | bdt }}</span>
               @if (discount() > 0) {
                 <span class="price-was">{{ c.originalPrice | bdt }}</span>
-                <span class="tag green">{{ discount() }}% off</span>
+                <span class="tag green">{{ '{0}% off' | t: [discount()] }}</span>
               }
             </div>
 
             @if (hasAccess()) {
               <a class="btn btn-primary btn-lg w-100" [routerLink]="['/learn', c.slug]">
-                <i class="bi bi-play-circle" aria-hidden="true"></i> Go to course
+                <i class="bi bi-play-circle" aria-hidden="true"></i> {{ 'Go to course' | t }}
               </a>
             } @else {
               <a class="btn btn-accent btn-lg w-100" [routerLink]="['/checkout', c.slug]">
-                Enroll Now
+                {{ 'Enroll Now' | t }}
               </a>
             }
             <a class="btn btn-outline w-100 mt-2" [href]="whatsappLink()" target="_blank" rel="noopener">
-              <i class="bi bi-whatsapp" aria-hidden="true"></i> Ask on WhatsApp
+              <i class="bi bi-whatsapp" aria-hidden="true"></i> {{ 'Ask on WhatsApp' | t }}
             </a>
-            <p class="pay-note">Pay with bKash, Nagad, Rocket or card in our demo checkout. <a routerLink="/payment" [queryParams]="{ course: c.slug }">How it works</a></p>
+            <p class="pay-note">{{ 'Pay with bKash, Nagad, Rocket or card in our demo checkout.' | t }} <a routerLink="/payment" [queryParams]="{ course: c.slug }">{{ 'How it works' | t }}</a></p>
 
-            <h2 class="includes-title">This course includes</h2>
+            <h2 class="includes-title">{{ 'This course includes' | t }}</h2>
             <ul class="includes">
               <li>
                 <i class="bi bi-play-btn" aria-hidden="true"></i>
-                {{ c.durationHours }} hours of {{ c.format === 'Live' ? 'live classes' : c.format === 'Hybrid' ? 'video and live classes' : 'video' }}
+                {{ '{0} hours of {1}' | t: [c.durationHours, (c.format === 'Live' ? 'live classes' : c.format === 'Hybrid' ? 'video and live classes' : 'video')] }}
               </li>
-              <li><i class="bi bi-collection-play" aria-hidden="true"></i>{{ lessonCount() }} lessons</li>
+              <li><i class="bi bi-collection-play" aria-hidden="true"></i>{{ '{0} lessons' | t: [lessonCount()] }}</li>
               @if (c.schedule.length) {
-                <li><i class="bi bi-broadcast" aria-hidden="true"></i>{{ c.schedule.length }} scheduled live sessions</li>
+                <li><i class="bi bi-broadcast" aria-hidden="true"></i>{{ '{0} scheduled live sessions' | t: [c.schedule.length] }}</li>
               }
               @if (c.materials.length) {
-                <li><i class="bi bi-folder2-open" aria-hidden="true"></i>{{ c.materials.length }} learning resources</li>
+                <li><i class="bi bi-folder2-open" aria-hidden="true"></i>{{ '{0} learning resources' | t: [c.materials.length] }}</li>
               }
-              <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ c.level }} level</li>
-              <li><i class="bi bi-translate" aria-hidden="true"></i>{{ c.language }} instruction</li>
+              <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ '{0} level' | t: [c.level] }}</li>
+              <li><i class="bi bi-translate" aria-hidden="true"></i>{{ '{0} instruction' | t: [c.language] }}</li>
               @if (c.format !== 'Live') {
-                <li><i class="bi bi-infinity" aria-hidden="true"></i>Lifetime access to recorded lessons</li>
+                <li><i class="bi bi-infinity" aria-hidden="true"></i>{{ 'Lifetime access to recorded lessons' | t }}</li>
               }
-              <li><i class="bi bi-award" aria-hidden="true"></i>Certificate of completion</li>
+              <li><i class="bi bi-award" aria-hidden="true"></i>{{ 'Certificate of completion' | t }}</li>
             </ul>
 
             <button type="button" class="share" (click)="share()">
-              <i class="bi bi-link-45deg" aria-hidden="true"></i> Copy course link
+              <i class="bi bi-link-45deg" aria-hidden="true"></i> {{ 'Copy course link' | t }}
             </button>
           </div>
         </div>
@@ -129,16 +129,16 @@
       <!-- Main content -->
       <div class="col-lg-8 order-lg-1 main">
         <section class="block" aria-labelledby="about-title">
-          <h2 id="about-title" class="block-title">About this course</h2>
-          <p class="mb-2">{{ c.description }}</p>
-          <p class="mb-0 text-muted small"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ c.format }}: {{ formatIntro() }}</p>
+          <h2 id="about-title" class="block-title">{{ 'About this course' | t }}</h2>
+          <p class="mb-2">{{ c.description | t }}</p>
+          <p class="mb-0 text-muted small"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ c.format | t }}: {{ formatIntro() | t }}</p>
         </section>
 
         <section class="block learn" aria-labelledby="learn-title">
-          <h2 id="learn-title" class="block-title">What you will learn</h2>
+          <h2 id="learn-title" class="block-title">{{ 'What you will learn' | t }}</h2>
           <ul class="check-list two-col">
             @for (o of c.outcomes; track o) {
-              <li><i class="bi bi-check2" aria-hidden="true"></i>{{ o }}</li>
+              <li><i class="bi bi-check2" aria-hidden="true"></i>{{ o | t }}</li>
             }
           </ul>
         </section>
@@ -146,13 +146,13 @@
         <section class="block" aria-labelledby="curriculum-title">
           <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
             <div>
-              <h2 id="curriculum-title" class="block-title mb-1">Course curriculum</h2>
+              <h2 id="curriculum-title" class="block-title mb-1">{{ 'Course curriculum' | t }}</h2>
               <p class="text-muted small mb-0">
-                {{ c.curriculum.length }} sections · {{ lessonCount() }} lessons · {{ c.durationHours }}h total length
+                {{ '{0} sections · {1} lessons · {2}h total length' | t: [c.curriculum.length, lessonCount(), c.durationHours] }}
               </p>
             </div>
             <button type="button" class="link-btn" (click)="toggleAll()">
-              {{ allOpen() ? 'Collapse all sections' : 'Expand all sections' }}
+              {{ (allOpen() ? 'Collapse all sections' : 'Expand all sections') | t }}
             </button>
           </div>
 
@@ -163,8 +163,8 @@
                   <button type="button" class="sec-head" (click)="toggleSection(i)"
                     [attr.aria-expanded]="openSections().has(i)" [attr.aria-controls]="'sec-' + i">
                     <i class="bi bi-chevron-down chev" aria-hidden="true"></i>
-                    <span class="sec-title">{{ sec.title }}</span>
-                    <span class="sec-meta">{{ sec.lessons.length }} lessons · {{ sectionMinutes(i) }} min</span>
+                    <span class="sec-title">{{ sec.title | t }}</span>
+                    <span class="sec-meta">{{ '{0} lessons · {1} min' | t: [sec.lessons.length, sectionMinutes(i)] }}</span>
                   </button>
                 </h3>
                 <div class="sec-body" [id]="'sec-' + i">
@@ -173,11 +173,11 @@
                       @for (l of sec.lessons; track l.id) {
                         <li>
                           <i class="bi" [class]="l.preview ? 'bi-play-circle' : 'bi-lock'" aria-hidden="true"></i>
-                          <span class="flex-grow-1">{{ l.title }}</span>
+                          <span class="flex-grow-1">{{ l.title | t }}</span>
                           @if (l.preview) {
-                            <button type="button" class="link-btn" (click)="previewLesson(l.title)">Preview</button>
+                            <button type="button" class="link-btn" (click)="previewLesson(l.title)">{{ 'Preview' | t }}</button>
                           }
-                          <span class="dur">{{ l.minutes }} min</span>
+                          <span class="dur">{{ '{0} min' | t: [l.minutes] }}</span>
                         </li>
                       }
                     </ul>
@@ -190,23 +190,23 @@
 
         @if (c.schedule.length) {
           <section class="block" id="schedule" aria-labelledby="schedule-title">
-            <h2 id="schedule-title" class="block-title">Live class schedule</h2>
+            <h2 id="schedule-title" class="block-title">{{ 'Live class schedule' | t }}</h2>
             <app-session-list [sessions]="c.schedule" [showLinks]="hasAccess()" />
             @if (!hasAccess()) {
-              <p class="text-muted small mt-2 mb-0">Meeting links appear in your course area after you enroll.</p>
+              <p class="text-muted small mt-2 mb-0">{{ 'Meeting links appear in your course area after you enroll.' | t }}</p>
             }
           </section>
         }
 
         @if (c.materials.length) {
           <section class="block" aria-labelledby="materials-title">
-            <h2 id="materials-title" class="block-title">Learning materials</h2>
+            <h2 id="materials-title" class="block-title">{{ 'Learning materials' | t }}</h2>
             <ul class="resources">
               @for (m of c.materials; track m.id) {
                 <li>
                   <i class="bi" [class]="hasAccess() ? 'bi-file-earmark-text' : 'bi-lock'" aria-hidden="true"></i>
-                  <span class="flex-grow-1">{{ m.title }}</span>
-                  <span class="tag">{{ m.type }}</span>
+                  <span class="flex-grow-1">{{ m.title | t }}</span>
+                  <span class="tag">{{ m.type | t }}</span>
                 </li>
               }
             </ul>
@@ -214,35 +214,35 @@
         }
 
         <section class="block" aria-labelledby="req-title">
-          <h2 id="req-title" class="block-title">Requirements</h2>
+          <h2 id="req-title" class="block-title">{{ 'Requirements' | t }}</h2>
           <ul class="req">
             @for (r of c.requirements; track r) {
-              <li>{{ r }}</li>
+              <li>{{ r | t }}</li>
             }
           </ul>
         </section>
 
         @if (instructor(); as ins) {
           <section class="block" id="instructor" aria-labelledby="ins-title">
-            <h2 id="ins-title" class="block-title">Your instructor</h2>
+            <h2 id="ins-title" class="block-title">{{ 'Your instructor' | t }}</h2>
             <div class="instructor ca-card">
               <div class="d-flex gap-3 align-items-center mb-3">
                 <app-avatar [name]="ins.name" [size]="72" />
                 <div>
-                  <h3 class="h5 mb-1">{{ ins.name }}</h3>
-                  <p class="text-muted mb-0">{{ ins.title }}</p>
+                  <h3 class="h5 mb-1">{{ ins.name | t }}</h3>
+                  <p class="text-muted mb-0">{{ ins.title | t }}</p>
                 </div>
               </div>
               <ul class="ins-stats">
-                <li><i class="bi bi-star-fill" aria-hidden="true"></i>{{ ins.rating }} instructor rating</li>
-                <li><i class="bi bi-people" aria-hidden="true"></i>{{ ins.students | number }} students</li>
-                <li><i class="bi bi-play-circle" aria-hidden="true"></i>{{ instructorCourses() }} courses</li>
-                <li><i class="bi bi-briefcase" aria-hidden="true"></i>{{ ins.experienceYears }} years' experience</li>
+                <li><i class="bi bi-star-fill" aria-hidden="true"></i>{{ '{0} instructor rating' | t: [ins.rating] }}</li>
+                <li><i class="bi bi-people" aria-hidden="true"></i>{{ '{0} students' | t: [(ins.students | n)] }}</li>
+                <li><i class="bi bi-play-circle" aria-hidden="true"></i>{{ '{0} courses' | t: [instructorCourses()] }}</li>
+                <li><i class="bi bi-briefcase" aria-hidden="true"></i>{{ '{0} years\' experience' | t: [ins.experienceYears] }}</li>
               </ul>
-              <p class="mb-3">{{ ins.bio }}</p>
+              <p class="mb-3">{{ ins.bio | t }}</p>
               <div class="d-flex flex-wrap gap-2">
                 @for (e of ins.expertise; track e) {
-                  <span class="tag blue">{{ e }}</span>
+                  <span class="tag blue">{{ e | t }}</span>
                 }
               </div>
             </div>
@@ -252,21 +252,21 @@
         @if (c.ratingCount) {
         <section class="block" id="reviews" aria-labelledby="reviews-title">
           <h2 id="reviews-title" class="block-title">
-            Student reviews <span class="tag ms-2 align-middle">Demo content</span>
+            {{ 'Student reviews' | t }} <span class="tag ms-2 align-middle">{{ 'Demo content' | t }}</span>
           </h2>
 
           <div class="summary">
             <div class="avg">
-              <span class="big">{{ c.rating | number: '1.1-1' }}</span>
+              <span class="big">{{ c.rating | n: '1.1-1' }}</span>
               <app-rating-stars [rating]="c.rating" />
-              <small>Course rating</small>
+              <small>{{ 'Course rating' | t }}</small>
             </div>
-            <ul class="bars" aria-label="Rating breakdown">
+            <ul class="bars" [attr.aria-label]="'Rating breakdown' | t">
               @for (pct of breakdown(); track $index) {
                 <li>
-                  <span class="label">{{ 5 - $index }} <i class="bi bi-star-fill" aria-hidden="true"></i></span>
+                  <span class="label">{{ 5 - $index | n }} <i class="bi bi-star-fill" aria-hidden="true"></i></span>
                   <span class="bar"><span [style.width.%]="pct"></span></span>
-                  <span class="pct">{{ pct }}%</span>
+                  <span class="pct">{{ pct | n }}%</span>
                 </li>
               }
             </ul>
@@ -278,11 +278,11 @@
                 <app-avatar [name]="r.name" [size]="40" />
                 <div>
                   <div class="d-flex flex-wrap align-items-center gap-2">
-                    <strong>{{ r.name }}</strong>
+                    <strong>{{ r.name | t }}</strong>
                     <app-rating-stars [rating]="r.rating" />
-                    <small class="text-muted">{{ r.date | date: 'd MMM y' }}</small>
+                    <small class="text-muted">{{ r.date | ldate: 'd MMM y' }}</small>
                   </div>
-                  <p class="mb-0 mt-1">{{ r.text }}</p>
+                  <p class="mb-0 mt-1">{{ r.text | t }}</p>
                 </div>
               </article>
             }
@@ -298,10 +298,10 @@
     <div class="container">
       <div class="section-head-row">
         <div class="section-head">
-          <h2 id="related-title" class="section-title mb-0">Related courses</h2>
+          <h2 id="related-title" class="section-title mb-0">{{ 'Related courses' | t }}</h2>
         </div>
         <a routerLink="/courses" [queryParams]="{ category: c.category }" class="btn-link-arrow">
-          More in {{ category()?.name }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
+          {{ 'More in {0}' | t: [(category()?.name)] }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
       </div>
       <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4">
@@ -321,17 +321,17 @@
       }
     </div>
     @if (hasAccess()) {
-      <a class="btn btn-primary" [routerLink]="['/learn', c.slug]">Go to course</a>
+      <a class="btn btn-primary" [routerLink]="['/learn', c.slug]">{{ 'Go to course' | t }}</a>
     } @else {
-      <a class="btn btn-accent" [routerLink]="['/checkout', c.slug]">Enroll Now</a>
+      <a class="btn btn-accent" [routerLink]="['/checkout', c.slug]">{{ 'Enroll Now' | t }}</a>
     }
   </div>
 } @else {
   <div class="container section">
-    <h1 class="visually-hidden">Course not found</h1>
+    <h1 class="visually-hidden">{{ 'Course not found' | t }}</h1>
     <app-empty-state icon="bi-journal-x" title="Course not found"
       message="The course you're looking for doesn't exist or may have been removed.">
-      <a routerLink="/courses" class="btn btn-primary">Browse all courses</a>
+      <a routerLink="/courses" class="btn btn-primary">{{ 'Browse all courses' | t }}</a>
     </app-empty-state>
   </div>
 }

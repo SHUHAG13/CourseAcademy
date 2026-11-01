@@ -21,6 +21,18 @@ h1, h2, h3, h4, h5, h6,
   line-height: 1.2;
 }
 
+// Letter spacing breaks up Bangla conjuncts, and component styles set their own, so override them all.
+html[lang='bn'] {
+  * {
+    letter-spacing: normal !important;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .h1, .h2, .h3, .h4, .h5, .h6 {
+    line-height: 1.35;
+  }
+}
+
 a {
   text-decoration: none;
   transition: color 0.15s var(--ca-ease);

@@ -8,6 +8,7 @@ import { CourseCard } from './course-card';
 describe('CourseCard', () => {
   it('renders title, instructor, prices in BDT and a link to the course page', async () => {
     localStore.clear();
+    localStore.setItem('ca-language', 'en');
     await TestBed.configureTestingModule({
       imports: [CourseCard],
       providers: [provideRouter([])],

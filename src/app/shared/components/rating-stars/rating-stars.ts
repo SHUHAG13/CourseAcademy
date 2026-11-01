@@ -1,9 +1,11 @@
 import { Component, computed, input } from '@angular/core';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-rating-stars',
+  imports: [TranslatePipe],
   template: `
-    <span class="stars" role="img" [attr.aria-label]="'Rated ' + rating() + ' out of 5'">
+    <span class="stars" role="img" [attr.aria-label]="'Rated {0} out of 5' | t: [rating()]">
       @for (star of stars(); track $index) {
         <i class="bi" [class]="star" aria-hidden="true"></i>
       }

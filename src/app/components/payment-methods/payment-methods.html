@@ -1,14 +1,14 @@
 <section class="page-hero">
   <div class="container">
-    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-      <li><a routerLink="/">Home</a></li>
+    <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+      <li><a routerLink="/">{{ 'Home' | t }}</a></li>
       @if (selected(); as c) {
-        <li><a [routerLink]="['/courses', c.slug]">Course</a></li>
+        <li><a [routerLink]="['/courses', c.slug]">{{ 'Course' | t }}</a></li>
       }
-      <li aria-current="page">Enroll</li>
+      <li aria-current="page">{{ 'Enroll' | t }}</li>
     </ol>
-    <h1>{{ selected() ? 'Complete your enrollment' : 'How to enroll & pay' }}</h1>
-    <p>Enrolling takes a few minutes. Choose bKash, Nagad, Rocket or Visa/Mastercard in our demo checkout. No real money is taken.</p>
+    <h1>{{ (selected() ? 'Complete your enrollment' : 'How to enroll & pay') | t }}</h1>
+    <p>{{ 'Enrolling takes a few minutes. Choose bKash, Nagad, Rocket or Visa/Mastercard in our demo checkout. No real money is taken.' | t }}</p>
   </div>
 </section>
 
@@ -16,33 +16,33 @@
   <div class="container">
     <div class="row g-4 g-lg-5">
       <div class="col-lg-7">
-        <h2 class="h4 mb-3">Enrollment steps</h2>
+        <h2 class="h4 mb-3">{{ 'Enrollment steps' | t }}</h2>
         <ol class="steps">
           @for (step of steps; track step.title; let i = $index) {
             <li>
-              <span class="n">{{ i + 1 }}</span>
+              <span class="n">{{ i + 1 | n }}</span>
               <div>
-                <h3 class="h6 mb-1">{{ step.title }}</h3>
-                <p class="mb-0 text-muted">{{ step.text }}</p>
+                <h3 class="h6 mb-1">{{ step.title | t }}</h3>
+                <p class="mb-0 text-muted">{{ step.text | t }}</p>
               </div>
             </li>
           }
         </ol>
 
-        <h2 class="h4 mt-5 mb-3">Payment methods</h2>
+        <h2 class="h4 mt-5 mb-3">{{ 'Payment methods' | t }}</h2>
         <div class="row g-3">
           @for (m of methods; track m.id) {
             <div class="col-6 col-xl-3">
               <div class="method ca-card">
                 <span class="logo">
                   @if (m.logo) {
-                    <img [src]="m.logo" [alt]="m.name + ' logo'" loading="lazy" />
+                    <img [src]="m.logo" [alt]="'{0} logo' | t: [m.name]" loading="lazy" />
                   } @else {
                     <i class="bi fs-1 text-navy" [class]="m.icon" aria-hidden="true"></i>
                   }
                 </span>
-                <strong>{{ m.name }}</strong>
-                <small>{{ m.description }}</small>
+                <strong>{{ m.name | t }}</strong>
+                <small>{{ m.description | t }}</small>
               </div>
             </div>
           }
@@ -51,8 +51,7 @@
         <div class="note">
           <i class="bi bi-shield-check" aria-hidden="true"></i>
           <p class="mb-0">
-            <strong>Demo only:</strong> Checkout is simulated. No payment provider is connected, no money moves, and
-            you are never asked for a real card number, PIN or password.
+            <strong>{{ 'Demo only:' | t }}</strong> {{ 'Checkout is simulated. No payment provider is connected, no money moves, and you are never asked for a real card number, PIN or password.' | t }}
           </p>
         </div>
       </div>
@@ -60,30 +59,30 @@
       <div class="col-lg-5">
         <div class="summary ca-card">
           @if (selected(); as c) {
-            <h2 class="h6 text-uppercase text-muted mb-3">Order summary</h2>
+            <h2 class="h6 text-uppercase text-muted mb-3">{{ 'Order summary' | t }}</h2>
             <div class="d-flex gap-3 align-items-center mb-3">
               <app-course-cover class="mini" [course]="c" />
               <div>
-                <a [routerLink]="['/courses', c.slug]" class="title">{{ c.title }}</a>
-                <small class="d-block text-muted">{{ c.durationHours }} hours · {{ c.level }}</small>
+                <a [routerLink]="['/courses', c.slug]" class="title">{{ c.title | t }}</a>
+                <small class="d-block text-muted">{{ '{0} hours · {1}' | t: [c.durationHours, c.level] }}</small>
               </div>
             </div>
             <dl class="lines">
-              <div><dt>Original price</dt><dd class="price-was">{{ c.originalPrice | bdt }}</dd></div>
-              <div><dt>Discount</dt><dd class="text-success">−{{ c.originalPrice - c.price | bdt }}</dd></div>
-              <div class="total"><dt>Total</dt><dd class="price-now">{{ c.price | bdt }}</dd></div>
+              <div><dt>{{ 'Original price' | t }}</dt><dd class="price-was">{{ c.originalPrice | bdt }}</dd></div>
+              <div><dt>{{ 'Discount' | t }}</dt><dd class="text-success">−{{ c.originalPrice - c.price | bdt }}</dd></div>
+              <div class="total"><dt>{{ 'Total' | t }}</dt><dd class="price-now">{{ c.price | bdt }}</dd></div>
             </dl>
-            <a [routerLink]="['/checkout', c.slug]" class="btn btn-accent btn-lg w-100 mb-3">Continue to checkout</a>
+            <a [routerLink]="['/checkout', c.slug]" class="btn btn-accent btn-lg w-100 mb-3">{{ 'Continue to checkout' | t }}</a>
           } @else {
-            <h2 class="h5">Haven't chosen a course yet?</h2>
-            <p class="text-muted">Browse our catalogue and pick a course — then come back here to enroll.</p>
-            <a routerLink="/courses" class="btn btn-outline w-100 mb-3">Browse courses</a>
+            <h2 class="h5">{{ 'Haven\'t chosen a course yet?' | t }}</h2>
+            <p class="text-muted">{{ 'Browse our catalogue and pick a course — then come back here to enroll.' | t }}</p>
+            <a routerLink="/courses" class="btn btn-outline w-100 mb-3">{{ 'Browse courses' | t }}</a>
           }
 
           <a [href]="whatsappLink()" target="_blank" rel="noopener" class="btn btn-outline btn-lg w-100">
-            <i class="bi bi-whatsapp" aria-hidden="true"></i> Ask on WhatsApp
+            <i class="bi bi-whatsapp" aria-hidden="true"></i> {{ 'Ask on WhatsApp' | t }}
           </a>
-          <p class="small text-muted text-center mt-2 mb-0">Opens WhatsApp with a pre-filled message.</p>
+          <p class="small text-muted text-center mt-2 mb-0">{{ 'Opens WhatsApp with a pre-filled message.' | t }}</p>
         </div>
       </div>
     </div>

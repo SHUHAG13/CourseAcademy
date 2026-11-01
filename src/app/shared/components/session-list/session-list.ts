@@ -1,29 +1,29 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { LiveSession } from '../../../core/models/course.model';
+import { TranslatePipe, LocalDatePipe } from '../../pipes/translate.pipe';
 
 /** Live class schedule. Meeting links are shown only to people with course access. */
 @Component({
   selector: 'app-session-list',
-  imports: [DatePipe],
+  imports: [TranslatePipe, LocalDatePipe],
   template: `
     <ul class="sessions">
       @for (s of sorted(); track s.id) {
         <li [class.past]="isPast(s)">
           <span class="when">
-            <strong>{{ s.startsAt | date: 'd MMM' }}</strong>
-            <small>{{ s.startsAt | date: 'h:mm a' }}</small>
+            <strong>{{ s.startsAt | ldate: 'd MMM' }}</strong>
+            <small>{{ s.startsAt | ldate: 'h:mm a' }}</small>
           </span>
           <span class="what">
-            <span class="name">{{ s.title }}</span>
-            <small>{{ s.startsAt | date: 'EEEE, y' }} · {{ s.durationMinutes }} min</small>
+            <span class="name">{{ s.title | t }}</span>
+            <small>{{ '{0} · {1} min' | t: [(s.startsAt | ldate: 'EEEE, y'), s.durationMinutes] }}</small>
           </span>
           @if (isPast(s)) {
-            <span class="tag">Completed</span>
+            <span class="tag">{{ 'Completed' | t }}</span>
           } @else if (showLinks()) {
             <a class="btn btn-sm btn-outline" [href]="s.meetingUrl" target="_blank" rel="noopener noreferrer"
-              [attr.aria-label]="'Join (demo link): ' + s.title">
-              <i class="bi bi-camera-video" aria-hidden="true"></i> Join (demo)
+              [attr.aria-label]="'Join (demo link): {0}' | t: [s.title]">
+              <i class="bi bi-camera-video" aria-hidden="true"></i> {{ 'Join (demo)' | t }}
             </a>
           }
         </li>

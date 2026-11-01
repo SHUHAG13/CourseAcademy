@@ -2,25 +2,24 @@
   <div class="container">
     <div class="section-head-row">
       <div class="section-head">
-        <span class="eyebrow">Sports media</span>
-        <h2 id="sports-title" class="section-title">More Than Learning. We Live Sports.</h2>
+        <span class="eyebrow">{{ 'Sports media' | t }}</span>
+        <h2 id="sports-title" class="section-title">{{ 'More Than Learning. We Live Sports.' | t }}</h2>
         <p class="section-sub">
-          Our own sports channel covers cricket, football and more — and it's where our journalism students
-          publish their work.
+          {{ 'Our own sports channel covers cricket, football and more — and it\'s where our journalism students publish their work.' | t }}
         </p>
       </div>
-      <a routerLink="/sports" class="btn btn-outline">Explore Sports Media <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+      <a routerLink="/sports" class="btn btn-outline">{{ 'Explore Sports Media' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
     </div>
 
     <div class="row g-4">
       <div class="col-lg-6">
         <a routerLink="/sports" class="lead-story">
-          <img [src]="lead.image" [alt]="lead.title" loading="lazy" decoding="async" width="580" height="385" />
+          <img [src]="lead.image" [alt]="lead.title | t" loading="lazy" decoding="async" width="580" height="385" />
           <div class="overlay">
-            <span class="tag orange">{{ lead.topic }}</span>
-            <h3>{{ lead.title }}</h3>
-            <p>{{ lead.excerpt }}</p>
-            <small>{{ lead.date | date: 'd MMM y' }} · {{ lead.readMinutes }} min read</small>
+            <span class="tag orange">{{ lead.topic | t }}</span>
+            <h3>{{ lead.title | t }}</h3>
+            <p>{{ lead.excerpt | t }}</p>
+            <small>{{ '{0} · {1} min read' | t: [(lead.date | ldate: 'd MMM y'), lead.readMinutes] }}</small>
           </div>
         </a>
       </div>
@@ -34,9 +33,9 @@
                   <i class="bi" [class]="story.icon" aria-hidden="true"></i>
                 </span>
                 <span class="text">
-                  <span class="topic">{{ story.topic }}</span>
-                  <strong>{{ story.title }}</strong>
-                  <small>{{ story.date | date: 'd MMM' }} · {{ story.readMinutes }} min read</small>
+                  <span class="topic">{{ story.topic | t }}</span>
+                  <strong>{{ story.title | t }}</strong>
+                  <small>{{ '{0} · {1} min read' | t: [(story.date | ldate: 'd MMM'), story.readMinutes] }}</small>
                 </span>
               </a>
             </li>

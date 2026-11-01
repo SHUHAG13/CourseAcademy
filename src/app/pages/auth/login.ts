@@ -6,10 +6,11 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { showError } from '../../shared/forms/validators';
 import { AuthShell } from './auth-shell';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, AuthShell],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink, AuthShell],
   templateUrl: './login.html',
   styleUrl: './auth-form.scss',
 })
@@ -53,7 +54,7 @@ export class Login {
     const { email, password, remember } = this.form.getRawValue();
     try {
       const user = await this.auth.login(email, password, remember);
-      this.toast.success(`Welcome back, ${user.name}!`);
+      this.toast.success('Welcome back, {0}!', [user.name]);
       this.router.navigateByUrl(this.returnUrl() || this.auth.homeUrl());
     } catch (error) {
       this.error.set((error as Error).message);

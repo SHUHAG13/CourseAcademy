@@ -1,24 +1,24 @@
-<h1 class="h3 mb-3">Transactions</h1>
+<h1 class="h3 mb-3">{{ 'Transactions' | t }}</h1>
 
 <div class="row g-3 mb-3">
   <div class="col-sm-6 col-xxl-3">
     <div class="stat-tile ca-card">
-      <div><span class="value">{{ totals().collected | bdt }}</span><span class="label">Demo payments collected</span></div>
+      <div><span class="value">{{ totals().collected | bdt }}</span><span class="label">{{ 'Demo payments collected' | t }}</span></div>
     </div>
   </div>
   <div class="col-sm-6 col-xxl-3">
     <div class="stat-tile ca-card">
-      <div><span class="value">{{ totals().refunded | bdt }}</span><span class="label">Refunded</span></div>
+      <div><span class="value">{{ totals().refunded | bdt }}</span><span class="label">{{ 'Refunded' | t }}</span></div>
     </div>
   </div>
   <div class="col-sm-6 col-xxl-3">
     <div class="stat-tile ca-card">
-      <div><span class="value">{{ totals().successful }}</span><span class="label">Successful payments</span></div>
+      <div><span class="value">{{ totals().successful | n }}</span><span class="label">{{ 'Successful payments' | t }}</span></div>
     </div>
   </div>
   <div class="col-sm-6 col-xxl-3">
     <div class="stat-tile ca-card">
-      <div><span class="value">{{ totals().unsuccessful }}</span><span class="label">Failed or cancelled</span></div>
+      <div><span class="value">{{ totals().unsuccessful | n }}</span><span class="label">{{ 'Failed or cancelled' | t }}</span></div>
     </div>
   </div>
 </div>
@@ -26,81 +26,81 @@
 <div class="panel ca-card mb-3">
   <div class="row g-2 align-items-end">
     <div class="col-12 col-xl-4">
-      <label for="t-search" class="form-label small">Search</label>
-      <input id="t-search" type="search" class="form-control form-control-sm" placeholder="ID, student, email or course"
+      <label for="t-search" class="form-label small">{{ 'Search' | t }}</label>
+      <input id="t-search" type="search" class="form-control form-control-sm" [placeholder]="'ID, student, email or course' | t"
         [ngModel]="filter().search" (ngModelChange)="update({ search: $event })" />
     </div>
     <div class="col-6 col-md-3 col-xl-2">
-      <label for="t-status" class="form-label small">Status</label>
+      <label for="t-status" class="form-label small">{{ 'Status' | t }}</label>
       <select id="t-status" class="form-select form-select-sm text-capitalize" [ngModel]="filter().status" (ngModelChange)="update({ status: $event })">
-        <option value="all">All</option>
+        <option value="all">{{ 'All' | t }}</option>
         @for (s of statuses; track s) {
-          <option [value]="s">{{ s }}</option>
+          <option [value]="s">{{ s | t }}</option>
         }
       </select>
     </div>
     <div class="col-6 col-md-3 col-xl-2">
-      <label for="t-method" class="form-label small">Method</label>
+      <label for="t-method" class="form-label small">{{ 'Method' | t }}</label>
       <select id="t-method" class="form-select form-select-sm" [ngModel]="filter().method" (ngModelChange)="update({ method: $event })">
-        <option value="all">All</option>
+        <option value="all">{{ 'All' | t }}</option>
         @for (m of methods; track m.id) {
-          <option [value]="m.id">{{ m.name }}</option>
+          <option [value]="m.id">{{ m.name | t }}</option>
         }
       </select>
     </div>
     <div class="col-12 col-md-6 col-xl-4">
-      <label for="t-course" class="form-label small">Course</label>
+      <label for="t-course" class="form-label small">{{ 'Course' | t }}</label>
       <select id="t-course" class="form-select form-select-sm" [ngModel]="filter().courseId" (ngModelChange)="update({ courseId: $event })">
-        <option [ngValue]="'all'">All</option>
+        <option [ngValue]="'all'">{{ 'All' | t }}</option>
         @for (c of courseOptions(); track c.id) {
-          <option [ngValue]="c.id">{{ c.title }}</option>
+          <option [ngValue]="c.id">{{ c.title | t }}</option>
         }
       </select>
     </div>
     <div class="col-6 col-md-3">
-      <label for="t-from" class="form-label small">From</label>
+      <label for="t-from" class="form-label small">{{ 'From' | t }}</label>
       <input id="t-from" type="date" class="form-control form-control-sm" [ngModel]="filter().from" (ngModelChange)="update({ from: $event ?? '' })" />
     </div>
     <div class="col-6 col-md-3">
-      <label for="t-to" class="form-label small">To</label>
+      <label for="t-to" class="form-label small">{{ 'To' | t }}</label>
       <input id="t-to" type="date" class="form-control form-control-sm" [ngModel]="filter().to" (ngModelChange)="update({ to: $event ?? '' })" />
     </div>
     @if (isFiltered()) {
       <div class="col-auto">
-        <button type="button" class="btn btn-sm btn-outline" (click)="clearFilters()">Clear filters</button>
+        <button type="button" class="btn btn-sm btn-outline" (click)="clearFilters()">{{ 'Clear filters' | t }}</button>
       </div>
     }
   </div>
 </div>
 
-<p class="small text-muted" aria-live="polite">{{ results().length }} {{ results().length === 1 ? 'record' : 'records' }}</p>
+<p class="small text-muted" aria-live="polite">{{ (results().length === 1 ? '{0} record' : '{0} records') | t: [results().length] }}</p>
 
 <div class="ca-card table-responsive">
   <table class="ca-table">
     <thead>
       <tr>
-        <th scope="col">Transaction</th><th scope="col">Student</th><th scope="col">Course</th>
-        <th scope="col">Method</th><th scope="col">Amount</th><th scope="col">Status</th>
-        <th scope="col"><span class="visually-hidden">Actions</span></th>
+        <th scope="col">{{ 'Transaction' | t }}</th><th scope="col">{{ 'Student' | t }}</th><th scope="col">{{ 'Course' | t }}</th>
+        <th scope="col">{{ 'Method' | t }}</th><th scope="col">{{ 'Amount' | t }}</th><th scope="col">{{ 'Status' | t }}</th>
+        <th scope="col"><span class="visually-hidden">{{ 'Actions' | t }}</span></th>
       </tr>
     </thead>
     <tbody>
       @for (t of results(); track t.id) {
         <tr>
-          <td><span class="primary text-nowrap">{{ t.id }}</span><span class="secondary">{{ t.createdAt | date: 'd MMM y, h:mm a' }}</span></td>
+          <td><span class="primary text-nowrap">{{ t.id }}</span><span class="secondary">{{ t.createdAt | ldate: 'd MMM y, h:mm a' }}</span></td>
           <td><span class="primary">{{ t.userName }}</span><span class="secondary">{{ t.userEmail }}</span></td>
-          <td>{{ t.courseTitle }}</td>
-          <td class="text-nowrap">{{ methodName(t.method) }}</td>
+          <td>{{ t.courseTitle | t }}</td>
+          <td class="text-nowrap">{{ methodName(t.method) | t }}</td>
           <td class="text-nowrap">{{ t.amount | bdt }}</td>
           <td><app-status-pill [status]="t.status" /></td>
           <td class="actions">
-            <button type="button" class="icon-btn" (click)="toggleDetails(t.id)" title="Details"
-              [attr.aria-expanded]="detailId() === t.id" [attr.aria-label]="'Details for ' + t.id">
+            <button type="button" class="icon-btn" (click)="toggleDetails(t.id)" [title]="'Details' | t"
+              [attr.aria-expanded]="detailId() === t.id" [attr.aria-label]="'Details for {0}' | t: [t.id]">
               <i class="bi" [class]="detailId() === t.id ? 'bi-chevron-up' : 'bi-chevron-down'" aria-hidden="true"></i>
             </button>
             <button type="button" class="icon-btn danger ms-1" [disabled]="!payments.canDelete(t)" (click)="remove(t)"
-              [title]="payments.canDelete(t) ? 'Delete record' : 'Refund a successful payment before deleting it'"
-              [attr.aria-label]="'Delete ' + t.id">
+              [title]="(payments.canDelete(t) ? 'Delete record' : 'Refund a successful payment before deleting it') | t"
+              [attr.aria-label]="'Delete {0}' | t: [t.id]">
               <i class="bi bi-trash" aria-hidden="true"></i>
             </button>
           </td>
@@ -109,27 +109,27 @@
           <tr>
             <td colspan="7" class="bg-light">
               <div class="row g-2 small">
-                <div class="col-sm-6 col-xl-3"><strong class="d-block">Original price</strong>{{ t.originalAmount | bdt }}</div>
-                <div class="col-sm-6 col-xl-3"><strong class="d-block">Discount</strong>{{ t.discountAmount | bdt }}</div>
-                <div class="col-sm-6 col-xl-3"><strong class="d-block">Test account</strong>{{ t.maskedAccount }}</div>
-                <div class="col-sm-6 col-xl-3"><strong class="d-block">Gateway</strong>{{ t.gateway }}</div>
-                <div class="col-sm-6 col-xl-3"><strong class="d-block">Last updated</strong>{{ t.updatedAt | date: 'd MMM y, h:mm a' }}</div>
+                <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Original price' | t }}</strong>{{ t.originalAmount | bdt }}</div>
+                <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Discount' | t }}</strong>{{ t.discountAmount | bdt }}</div>
+                <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Test account' | t }}</strong>{{ t.maskedAccount }}</div>
+                <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Gateway' | t }}</strong>{{ t.gateway }}</div>
+                <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Last updated' | t }}</strong>{{ t.updatedAt | ldate: 'd MMM y, h:mm a' }}</div>
                 @if (t.failureReason) {
-                  <div class="col-sm-6 col-xl-3"><strong class="d-block">Reason</strong>{{ t.failureReason }}</div>
+                  <div class="col-sm-6 col-xl-3"><strong class="d-block">{{ 'Reason' | t }}</strong>{{ t.failureReason | t }}</div>
                 }
               </div>
               <div class="d-flex flex-wrap gap-2 mt-3">
                 @for (action of payments.allowedActions(t); track action) {
-                  <button type="button" class="btn btn-sm btn-outline" (click)="apply(t, action)">{{ actionLabel(action) }}</button>
+                  <button type="button" class="btn btn-sm btn-outline" (click)="apply(t, action)">{{ actionLabel(action) | t }}</button>
                 }
-                <a class="btn btn-sm btn-outline" [routerLink]="['/checkout/result', t.id]">View receipt</a>
+                <a class="btn btn-sm btn-outline" [routerLink]="['/checkout/result', t.id]">{{ 'View receipt' | t }}</a>
               </div>
             </td>
           </tr>
         }
       } @empty {
         <tr>
-          <td colspan="7" class="text-center text-muted py-4">No transactions match your filters.</td>
+          <td colspan="7" class="text-center text-muted py-4">{{ 'No transactions match your filters.' | t }}</td>
         </tr>
       }
     </tbody>

@@ -1,9 +1,9 @@
 <section class="section journey" aria-labelledby="journey-title">
   <div class="container">
     <div class="section-head centered">
-      <span class="eyebrow on-dark">Your learning journey</span>
-      <h2 id="journey-title" class="section-title text-white">From first lesson to first paid work</h2>
-      <p class="section-sub">A clear path we follow with every student: learn, practise, build, work and grow.</p>
+      <span class="eyebrow on-dark">{{ 'Your learning journey' | t }}</span>
+      <h2 id="journey-title" class="section-title text-white">{{ 'From first lesson to first paid work' | t }}</h2>
+      <p class="section-sub">{{ 'A clear path we follow with every student: learn, practise, build, work and grow.' | t }}</p>
     </div>
 
     <ol class="steps">
@@ -12,9 +12,9 @@
           <span class="num">
             <i class="bi" [class]="step.icon" aria-hidden="true"></i>
           </span>
-          <span class="idx">Step {{ i + 1 }}</span>
-          <h3 class="h6">{{ step.title }}</h3>
-          <p>{{ step.text }}</p>
+          <span class="idx">{{ 'Step {0}' | t: [i + 1] }}</span>
+          <h3 class="h6">{{ step.title | t }}</h3>
+          <p>{{ step.text | t }}</p>
         </li>
       }
     </ol>

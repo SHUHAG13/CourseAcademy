@@ -2,14 +2,14 @@
   <div class="container">
     <div class="row g-4 g-lg-5">
       <div class="col-lg-4">
-        <span class="eyebrow">FAQ</span>
+        <span class="eyebrow">{{ 'FAQ' | t }}</span>
         @if (asPage()) {
-          <h1 id="faq-title" class="section-title">Frequently asked questions</h1>
+          <h1 id="faq-title" class="section-title">{{ 'Frequently asked questions' | t }}</h1>
         } @else {
-          <h2 id="faq-title" class="section-title">Frequently asked questions</h2>
+          <h2 id="faq-title" class="section-title">{{ 'Frequently asked questions' | t }}</h2>
         }
-        <p class="section-sub mb-4">Can't find your answer? Our team replies quickly on WhatsApp.</p>
-        <a routerLink="/contact" class="btn btn-outline">Contact Us</a>
+        <p class="section-sub mb-4">{{ 'Can\'t find your answer? Our team replies quickly on WhatsApp.' | t }}</p>
+        <a routerLink="/contact" class="btn btn-outline">{{ 'Contact Us' | t }}</a>
       </div>
 
       <div class="col-lg-8">
@@ -19,13 +19,13 @@
               <h3 class="m-0">
                 <button type="button" class="faq-q" (click)="toggle(i)" [attr.aria-expanded]="open() === i"
                   [attr.aria-controls]="'faq-a-' + i" [id]="'faq-q-' + i">
-                  {{ faq.question }}
+                  {{ faq.question | t }}
                   <i class="bi bi-plus-lg" aria-hidden="true"></i>
                 </button>
               </h3>
               <div class="faq-a" [id]="'faq-a-' + i" role="region" [attr.aria-labelledby]="'faq-q-' + i">
                 <div class="inner">
-                  <p>{{ faq.answer }}</p>
+                  <p>{{ faq.answer | t }}</p>
                 </div>
               </div>
             </div>

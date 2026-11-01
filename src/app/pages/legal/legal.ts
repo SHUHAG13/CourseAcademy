@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CONTACT } from '../../core/data/site.data';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 interface LegalDoc {
   title: string;
@@ -66,28 +67,28 @@ const DOCS: Record<'privacy' | 'terms', LegalDoc> = {
 
 @Component({
   selector: 'app-legal',
-  imports: [RouterLink],
+  imports: [LocalNumberPipe, TranslatePipe, RouterLink],
   template: `
     <section class="page-hero">
       <div class="container">
-        <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-          <li><a routerLink="/">Home</a></li>
-          <li aria-current="page">{{ doc().title }}</li>
+        <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+          <li><a routerLink="/">{{ 'Home' | t }}</a></li>
+          <li aria-current="page">{{ doc().title | t }}</li>
         </ol>
-        <h1>{{ doc().title }}</h1>
-        <p>{{ doc().intro }}</p>
+        <h1>{{ doc().title | t }}</h1>
+        <p>{{ doc().intro | t }}</p>
       </div>
     </section>
     <section class="section-tight">
       <div class="container">
         <article class="ca-card doc">
-          <p class="tag mb-4">Last updated: October 2026</p>
+          <p class="tag mb-4">{{ 'Last updated: October 2026' | t }}</p>
           @for (s of doc().sections; track s.heading; let i = $index) {
-            <h2 class="h5">{{ i + 1 }}. {{ s.heading }}</h2>
-            <p>{{ s.body }}</p>
+            <h2 class="h5">{{ i + 1 | n }}. {{ s.heading | t }}</h2>
+            <p>{{ s.body | t }}</p>
           }
-          <h2 class="h5">Contact</h2>
-          <p class="mb-0">Questions? Email <a [href]="'mailto:' + email">{{ email }}</a> or visit our <a routerLink="/contact">contact page</a>.</p>
+          <h2 class="h5">{{ 'Contact' | t }}</h2>
+          <p class="mb-0">{{ 'Questions? Email' | t }} <a [href]="'mailto:' + email">{{ email }}</a> {{ 'or visit our' | t }} <a routerLink="/contact">{{ 'contact page' | t }}</a>.</p>
         </article>
       </div>
     </section>

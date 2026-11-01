@@ -90,7 +90,7 @@ export class PaymentService {
     const transaction = this.find(id);
     if (!transaction) throw new Error('Transaction not found.');
     if (!ADMIN_TRANSITIONS[transaction.status].includes(status)) {
-      throw new Error(`A ${transaction.status} transaction cannot be marked ${status}.`);
+      throw new Error('This change is not allowed for this transaction.');
     }
 
     const updated = await this.store.save({ ...transaction, status, updatedAt: new Date().toISOString() });

@@ -1,19 +1,20 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-final-cta',
-  imports: [RouterLink],
+  imports: [TranslatePipe, RouterLink],
   template: `
     <section class="section-tight" aria-labelledby="final-cta-title">
       <div class="container">
         <div class="cta">
           <div>
-            <h2 id="final-cta-title">Your Next Skill Could Change Your Future.</h2>
-            <p>Start with a beginner-friendly course today. Lifetime access, Bangla instruction, real projects.</p>
+            <h2 id="final-cta-title">{{ 'Your Next Skill Could Change Your Future.' | t }}</h2>
+            <p>{{ 'Start with a beginner-friendly course today. Lifetime access, Bangla instruction, real projects.' | t }}</p>
           </div>
           <a routerLink="/courses" class="btn btn-lg btn-accent">
-            Explore All Courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            {{ 'Explore All Courses' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
           </a>
         </div>
       </div>

@@ -1,20 +1,20 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
+import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 /** Read-only list of demo accounts. Passwords are never displayed. */
 @Component({
   selector: 'app-admin-users',
-  imports: [DatePipe, FormsModule, Avatar],
+  imports: [LocalNumberPipe, TranslatePipe, LocalDatePipe, FormsModule, Avatar],
   template: `
-    <h1 class="h3 mb-3">Users</h1>
+    <h1 class="h3 mb-3">{{ 'Users' | t }}</h1>
 
     <div class="mb-3">
-      <label for="user-q" class="visually-hidden">Search users</label>
-      <input id="user-q" type="search" class="form-control" placeholder="Search by name or email"
+      <label for="user-q" class="visually-hidden">{{ 'Search users' | t }}</label>
+      <input id="user-q" type="search" class="form-control" [placeholder]="'Search by name or email' | t"
         [ngModel]="search()" (ngModelChange)="search.set($event)" />
     </div>
 
@@ -22,23 +22,23 @@ import { Avatar } from '../../shared/components/avatar/avatar';
       <table class="ca-table">
         <thead>
           <tr>
-            <th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th>
-            <th scope="col">Active courses</th><th scope="col">Joined</th>
+            <th scope="col">{{ 'Name' | t }}</th><th scope="col">{{ 'Email' | t }}</th><th scope="col">{{ 'Role' | t }}</th>
+            <th scope="col">{{ 'Active courses' | t }}</th><th scope="col">{{ 'Joined' | t }}</th>
           </tr>
         </thead>
         <tbody>
           @for (u of users(); track u.id) {
             <tr>
               <td>
-                <span class="d-flex align-items-center gap-2 primary"><app-avatar [name]="u.name" [size]="32" />{{ u.name }}</span>
+                <span class="d-flex align-items-center gap-2 primary"><app-avatar [name]="u.name" [size]="32" />{{ u.name | t }}</span>
               </td>
               <td>{{ u.email }}</td>
-              <td><span class="tag" [class.blue]="u.role === 'admin'">{{ u.role === 'admin' ? 'Admin' : 'User' }}</span></td>
-              <td>{{ activeCourses(u.id) }}</td>
-              <td class="text-nowrap">{{ u.createdAt | date: 'd MMM y' }}</td>
+              <td><span class="tag" [class.blue]="u.role === 'admin'">{{ (u.role === 'admin' ? 'Admin' : 'User') | t }}</span></td>
+              <td>{{ activeCourses(u.id) | n }}</td>
+              <td class="text-nowrap">{{ u.createdAt | ldate: 'd MMM y' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="5" class="text-center text-muted py-4">No users match your search.</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4">{{ 'No users match your search.' | t }}</td></tr>
           }
         </tbody>
       </table>

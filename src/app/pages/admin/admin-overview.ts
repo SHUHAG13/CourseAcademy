@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { LanguageService } from '../../core/i18n/language.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PaymentService } from '../../core/payments/payment.service';
@@ -10,12 +10,13 @@ import { EnrollmentService } from '../../core/services/enrollment.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-admin-overview',
-  imports: [DatePipe, RouterLink, BdtPipe, StatusPill],
+  imports: [TranslatePipe, LocalDatePipe, RouterLink, BdtPipe, StatusPill],
   template: `
-    <h1 class="h3 mb-4">Overview</h1>
+    <h1 class="h3 mb-4">{{ 'Overview' | t }}</h1>
 
     <div class="row g-3 mb-4">
       @for (s of stats(); track s.label) {
@@ -24,7 +25,7 @@ import { BdtPipe } from '../../shared/pipes/bdt.pipe';
             <span class="icon-tile" [class]="s.tone"><i class="bi" [class]="s.icon" aria-hidden="true"></i></span>
             <div>
               <span class="value">{{ s.value }}</span>
-              <span class="label">{{ s.label }}</span>
+              <span class="label">{{ s.label | t }}</span>
             </div>
           </a>
         </div>
@@ -33,25 +34,25 @@ import { BdtPipe } from '../../shared/pipes/bdt.pipe';
 
     <section class="ca-card mb-4" aria-labelledby="recent-title">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3">
-        <h2 id="recent-title" class="h6 mb-0">Recent transactions</h2>
-        <a routerLink="/admin/transactions" class="small fw-semibold">View all</a>
+        <h2 id="recent-title" class="h6 mb-0">{{ 'Recent transactions' | t }}</h2>
+        <a routerLink="/admin/transactions" class="small fw-semibold">{{ 'View all' | t }}</a>
       </div>
       <div class="table-responsive">
         <table class="ca-table">
           <thead>
-            <tr><th scope="col">Transaction</th><th scope="col">Student</th><th scope="col">Course</th><th scope="col">Amount</th><th scope="col">Status</th></tr>
+            <tr><th scope="col">{{ 'Transaction' | t }}</th><th scope="col">{{ 'Student' | t }}</th><th scope="col">{{ 'Course' | t }}</th><th scope="col">{{ 'Amount' | t }}</th><th scope="col">{{ 'Status' | t }}</th></tr>
           </thead>
           <tbody>
             @for (t of recent(); track t.id) {
               <tr>
-                <td><span class="primary">{{ t.id }}</span><span class="secondary">{{ t.createdAt | date: 'd MMM y' }}</span></td>
+                <td><span class="primary">{{ t.id }}</span><span class="secondary">{{ t.createdAt | ldate: 'd MMM y' }}</span></td>
                 <td>{{ t.userName }}</td>
-                <td>{{ t.courseTitle }}</td>
+                <td>{{ t.courseTitle | t }}</td>
                 <td class="text-nowrap">{{ t.amount | bdt }}</td>
                 <td><app-status-pill [status]="t.status" /></td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="text-center text-muted py-4">No transactions yet.</td></tr>
+              <tr><td colspan="5" class="text-center text-muted py-4">{{ 'No transactions yet.' | t }}</td></tr>
             }
           </tbody>
         </table>
@@ -59,13 +60,12 @@ import { BdtPipe } from '../../shared/pipes/bdt.pipe';
     </section>
 
     <section class="panel ca-card" aria-labelledby="reset-title">
-      <h2 id="reset-title" class="panel-title">Reset demo data</h2>
+      <h2 id="reset-title" class="panel-title">{{ 'Reset demo data' | t }}</h2>
       <p class="text-muted small">
-        Restores the four default courses, instructors, demo accounts, enrollments and transactions. Everything created
-        or changed in this browser is lost.
+        {{ 'Restores the four default courses, instructors, demo accounts, enrollments and transactions. Everything created or changed in this browser is lost.' | t }}
       </p>
       <button type="button" class="btn btn-outline" [disabled]="resetting()" (click)="reset()">
-        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reset demo data
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ 'Reset demo data' | t }}
       </button>
     </section>
   `,
@@ -81,6 +81,7 @@ export class AdminOverview {
   private readonly demoData = inject(DemoDataService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly language = inject(LanguageService);
 
   protected readonly resetting = signal(false);
 
@@ -89,29 +90,29 @@ export class AdminOverview {
     const collected = paid.reduce((sum, t) => sum + t.amount, 0);
     return [
       {
-        label: `Courses (${this.courses.published().length} published)`,
-        value: this.courses.courses().length.toLocaleString('en-US'),
+        label: this.language.t('Courses ({0} published)', [this.courses.published().length]),
+        value: this.language.number(this.courses.courses().length),
         icon: 'bi-journal-text',
         tone: '',
         link: '/admin/courses',
       },
       {
         label: 'Student accounts',
-        value: this.auth.users().filter((u) => u.role === 'user').length.toLocaleString('en-US'),
+        value: this.language.number(this.auth.users().filter((u) => u.role === 'user').length),
         icon: 'bi-people',
         tone: 'navy',
         link: '/admin/users',
       },
       {
         label: 'Active enrollments',
-        value: this.enrollments.enrollments().filter((e) => e.status === 'active').length.toLocaleString('en-US'),
+        value: this.language.number(this.enrollments.enrollments().filter((e) => e.status === 'active').length),
         icon: 'bi-card-checklist',
         tone: 'orange',
         link: '/admin/enrollments',
       },
       {
         label: 'Demo payments collected',
-        value: `৳${collected.toLocaleString('en-US')}`,
+        value: `৳${this.language.number(collected)}`,
         icon: 'bi-credit-card',
         tone: 'navy',
         link: '/admin/transactions',

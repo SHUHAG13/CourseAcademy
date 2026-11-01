@@ -1,30 +1,31 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-not-found',
-  imports: [FormsModule, RouterLink],
+  imports: [TranslatePipe, FormsModule, RouterLink],
   template: `
     <section class="section nf">
       <div class="container text-center">
         <span class="code">404</span>
-        <h1 class="h2 mt-3">We couldn't find that page</h1>
-        <p class="text-muted mx-auto mb-4">The link may be broken or the page may have moved. Try searching for a course instead.</p>
+        <h1 class="h2 mt-3">{{ 'We couldn\\'t find that page' | t }}</h1>
+        <p class="text-muted mx-auto mb-4">{{ 'The link may be broken or the page may have moved. Try searching for a course instead.' | t }}</p>
 
         <form class="search mx-auto mb-4" role="search" (submit)="$event.preventDefault(); search()">
-          <label for="nf-search" class="visually-hidden">Search courses</label>
+          <label for="nf-search" class="visually-hidden">{{ 'Search courses' | t }}</label>
           <div class="input-icon">
             <i class="bi bi-search" aria-hidden="true"></i>
-            <input id="nf-search" type="search" class="form-control" placeholder="Search courses" name="q"
+            <input id="nf-search" type="search" class="form-control" [placeholder]="'Search courses' | t" name="q"
               [ngModel]="query()" (ngModelChange)="query.set($event)" />
           </div>
-          <button type="submit" class="btn btn-primary">Search</button>
+          <button type="submit" class="btn btn-primary">{{ 'Search' | t }}</button>
         </form>
 
         <div class="d-flex justify-content-center flex-wrap gap-2">
-          <a routerLink="/" class="btn btn-outline">Go to homepage</a>
-          <a routerLink="/courses" class="btn btn-accent">Browse courses</a>
+          <a routerLink="/" class="btn btn-outline">{{ 'Go to homepage' | t }}</a>
+          <a routerLink="/courses" class="btn btn-accent">{{ 'Browse courses' | t }}</a>
         </div>
       </div>
     </section>

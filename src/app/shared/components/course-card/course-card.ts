@@ -1,4 +1,3 @@
-import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Course } from '../../../core/models/course.model';
@@ -7,10 +6,11 @@ import { BdtPipe } from '../../pipes/bdt.pipe';
 import { CourseCover } from '../course-cover/course-cover';
 import { FormatBadge } from '../format-badge/format-badge';
 import { RatingStars } from '../rating-stars/rating-stars';
+import { TranslatePipe, LocalNumberPipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-course-card',
-  imports: [RouterLink, DecimalPipe, BdtPipe, CourseCover, FormatBadge, RatingStars],
+  imports: [TranslatePipe, LocalNumberPipe, RouterLink, BdtPipe, CourseCover, FormatBadge, RatingStars],
   templateUrl: './course-card.html',
   styleUrl: './course-card.scss',
 })

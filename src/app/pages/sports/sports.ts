@@ -1,14 +1,14 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SPORTS_STORIES, SportsStory, SportsTopic } from '../../core/data/site.data';
 import { CourseService } from '../../core/services/course.service';
 import { ToastService } from '../../core/services/toast.service';
 import { CourseCard } from '../../shared/components/course-card/course-card';
+import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-sports',
-  imports: [RouterLink, DatePipe, CourseCard],
+  imports: [TranslatePipe, LocalDatePipe, RouterLink, CourseCard],
   templateUrl: './sports.html',
   styleUrl: './sports.scss',
 })
@@ -33,6 +33,6 @@ export class Sports {
   );
 
   protected open(story: SportsStory): void {
-    this.toast.show(`Full articles will be published when our sports media channel launches. “${story.title}” is a preview.`);
+    this.toast.show('Full articles will be published when our sports media channel launches. “{0}” is a preview.', 'info', [story.title]);
   }
 }

@@ -1,12 +1,12 @@
 @if (isNew() || existing()) {
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-      <a routerLink="/admin/courses" class="small fw-semibold"><i class="bi bi-arrow-left" aria-hidden="true"></i> All courses</a>
-      <h1 class="h3 mb-0 mt-1">{{ isNew() ? 'New course' : 'Edit course' }}</h1>
+      <a routerLink="/admin/courses" class="small fw-semibold"><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ 'All courses' | t }}</a>
+      <h1 class="h3 mb-0 mt-1">{{ (isNew() ? 'New course' : 'Edit course') | t }}</h1>
     </div>
     @if (existing(); as c) {
       <a [routerLink]="['/courses', c.slug]" class="btn btn-outline btn-sm">
-        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> View page
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ 'View page' | t }}
       </a>
     }
   </div>
@@ -14,98 +14,98 @@
   <form [formGroup]="form" (ngSubmit)="save()" novalidate>
     <!-- Basics -->
     <section class="panel ca-card mb-3" aria-labelledby="f-basics">
-      <h2 id="f-basics" class="panel-title">Course details</h2>
+      <h2 id="f-basics" class="panel-title">{{ 'Course details' | t }}</h2>
       <div class="row g-3">
         <div class="col-md-7">
-          <label for="f-title" class="form-label">Title</label>
+          <label for="f-title" class="form-label">{{ 'Title' | t }}</label>
           <input id="f-title" class="form-control" formControlName="title" (blur)="fillSlug()"
             [class.is-invalid]="invalid(form.controls.title)" />
           @if (invalid(form.controls.title)) {
-            <div class="field-error">Enter a title of 5 to 120 characters.</div>
+            <div class="field-error">{{ 'Enter a title of 5 to 120 characters.' | t }}</div>
           }
         </div>
         <div class="col-md-5">
-          <label for="f-slug" class="form-label">URL slug</label>
+          <label for="f-slug" class="form-label">{{ 'URL slug' | t }}</label>
           <input id="f-slug" class="form-control" formControlName="slug" [class.is-invalid]="invalid(form.controls.slug)" />
           @if (form.controls.slug.hasError('taken')) {
-            <div class="field-error">Another course already uses this slug.</div>
+            <div class="field-error">{{ 'Another course already uses this slug.' | t }}</div>
           } @else if (invalid(form.controls.slug)) {
-            <div class="field-error">Use lowercase letters, numbers and hyphens.</div>
+            <div class="field-error">{{ 'Use lowercase letters, numbers and hyphens.' | t }}</div>
           }
         </div>
         <div class="col-12">
-          <label for="f-subtitle" class="form-label">Short description</label>
+          <label for="f-subtitle" class="form-label">{{ 'Short description' | t }}</label>
           <input id="f-subtitle" class="form-control" formControlName="subtitle" [class.is-invalid]="invalid(form.controls.subtitle)" />
           @if (invalid(form.controls.subtitle)) {
-            <div class="field-error">Enter a short description of up to 200 characters.</div>
+            <div class="field-error">{{ 'Enter a short description of up to 200 characters.' | t }}</div>
           }
         </div>
         <div class="col-12">
-          <label for="f-description" class="form-label">Full description</label>
+          <label for="f-description" class="form-label">{{ 'Full description' | t }}</label>
           <textarea id="f-description" class="form-control" rows="4" formControlName="description"
             [class.is-invalid]="invalid(form.controls.description)"></textarea>
           @if (invalid(form.controls.description)) {
-            <div class="field-error">Enter a description.</div>
+            <div class="field-error">{{ 'Enter a description.' | t }}</div>
           }
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-category" class="form-label">Category</label>
+          <label for="f-category" class="form-label">{{ 'Category' | t }}</label>
           <select id="f-category" class="form-select" formControlName="category">
             @for (c of categories; track c.id) {
-              <option [value]="c.id">{{ c.name }}</option>
+              <option [value]="c.id">{{ c.name | t }}</option>
             }
           </select>
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-format" class="form-label">Delivery format</label>
+          <label for="f-format" class="form-label">{{ 'Delivery format' | t }}</label>
           <select id="f-format" class="form-select" formControlName="format">
             @for (f of formats; track f) {
-              <option [value]="f">{{ f }}</option>
+              <option [value]="f">{{ f | t }}</option>
             }
           </select>
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-instructor" class="form-label">Instructor</label>
+          <label for="f-instructor" class="form-label">{{ 'Instructor' | t }}</label>
           <select id="f-instructor" class="form-select" formControlName="instructorId"
             [class.is-invalid]="invalid(form.controls.instructorId)">
             @for (i of instructors(); track i.id) {
-              <option [value]="i.id">{{ i.name }}</option>
+              <option [value]="i.id">{{ i.name | t }}</option>
             }
           </select>
           @if (invalid(form.controls.instructorId)) {
-            <div class="field-error">Choose an instructor.</div>
+            <div class="field-error">{{ 'Choose an instructor.' | t }}</div>
           }
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-level" class="form-label">Level</label>
+          <label for="f-level" class="form-label">{{ 'Level' | t }}</label>
           <select id="f-level" class="form-select" formControlName="level">
             @for (l of levels; track l) {
-              <option [value]="l">{{ l }}</option>
+              <option [value]="l">{{ l | t }}</option>
             }
           </select>
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-language" class="form-label">Language</label>
+          <label for="f-language" class="form-label">{{ 'Language' | t }}</label>
           <input id="f-language" class="form-control" formControlName="language" [class.is-invalid]="invalid(form.controls.language)" />
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-duration" class="form-label">Total hours</label>
+          <label for="f-duration" class="form-label">{{ 'Total hours' | t }}</label>
           <input id="f-duration" type="number" min="1" class="form-control" formControlName="durationHours"
             [class.is-invalid]="invalid(form.controls.durationHours)" />
           @if (invalid(form.controls.durationHours)) {
-            <div class="field-error">Enter at least 1 hour.</div>
+            <div class="field-error">{{ 'Enter at least 1 hour.' | t }}</div>
           }
         </div>
         <div class="col-md-6">
-          <label for="f-outcomes" class="form-label">Learning objectives <span class="text-muted fw-normal">(one per line)</span></label>
+          <label for="f-outcomes" class="form-label">{{ 'Learning objectives' | t }} <span class="text-muted fw-normal">{{ '(one per line)' | t }}</span></label>
           <textarea id="f-outcomes" class="form-control" rows="5" formControlName="outcomes"
             [class.is-invalid]="invalid(form.controls.outcomes)"></textarea>
           @if (invalid(form.controls.outcomes)) {
-            <div class="field-error">Add at least one learning objective.</div>
+            <div class="field-error">{{ 'Add at least one learning objective.' | t }}</div>
           }
         </div>
         <div class="col-md-6">
-          <label for="f-requirements" class="form-label">Requirements <span class="text-muted fw-normal">(one per line)</span></label>
+          <label for="f-requirements" class="form-label">{{ 'Requirements' | t }} <span class="text-muted fw-normal">{{ '(one per line)' | t }}</span></label>
           <textarea id="f-requirements" class="form-control" rows="5" formControlName="requirements"></textarea>
         </div>
       </div>
@@ -113,31 +113,31 @@
 
     <!-- Pricing -->
     <section class="panel ca-card mb-3" aria-labelledby="f-pricing">
-      <h2 id="f-pricing" class="panel-title">Pricing and discount</h2>
+      <h2 id="f-pricing" class="panel-title">{{ 'Pricing and discount' | t }}</h2>
       <div class="row g-3 align-items-start">
         <div class="col-sm-6 col-lg-4">
-          <label for="f-original" class="form-label">Regular price (BDT)</label>
+          <label for="f-original" class="form-label">{{ 'Regular price (BDT)' | t }}</label>
           <input id="f-original" type="number" min="0" class="form-control" formControlName="originalPrice"
             [class.is-invalid]="invalid(form.controls.originalPrice)" />
           @if (invalid(form.controls.originalPrice)) {
-            <div class="field-error">Enter 0 or more.</div>
+            <div class="field-error">{{ 'Enter 0 or more.' | t }}</div>
           }
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-price" class="form-label">Sale price (BDT)</label>
+          <label for="f-price" class="form-label">{{ 'Sale price (BDT)' | t }}</label>
           <input id="f-price" type="number" min="0" class="form-control" formControlName="price"
             [class.is-invalid]="invalid(form.controls.price) || form.hasError('priceAboveRegular')" />
           @if (form.hasError('priceAboveRegular')) {
-            <div class="field-error">The sale price can't be above the regular price.</div>
+            <div class="field-error">{{ 'The sale price can\'t be above the regular price.' | t }}</div>
           } @else if (invalid(form.controls.price)) {
-            <div class="field-error">Enter 0 or more.</div>
+            <div class="field-error">{{ 'Enter 0 or more.' | t }}</div>
           }
         </div>
         <div class="col-lg-4">
-          <span class="form-label d-block">Students pay</span>
+          <span class="form-label d-block">{{ 'Students pay' | t }}</span>
           <strong class="price-now fs-4">{{ salePrice() | bdt }}</strong>
           @if (discountPreview() > 0) {
-            <span class="tag green ms-2">{{ discountPreview() }}% off</span>
+            <span class="tag green ms-2">{{ '{0}% off' | t: [discountPreview()] }}</span>
           }
         </div>
       </div>
@@ -145,51 +145,51 @@
 
     <!-- Appearance -->
     <section class="panel ca-card mb-3" aria-labelledby="f-appearance">
-      <h2 id="f-appearance" class="panel-title">Image and cover</h2>
+      <h2 id="f-appearance" class="panel-title">{{ 'Image and cover' | t }}</h2>
       <div class="row g-3">
         <div class="col-md-8">
-          <label for="f-image" class="form-label">Image <span class="text-muted fw-normal">(optional)</span></label>
+          <label for="f-image" class="form-label">{{ 'Image' | t }} <span class="text-muted fw-normal">{{ '(optional)' | t }}</span></label>
           <input id="f-image" class="form-control" formControlName="image" placeholder="https://… or /images/…"
             [class.is-invalid]="invalid(form.controls.image)" />
           @if (invalid(form.controls.image)) {
-            <div class="field-error">Enter an http(s) address or a site path starting with /.</div>
+            <div class="field-error">{{ 'Enter an http(s) address or a site path starting with /.' | t }}</div>
           }
           <div class="d-flex flex-wrap gap-2 mt-2">
             @for (img of siteImages; track img.url) {
               <button type="button" class="thumb" (click)="form.controls.image.setValue(img.url); form.markAsDirty()"
-                [class.active]="form.controls.image.value === img.url" [attr.aria-label]="'Use image: ' + img.label" [title]="img.label">
+                [class.active]="form.controls.image.value === img.url" [attr.aria-label]="'Use image: {0}' | t: [img.label]" [title]="img.label | t">
                 <img [src]="img.url" alt="" loading="lazy" />
               </button>
             }
             <button type="button" class="btn btn-sm btn-outline" (click)="form.controls.image.setValue(''); form.markAsDirty()">
-              Use generated cover
+              {{ 'Use generated cover' | t }}
             </button>
           </div>
         </div>
         <div class="col-md-4">
           @if (imagePreview()) {
-            <img class="preview" [src]="imagePreview()" alt="Selected course image" />
+            <img class="preview" [src]="imagePreview()" [alt]="'Selected course image' | t" />
           } @else {
-            <div class="preview none"><i class="bi bi-image" aria-hidden="true"></i> Generated cover</div>
+            <div class="preview none"><i class="bi bi-image" aria-hidden="true"></i> {{ 'Generated cover' | t }}</div>
           }
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-label" class="form-label">Cover label</label>
+          <label for="f-label" class="form-label">{{ 'Cover label' | t }}</label>
           <input id="f-label" class="form-control" formControlName="coverLabel" [class.is-invalid]="invalid(form.controls.coverLabel)" />
           @if (invalid(form.controls.coverLabel)) {
-            <div class="field-error">Enter a label of up to 30 characters.</div>
+            <div class="field-error">{{ 'Enter a label of up to 30 characters.' | t }}</div>
           }
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-icon" class="form-label">Cover icon <span class="text-muted fw-normal">(Bootstrap icon name)</span></label>
+          <label for="f-icon" class="form-label">{{ 'Cover icon' | t }} <span class="text-muted fw-normal">{{ '(Bootstrap icon name)' | t }}</span></label>
           <input id="f-icon" class="form-control" formControlName="coverIcon" [class.is-invalid]="invalid(form.controls.coverIcon)" />
         </div>
         <div class="col-sm-6 col-lg-4">
-          <label for="f-badge" class="form-label">Badge</label>
+          <label for="f-badge" class="form-label">{{ 'Badge' | t }}</label>
           <select id="f-badge" class="form-select" formControlName="badge">
-            <option value="">None</option>
+            <option value="">{{ 'None' | t }}</option>
             @for (b of badges; track b) {
-              <option [value]="b">{{ b }}</option>
+              <option [value]="b">{{ b | t }}</option>
             }
           </select>
         </div>
@@ -199,97 +199,97 @@
     <!-- Curriculum -->
     <section class="panel ca-card mb-3" aria-labelledby="f-curriculum">
       <div class="panel-head">
-        <h2 id="f-curriculum" class="panel-title mb-0">Curriculum</h2>
+        <h2 id="f-curriculum" class="panel-title mb-0">{{ 'Curriculum' | t }}</h2>
         <button type="button" class="btn btn-sm btn-outline" (click)="addSection()">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> Add section
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add section' | t }}
         </button>
       </div>
       @if (form.hasError('needsLessons')) {
-        <div class="field-error mb-2">A published course needs at least one lesson.</div>
+        <div class="field-error mb-2">{{ 'A published course needs at least one lesson.' | t }}</div>
       }
 
       @for (sec of sections.controls; track sec; let i = $index) {
         <div class="section-row" [formGroup]="sec">
           <div class="row-line">
-            <span class="visually-hidden">Section {{ i + 1 }}</span>
-            <input class="form-control" formControlName="title" placeholder="Section title"
-              [attr.aria-label]="'Section ' + (i + 1) + ' title'" [class.is-invalid]="invalid(sec.get('title'))" />
+            <span class="visually-hidden">{{ 'Section {0}' | t: [i + 1] }}</span>
+            <input class="form-control" formControlName="title" [placeholder]="'Section title' | t"
+              [attr.aria-label]="'Section {0} title' | t: [i + 1]" [class.is-invalid]="invalid(sec.get('title'))" />
             <span class="row-actions">
-              <button type="button" class="icon-btn" [disabled]="$first" (click)="move(sections, i, -1)" aria-label="Move section up"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
-              <button type="button" class="icon-btn" [disabled]="$last" (click)="move(sections, i, 1)" aria-label="Move section down"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-              <button type="button" class="icon-btn danger" (click)="removeAt(sections, i)" aria-label="Delete section"><i class="bi bi-trash" aria-hidden="true"></i></button>
+              <button type="button" class="icon-btn" [disabled]="$first" (click)="move(sections, i, -1)" [attr.aria-label]="'Move section up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+              <button type="button" class="icon-btn" [disabled]="$last" (click)="move(sections, i, 1)" [attr.aria-label]="'Move section down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+              <button type="button" class="icon-btn danger" (click)="removeAt(sections, i)" [attr.aria-label]="'Delete section' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
             </span>
           </div>
 
           <div class="lessons">
             @for (l of lessonsOf(sec).controls; track l; let j = $index) {
               <div class="row-line lesson" [formGroup]="l">
-                <input class="form-control form-control-sm" formControlName="title" placeholder="Lesson title"
-                  [attr.aria-label]="'Lesson ' + (j + 1) + ' title'" [class.is-invalid]="invalid(l.get('title'))" />
+                <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Lesson title' | t"
+                  [attr.aria-label]="'Lesson {0} title' | t: [j + 1]" [class.is-invalid]="invalid(l.get('title'))" />
                 <input type="number" min="1" class="form-control form-control-sm minutes" formControlName="minutes"
-                  [attr.aria-label]="'Lesson ' + (j + 1) + ' minutes'" [class.is-invalid]="invalid(l.get('minutes'))" />
-                <span class="unit">min</span>
+                  [attr.aria-label]="'Lesson {0} minutes' | t: [j + 1]" [class.is-invalid]="invalid(l.get('minutes'))" />
+                <span class="unit">{{ 'min' | t }}</span>
                 <label class="preview-toggle">
-                  <input type="checkbox" class="form-check-input" formControlName="preview" /> Free preview
+                  <input type="checkbox" class="form-check-input" formControlName="preview" /> {{ 'Free preview' | t }}
                 </label>
                 <span class="row-actions">
-                  <button type="button" class="icon-btn" [disabled]="$first" (click)="move(lessonsOf(sec), j, -1)" aria-label="Move lesson up"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
-                  <button type="button" class="icon-btn" [disabled]="$last" (click)="move(lessonsOf(sec), j, 1)" aria-label="Move lesson down"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-                  <button type="button" class="icon-btn danger" (click)="removeAt(lessonsOf(sec), j)" aria-label="Delete lesson"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                  <button type="button" class="icon-btn" [disabled]="$first" (click)="move(lessonsOf(sec), j, -1)" [attr.aria-label]="'Move lesson up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+                  <button type="button" class="icon-btn" [disabled]="$last" (click)="move(lessonsOf(sec), j, 1)" [attr.aria-label]="'Move lesson down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+                  <button type="button" class="icon-btn danger" (click)="removeAt(lessonsOf(sec), j)" [attr.aria-label]="'Delete lesson' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
                 </span>
               </div>
             }
             <button type="button" class="btn btn-sm btn-link px-0" (click)="addLesson(sec)">
-              <i class="bi bi-plus-lg" aria-hidden="true"></i> Add lesson
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add lesson' | t }}
             </button>
           </div>
         </div>
       } @empty {
-        <p class="text-muted small mb-0">No sections yet.</p>
+        <p class="text-muted small mb-0">{{ 'No sections yet.' | t }}</p>
       }
     </section>
 
     <!-- Schedule -->
     <section class="panel ca-card mb-3" aria-labelledby="f-schedule">
       <div class="panel-head">
-        <h2 id="f-schedule" class="panel-title mb-0">Live schedule</h2>
+        <h2 id="f-schedule" class="panel-title mb-0">{{ 'Live schedule' | t }}</h2>
         <button type="button" class="btn btn-sm btn-outline" (click)="addSession()">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> Add session
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add session' | t }}
         </button>
       </div>
-      <p class="small text-muted">Meeting links are placeholders: no meeting provider is connected.</p>
+      <p class="small text-muted">{{ 'Meeting links are placeholders: no meeting provider is connected.' | t }}</p>
       @if (form.hasError('needsSessions')) {
-        <div class="field-error mb-2">A published Live or Hybrid course needs at least one session.</div>
+        <div class="field-error mb-2">{{ 'A published Live or Hybrid course needs at least one session.' | t }}</div>
       }
 
       @for (s of sessions.controls; track s; let i = $index) {
         <div class="section-row row g-2 align-items-start" [formGroup]="s">
           <div class="col-md-6 col-xl-3">
-            <input class="form-control form-control-sm" formControlName="title" placeholder="Session title"
-              [attr.aria-label]="'Session ' + (i + 1) + ' title'" [class.is-invalid]="invalid(s.get('title'))" />
+            <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Session title' | t"
+              [attr.aria-label]="'Session {0} title' | t: [i + 1]" [class.is-invalid]="invalid(s.get('title'))" />
           </div>
           <div class="col-md-6 col-xl-3">
             <input type="datetime-local" class="form-control form-control-sm" formControlName="startsAt"
-              [attr.aria-label]="'Session ' + (i + 1) + ' date and time'" [class.is-invalid]="invalid(s.get('startsAt'))" />
+              [attr.aria-label]="'Session {0} date and time' | t: [i + 1]" [class.is-invalid]="invalid(s.get('startsAt'))" />
           </div>
           <div class="col-4 col-xl-1">
             <input type="number" min="1" class="form-control form-control-sm" formControlName="durationMinutes"
-              [attr.aria-label]="'Session ' + (i + 1) + ' minutes'" [class.is-invalid]="invalid(s.get('durationMinutes'))" />
+              [attr.aria-label]="'Session {0} minutes' | t: [i + 1]" [class.is-invalid]="invalid(s.get('durationMinutes'))" />
           </div>
           <div class="col-8 col-xl-4">
             <input class="form-control form-control-sm" formControlName="meetingUrl" placeholder="https://meet.example.com/…"
-              [attr.aria-label]="'Session ' + (i + 1) + ' meeting link'" [class.is-invalid]="invalid(s.get('meetingUrl'))" />
+              [attr.aria-label]="'Session {0} meeting link' | t: [i + 1]" [class.is-invalid]="invalid(s.get('meetingUrl'))" />
             @if (invalid(s.get('meetingUrl'))) {
-              <div class="field-error">Enter a valid http(s) link.</div>
+              <div class="field-error">{{ 'Enter a valid http(s) link.' | t }}</div>
             }
           </div>
           <div class="col-xl-1 text-end">
-            <button type="button" class="icon-btn danger" (click)="removeAt(sessions, i)" aria-label="Delete session"><i class="bi bi-trash" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn danger" (click)="removeAt(sessions, i)" [attr.aria-label]="'Delete session' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
           </div>
         </div>
       } @empty {
         <p class="text-muted small mb-0">
-          {{ needsSchedule() ? 'No sessions yet. Add at least one before publishing.' : 'Not needed for Pre-recorded courses, but you can add optional sessions.' }}
+          {{ (needsSchedule() ? 'No sessions yet. Add at least one before publishing.' : 'Not needed for Pre-recorded courses, but you can add optional sessions.') | t }}
         </p>
       }
     </section>
@@ -297,38 +297,38 @@
     <!-- Materials -->
     <section class="panel ca-card mb-3" aria-labelledby="f-materials">
       <div class="panel-head">
-        <h2 id="f-materials" class="panel-title mb-0">Learning materials</h2>
+        <h2 id="f-materials" class="panel-title mb-0">{{ 'Learning materials' | t }}</h2>
         <button type="button" class="btn btn-sm btn-outline" (click)="addMaterial()">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> Add material
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add material' | t }}
         </button>
       </div>
 
       @for (m of materials.controls; track m; let i = $index) {
         <div class="section-row row g-2 align-items-start" [formGroup]="m">
           <div class="col-md-5">
-            <input class="form-control form-control-sm" formControlName="title" placeholder="Material title"
-              [attr.aria-label]="'Material ' + (i + 1) + ' title'" [class.is-invalid]="invalid(m.get('title'))" />
+            <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Material title' | t"
+              [attr.aria-label]="'Material {0} title' | t: [i + 1]" [class.is-invalid]="invalid(m.get('title'))" />
           </div>
           <div class="col-4 col-md-2">
-            <select class="form-select form-select-sm" formControlName="type" [attr.aria-label]="'Material ' + (i + 1) + ' type'">
+            <select class="form-select form-select-sm" formControlName="type" [attr.aria-label]="'Material {0} type' | t: [i + 1]">
               @for (t of materialTypes; track t) {
-                <option [value]="t">{{ t }}</option>
+                <option [value]="t">{{ t | t }}</option>
               }
             </select>
           </div>
           <div class="col-8 col-md-4">
             <input class="form-control form-control-sm" formControlName="url" placeholder="https://…"
-              [attr.aria-label]="'Material ' + (i + 1) + ' link'" [class.is-invalid]="invalid(m.get('url'))" />
+              [attr.aria-label]="'Material {0} link' | t: [i + 1]" [class.is-invalid]="invalid(m.get('url'))" />
             @if (invalid(m.get('url'))) {
-              <div class="field-error">Enter a valid http(s) link.</div>
+              <div class="field-error">{{ 'Enter a valid http(s) link.' | t }}</div>
             }
           </div>
           <div class="col-md-1 text-end">
-            <button type="button" class="icon-btn danger" (click)="removeAt(materials, i)" aria-label="Delete material"><i class="bi bi-trash" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn danger" (click)="removeAt(materials, i)" [attr.aria-label]="'Delete material' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
           </div>
         </div>
       } @empty {
-        <p class="text-muted small mb-0">No materials yet.</p>
+        <p class="text-muted small mb-0">{{ 'No materials yet.' | t }}</p>
       }
     </section>
 
@@ -337,20 +337,20 @@
       <div class="d-flex flex-wrap gap-3">
         <div class="form-check form-switch mb-0">
           <input id="f-published" class="form-check-input" type="checkbox" role="switch" formControlName="published" />
-          <label for="f-published" class="form-check-label">Published</label>
+          <label for="f-published" class="form-check-label">{{ 'Published' | t }}</label>
         </div>
         <div class="form-check form-switch mb-0">
           <input id="f-featured" class="form-check-input" type="checkbox" role="switch" formControlName="featured" />
-          <label for="f-featured" class="form-check-label">Featured on home page</label>
+          <label for="f-featured" class="form-check-label">{{ 'Featured on home page' | t }}</label>
         </div>
       </div>
       <div class="d-flex gap-2">
-        <a routerLink="/admin/courses" class="btn btn-outline">Cancel</a>
+        <a routerLink="/admin/courses" class="btn btn-outline">{{ 'Cancel' | t }}</a>
         <button type="submit" class="btn btn-primary" [disabled]="saving()">
           @if (saving()) {
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving…
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ 'Saving…' | t }}
           } @else {
-            Save course
+            {{ 'Save course' | t }}
           }
         </button>
       </div>
@@ -358,6 +358,6 @@
   </form>
 } @else {
   <app-empty-state icon="bi-journal-x" title="Course not found" message="This course may have been deleted.">
-    <a routerLink="/admin/courses" class="btn btn-primary">All courses</a>
+    <a routerLink="/admin/courses" class="btn btn-primary">{{ 'All courses' | t }}</a>
   </app-empty-state>
 }

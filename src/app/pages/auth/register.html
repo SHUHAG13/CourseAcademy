@@ -1,57 +1,56 @@
 <app-auth-shell tagline="Join thousands of students building real skills.">
-  <h1 class="title">Create your account</h1>
-  <p class="sub">Already have an account? <a routerLink="/login" queryParamsHandling="preserve">Log in</a></p>
+  <h1 class="title">{{ 'Create your account' | t }}</h1>
+  <p class="sub">{{ 'Already have an account?' | t }} <a routerLink="/login" queryParamsHandling="preserve">{{ 'Log in' | t }}</a></p>
 
   <div class="demo-accounts">
     <small>
-      <strong>Demo only:</strong> your details stay in this browser, and the password is stored without
-      protection. Please use a made-up password, not one you use elsewhere.
+      <strong>{{ 'Demo only:' | t }}</strong> {{ 'your details stay in this browser, and the password is stored without protection. Please use a made-up password, not one you use elsewhere.' | t }}
     </small>
   </div>
 
   @if (error()) {
     <div class="form-alert" role="alert">
-      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() }}
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() | t }}
     </div>
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="row g-3">
       <div class="col-12">
-        <label for="r-name" class="form-label">Full name</label>
+        <label for="r-name" class="form-label">{{ 'Full name' | t }}</label>
         <input id="r-name" class="form-control" formControlName="name" autocomplete="name"
           [class.is-invalid]="showError('name')" />
         @if (showError('name')) {
-          <div class="error">Please enter your full name.</div>
+          <div class="error">{{ 'Please enter your full name.' | t }}</div>
         }
       </div>
 
       <div class="col-md-6">
-        <label for="r-email" class="form-label">Email address</label>
+        <label for="r-email" class="form-label">{{ 'Email address' | t }}</label>
         <input id="r-email" type="email" class="form-control" formControlName="email" autocomplete="email"
           [class.is-invalid]="showError('email')" />
         @if (showError('email')) {
-          <div class="error">Please enter a valid email address.</div>
+          <div class="error">{{ 'Please enter a valid email address.' | t }}</div>
         }
       </div>
 
       <div class="col-md-6">
-        <label for="r-phone" class="form-label">Phone <span class="text-muted fw-normal">(optional)</span></label>
+        <label for="r-phone" class="form-label">{{ 'Phone' | t }} <span class="text-muted fw-normal">{{ '(optional)' | t }}</span></label>
         <input id="r-phone" type="tel" class="form-control" formControlName="phone" placeholder="01XXXXXXXXX"
           autocomplete="tel" [class.is-invalid]="showError('phone')" />
         @if (showError('phone')) {
-          <div class="error">Enter a valid Bangladeshi mobile number.</div>
+          <div class="error">{{ 'Enter a valid Bangladeshi mobile number.' | t }}</div>
         }
       </div>
 
       <div class="col-md-6">
-        <label for="r-password" class="form-label">Password</label>
+        <label for="r-password" class="form-label">{{ 'Password' | t }}</label>
         <div class="input-icon pw">
           <i class="bi bi-lock" aria-hidden="true"></i>
           <input id="r-password" [type]="showPassword() ? 'text' : 'password'" class="form-control" formControlName="password"
             autocomplete="new-password" [class.is-invalid]="showError('password')" aria-describedby="r-pw-hint" />
           <button type="button" class="toggle" (click)="showPassword.set(!showPassword())"
-            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+            [attr.aria-label]="(showPassword() ? 'Hide password' : 'Show password') | t">
             <i class="bi" [class]="showPassword() ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
           </button>
         </div>
@@ -61,20 +60,20 @@
           }
         </div>
         @if (showError('password')) {
-          <div class="error">Use 8+ characters with at least one letter and one number.</div>
+          <div class="error">{{ 'Use 8+ characters with at least one letter and one number.' | t }}</div>
         } @else {
-          <div id="r-pw-hint" class="hint">8+ characters, with letters and numbers.</div>
+          <div id="r-pw-hint" class="hint">{{ '8+ characters, with letters and numbers.' | t }}</div>
         }
       </div>
 
       <div class="col-md-6">
-        <label for="r-confirm" class="form-label">Confirm password</label>
+        <label for="r-confirm" class="form-label">{{ 'Confirm password' | t }}</label>
         <input id="r-confirm" [type]="showPassword() ? 'text' : 'password'" class="form-control" formControlName="confirm"
           autocomplete="new-password" [class.is-invalid]="showError('confirm') || mismatch()" />
         @if (mismatch()) {
-          <div class="error">Passwords don't match.</div>
+          <div class="error">{{ 'Passwords don\'t match.' | t }}</div>
         } @else if (showError('confirm')) {
-          <div class="error">Please confirm your password.</div>
+          <div class="error">{{ 'Please confirm your password.' | t }}</div>
         }
       </div>
 
@@ -83,21 +82,21 @@
           <input id="r-terms" type="checkbox" class="form-check-input" formControlName="terms"
             [class.is-invalid]="showError('terms')" />
           <label for="r-terms" class="form-check-label">
-            I agree to the <a routerLink="/terms" target="_blank">Terms &amp; Conditions</a> and
-            <a routerLink="/privacy" target="_blank">Privacy Policy</a>
+            {{ 'I agree to the' | t }} <a routerLink="/terms" target="_blank">{{ 'Terms & Conditions' | t }}</a> {{ 'and' | t }}
+            <a routerLink="/privacy" target="_blank">{{ 'Privacy Policy' | t }}</a>
           </label>
         </div>
         @if (showError('terms')) {
-          <div class="error">You need to accept the terms to continue.</div>
+          <div class="error">{{ 'You need to accept the terms to continue.' | t }}</div>
         }
       </div>
 
       <div class="col-12 mt-4">
         <button type="submit" class="btn btn-accent btn-lg w-100" [disabled]="loading()">
           @if (loading()) {
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Creating account…
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ 'Creating account…' | t }}
           } @else {
-            Create account
+            {{ 'Create account' | t }}
           }
         </button>
       </div>

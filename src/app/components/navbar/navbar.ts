@@ -3,9 +3,12 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IsActiveMatchOptions, NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
+import { CONTACT } from '../../core/data/site.data';
+import { LanguageService } from '../../core/i18n/language.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 interface NavLink {
   label: string;
@@ -20,7 +23,7 @@ const PREFIX: IsActiveMatchOptions = { paths: 'subset', queryParams: 'ignored', 
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, RouterLinkActive, Avatar],
+  imports: [TranslatePipe, RouterLink, RouterLinkActive, Avatar],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
   host: {
@@ -34,6 +37,8 @@ export class Navbar {
   private readonly toast = inject(ToastService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
+  protected readonly language = inject(LanguageService);
+  protected readonly contact = CONTACT;
 
   protected readonly menuOpen = signal(false);
   protected readonly coursesOpen = signal(false);

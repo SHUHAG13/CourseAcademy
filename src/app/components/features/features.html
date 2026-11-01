@@ -3,13 +3,12 @@
     <div class="row g-4 g-lg-5">
       <div class="col-lg-4">
         <div class="intro">
-          <span class="eyebrow">Why learn with us?</span>
-          <h2 id="why-title" class="section-title">Skills you can use from day one</h2>
+          <span class="eyebrow">{{ 'Why learn with us?' | t }}</span>
+          <h2 id="why-title" class="section-title">{{ 'Skills you can use from day one' | t }}</h2>
           <p class="section-sub mb-4">
-            We teach the way the industry works: practical projects, honest feedback and a clear path from
-            learning to earning.
+            {{ 'We teach the way the industry works: practical projects, honest feedback and a clear path from learning to earning.' | t }}
           </p>
-          <a routerLink="/about" class="btn-link-arrow">More about us <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+          <a routerLink="/about" class="btn-link-arrow">{{ 'More about us' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
         </div>
       </div>
 
@@ -21,8 +20,8 @@
                 <i class="bi" [class]="r.icon" aria-hidden="true"></i>
               </span>
               <div>
-                <h3 class="h6">{{ r.title }}</h3>
-                <p>{{ r.text }}</p>
+                <h3 class="h6">{{ r.title | t }}</h3>
+                <p>{{ r.text | t }}</p>
               </div>
             </div>
           }

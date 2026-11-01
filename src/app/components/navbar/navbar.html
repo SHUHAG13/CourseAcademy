@@ -1,6 +1,6 @@
 <header class="site-header" [class.scrolled]="scrolled()">
-  <nav class="container nav-inner" aria-label="Main">
-    <a class="navbar-brand brand" routerLink="/" aria-label="Course Academy home">
+  <nav class="container nav-inner" [attr.aria-label]="'Main' | t">
+    <a class="navbar-brand brand" routerLink="/" [attr.aria-label]="'Course Academy home' | t">
       <span class="brand-mark" aria-hidden="true">CA</span>
       <span class="brand-name">Course Academy</span>
     </a>
@@ -8,44 +8,56 @@
     <!-- Desktop -->
     <ul class="nav-links d-none d-xl-flex">
       <li>
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ 'Home' | t }}</a>
       </li>
       <li class="has-menu" routerLinkActive="active">
         <button type="button" class="menu-btn" aria-controls="courses-menu" [attr.aria-expanded]="coursesOpen()"
           (click)="toggleCourses($event)">
-          Courses <i class="bi bi-chevron-down" aria-hidden="true"></i>
+          {{ 'Courses' | t }} <i class="bi bi-chevron-down" aria-hidden="true"></i>
         </button>
         <ul id="courses-menu" class="submenu" [class.open]="coursesOpen()">
           @for (link of courseLinks; track link.label) {
             <li>
               <a [routerLink]="link.path" [queryParams]="link.query" routerLinkActive="active"
-                [routerLinkActiveOptions]="activeOptions(link)">{{ link.label }}</a>
+                [routerLinkActiveOptions]="activeOptions(link)">{{ link.label | t }}</a>
             </li>
           }
         </ul>
       </li>
       @for (link of siteLinks; track link.label) {
         <li>
-          <a [routerLink]="link.path" routerLinkActive="active">{{ link.label }}</a>
+          <a [routerLink]="link.path" routerLinkActive="active">{{ link.label | t }}</a>
         </li>
       }
     </ul>
 
     <div class="nav-actions">
+      <a class="nav-phone d-none" [class.d-xl-inline-flex]="!auth.isLoggedIn()" [class.d-xxl-inline-flex]="auth.isLoggedIn()"
+        [href]="contact.phoneHref">
+        <i class="bi bi-telephone" aria-hidden="true"></i> {{ contact.phone }}
+      </a>
+
+      <div class="lang-switch" role="group" [attr.aria-label]="'Choose language' | t">
+        <button type="button" lang="bn" aria-label="বাংলা" [class.active]="language.isBangla()"
+          [attr.aria-pressed]="language.isBangla()" (click)="language.setLanguage('bn')">BN</button>
+        <button type="button" lang="en" aria-label="English" [class.active]="!language.isBangla()"
+          [attr.aria-pressed]="!language.isBangla()" (click)="language.setLanguage('en')">EN</button>
+      </div>
+
       @if (auth.user(); as user) {
         <div class="user d-none d-md-flex">
           <app-avatar [name]="user.name" [size]="34" />
-          <span class="user-name">{{ user.name }}</span>
-          <a [routerLink]="auth.homeUrl()" class="btn btn-sm btn-primary">{{ auth.isAdmin() ? 'Admin' : 'Dashboard' }}</a>
-          <button type="button" class="btn btn-sm btn-outline" (click)="logout()">Log out</button>
+          <span class="user-name">{{ user.name | t }}</span>
+          <a [routerLink]="auth.homeUrl()" class="btn btn-sm btn-primary">{{ (auth.isAdmin() ? 'Admin' : 'Dashboard') | t }}</a>
+          <button type="button" class="btn btn-sm btn-outline" (click)="logout()">{{ 'Log out' | t }}</button>
         </div>
       } @else {
-        <a routerLink="/login" class="btn btn-sm btn-outline d-none d-md-inline-flex">Login</a>
-        <a routerLink="/register" class="btn btn-sm btn-accent d-none d-sm-inline-flex">Sign Up</a>
+        <a routerLink="/login" class="btn btn-sm btn-outline d-none d-md-inline-flex">{{ 'Login' | t }}</a>
+        <a routerLink="/register" class="btn btn-sm btn-accent d-none d-sm-inline-flex">{{ 'Sign Up' | t }}</a>
       }
 
       <button type="button" class="menu-toggle d-xl-none" (click)="menuOpen.set(true)"
-        aria-label="Open menu" [attr.aria-expanded]="menuOpen()" aria-controls="mobile-drawer">
+        [attr.aria-label]="'Open menu' | t" [attr.aria-expanded]="menuOpen()" aria-controls="mobile-drawer">
         <i class="bi bi-list" aria-hidden="true"></i>
       </button>
     </div>
@@ -56,38 +68,38 @@
 <div class="drawer-backdrop" [class.open]="menuOpen()" (click)="menuOpen.set(false)" aria-hidden="true"></div>
 
 <aside id="mobile-drawer" class="drawer" [class.open]="menuOpen()" [attr.aria-hidden]="!menuOpen()"
-  [attr.inert]="menuOpen() ? null : ''" aria-label="Mobile menu">
+  [attr.inert]="menuOpen() ? null : ''" [attr.aria-label]="'Mobile menu' | t">
   <div class="drawer-head">
     <span class="brand">
       <span class="brand-mark" aria-hidden="true">CA</span>
       <span class="brand-name">Course Academy</span>
     </span>
-    <button type="button" class="menu-toggle" (click)="menuOpen.set(false)" aria-label="Close menu">
+    <button type="button" class="menu-toggle" (click)="menuOpen.set(false)" [attr.aria-label]="'Close menu' | t">
       <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
   </div>
 
   <div class="drawer-body">
     <a class="drawer-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-      <i class="bi bi-house" aria-hidden="true"></i>Home
+      <i class="bi bi-house" aria-hidden="true"></i>{{ 'Home' | t }}
     </a>
 
-    <p class="drawer-label">Courses</p>
+    <p class="drawer-label">{{ 'Courses' | t }}</p>
     @for (link of courseLinks; track link.label) {
       <a class="drawer-link" [routerLink]="link.path" [queryParams]="link.query" routerLinkActive="active"
         [routerLinkActiveOptions]="activeOptions(link)">
-        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label }}
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label | t }}
       </a>
     }
 
-    <p class="drawer-label">Explore</p>
+    <p class="drawer-label">{{ 'Explore' | t }}</p>
     @for (link of siteLinks; track link.label) {
       <a class="drawer-link" [routerLink]="link.path" routerLinkActive="active">
-        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label }}
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ link.label | t }}
       </a>
     }
     <a class="drawer-link" routerLink="/contact" routerLinkActive="active">
-      <i class="bi bi-chevron-right" aria-hidden="true"></i>Contact
+      <i class="bi bi-chevron-right" aria-hidden="true"></i>{{ 'Contact' | t }}
     </a>
   </div>
 
@@ -96,15 +108,15 @@
       <div class="d-flex align-items-center gap-2 mb-3">
         <app-avatar [name]="user.name" [size]="36" />
         <div class="small">
-          <strong class="d-block text-navy">{{ user.name }}</strong>
+          <strong class="d-block text-navy">{{ user.name | t }}</strong>
           <span class="text-muted">{{ user.email }}</span>
         </div>
       </div>
-      <a [routerLink]="auth.homeUrl()" class="btn btn-primary w-100 mb-2">{{ auth.isAdmin() ? 'Admin dashboard' : 'My dashboard' }}</a>
-      <button type="button" class="btn btn-outline w-100" (click)="logout()">Log out</button>
+      <a [routerLink]="auth.homeUrl()" class="btn btn-primary w-100 mb-2">{{ (auth.isAdmin() ? 'Admin dashboard' : 'My dashboard') | t }}</a>
+      <button type="button" class="btn btn-outline w-100" (click)="logout()">{{ 'Log out' | t }}</button>
     } @else {
-      <a routerLink="/register" class="btn btn-accent w-100 mb-2">Sign Up — it's free</a>
-      <a routerLink="/login" class="btn btn-outline w-100">Login</a>
+      <a routerLink="/register" class="btn btn-accent w-100 mb-2">{{ 'Sign Up — it\'s free' | t }}</a>
+      <a routerLink="/login" class="btn btn-outline w-100">{{ 'Login' | t }}</a>
     }
   </div>
 </aside>

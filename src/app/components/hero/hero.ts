@@ -1,12 +1,12 @@
-import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CourseService } from '../../core/services/course.service';
 import { CourseCover } from '../../shared/components/course-cover/course-cover';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-hero',
-  imports: [RouterLink, DecimalPipe, CourseCover],
+  imports: [TranslatePipe, LocalNumberPipe, RouterLink, CourseCover],
   templateUrl: './hero.html',
   styleUrl: './hero.scss',
 })

@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-learning-journey',
+  imports: [TranslatePipe],
   templateUrl: './learning-journey.html',
   styleUrl: './learning-journey.scss',
 })

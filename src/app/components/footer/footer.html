@@ -7,13 +7,12 @@
           <span class="brand-name">Course Academy</span>
         </a>
         <p class="about">
-          Practical online courses in video editing, digital marketing, sports journalism and software development —
-          built to help students in Bangladesh learn, work and earn.
+          {{ 'Practical online courses in video editing, digital marketing, sports journalism and software development — built to help students in Bangladesh learn, work and earn.' | t }}
         </p>
-        <p class="motto">Learn → Build Skills → Work → Earn → Grow</p>
+        <p class="motto">{{ 'Learn → Build Skills → Work → Earn → Grow' | t }}</p>
         <div class="social">
           @for (s of contact.social; track s.label) {
-            <a [href]="s.href" target="_blank" rel="noopener" [attr.aria-label]="s.label">
+            <a [href]="s.href" target="_blank" rel="noopener" [attr.aria-label]="s.label | t">
               <i class="bi" [class]="s.icon" aria-hidden="true"></i>
             </a>
           }
@@ -21,51 +20,51 @@
       </div>
 
       <div class="col-6 col-md-3 col-lg-2">
-        <h2 class="col-title">Courses</h2>
+        <h2 class="col-title">{{ 'Courses' | t }}</h2>
         <ul>
-          <li><a routerLink="/courses">All Courses</a></li>
+          <li><a routerLink="/courses">{{ 'All Courses' | t }}</a></li>
           @for (cat of categories; track cat.id) {
-            <li><a routerLink="/courses" [queryParams]="{ category: cat.id }">{{ cat.name }}</a></li>
+            <li><a routerLink="/courses" [queryParams]="{ category: cat.id }">{{ cat.name | t }}</a></li>
           }
         </ul>
       </div>
 
       <div class="col-6 col-md-3 col-lg-2">
-        <h2 class="col-title">Quick Links</h2>
+        <h2 class="col-title">{{ 'Quick Links' | t }}</h2>
         <ul>
-          <li><a routerLink="/about">About Us</a></li>
-          <li><a routerLink="/payment">How to Pay</a></li>
-          <li><a routerLink="/faq">FAQ</a></li>
-          <li><a routerLink="/login">Login</a></li>
-          <li><a routerLink="/register">Sign Up</a></li>
+          <li><a routerLink="/about">{{ 'About Us' | t }}</a></li>
+          <li><a routerLink="/payment">{{ 'How to Pay' | t }}</a></li>
+          <li><a routerLink="/faq">{{ 'FAQ' | t }}</a></li>
+          <li><a routerLink="/login">{{ 'Login' | t }}</a></li>
+          <li><a routerLink="/register">{{ 'Sign Up' | t }}</a></li>
         </ul>
       </div>
 
       <div class="col-6 col-md-3 col-lg-2">
-        <h2 class="col-title">Community</h2>
+        <h2 class="col-title">{{ 'Community' | t }}</h2>
         <ul>
-          <li><a routerLink="/sports">Sports Media</a></li>
-          <li><a routerLink="/career">Career</a></li>
-          <li><a routerLink="/testimonials">Student Stories</a></li>
-          <li><a routerLink="/contact">Contact</a></li>
+          <li><a routerLink="/sports">{{ 'Sports Media' | t }}</a></li>
+          <li><a routerLink="/career">{{ 'Career' | t }}</a></li>
+          <li><a routerLink="/testimonials">{{ 'Student Stories' | t }}</a></li>
+          <li><a routerLink="/contact">{{ 'Contact' | t }}</a></li>
         </ul>
       </div>
 
       <div class="col-6 col-md-3 col-lg-2">
-        <h2 class="col-title">Contact</h2>
+        <h2 class="col-title">{{ 'Contact' | t }}</h2>
         <ul class="contact">
           <li><i class="bi bi-telephone" aria-hidden="true"></i><a [href]="contact.phoneHref">{{ contact.phone }}</a></li>
           <li><i class="bi bi-envelope" aria-hidden="true"></i><a [href]="'mailto:' + contact.email">{{ contact.email }}</a></li>
-          <li><i class="bi bi-geo-alt" aria-hidden="true"></i><span>{{ contact.address }}</span></li>
+          <li><i class="bi bi-geo-alt" aria-hidden="true"></i><span>{{ contact.address | t }}</span></li>
         </ul>
       </div>
     </div>
 
     <div class="bottom">
-      <p class="mb-0">© {{ year }} Course Academy. All rights reserved.</p>
+      <p class="mb-0">{{ '© {0} Course Academy. All rights reserved.' | t: [(today | ldate: 'y')] }}</p>
       <div class="legal">
-        <a routerLink="/privacy">Privacy Policy</a>
-        <a routerLink="/terms">Terms &amp; Conditions</a>
+        <a routerLink="/privacy">{{ 'Privacy Policy' | t }}</a>
+        <a routerLink="/terms">{{ 'Terms & Conditions' | t }}</a>
       </div>
     </div>
   </div>

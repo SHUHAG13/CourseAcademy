@@ -1,58 +1,58 @@
 <section class="section-tight">
   <div class="container">
     @if (loading()) {
-      <div class="result ca-card" aria-busy="true" aria-label="Loading payment">
+      <div class="result ca-card" aria-busy="true" [attr.aria-label]="'Loading payment' | t">
         <span class="skeleton" style="height: 220px"></span>
       </div>
     } @else if (transaction(); as t) {
       <div class="result ca-card">
         <div class="head" [class]="'head ' + outcome()?.tone">
           <i class="bi" [class]="outcome()?.icon" aria-hidden="true"></i>
-          <h1 class="h4">{{ outcome()?.title }}</h1>
-          <p>{{ outcome()?.message }}</p>
+          <h1 class="h4">{{ outcome()?.title | t }}</h1>
+          <p>{{ outcome()?.message | t }}</p>
         </div>
 
         <dl class="details">
-          <div><dt>Transaction ID</dt><dd class="mono">{{ t.id }}</dd></div>
-          <div><dt>Status</dt><dd><app-status-pill [status]="t.status" /></dd></div>
-          <div><dt>Course</dt><dd>{{ t.courseTitle }}</dd></div>
-          <div><dt>Payment method</dt><dd>{{ methodName() }}</dd></div>
-          <div><dt>Test account</dt><dd class="mono">{{ t.maskedAccount }}</dd></div>
-          <div><dt>Original price</dt><dd>{{ t.originalAmount | bdt }}</dd></div>
+          <div><dt>{{ 'Transaction ID' | t }}</dt><dd class="mono">{{ t.id }}</dd></div>
+          <div><dt>{{ 'Status' | t }}</dt><dd><app-status-pill [status]="t.status" /></dd></div>
+          <div><dt>{{ 'Course' | t }}</dt><dd>{{ t.courseTitle | t }}</dd></div>
+          <div><dt>{{ 'Payment method' | t }}</dt><dd>{{ methodName() | t }}</dd></div>
+          <div><dt>{{ 'Test account' | t }}</dt><dd class="mono">{{ t.maskedAccount }}</dd></div>
+          <div><dt>{{ 'Original price' | t }}</dt><dd>{{ t.originalAmount | bdt }}</dd></div>
           @if (t.discountAmount > 0) {
-            <div><dt>Discount</dt><dd class="text-success">−{{ t.discountAmount | bdt }}</dd></div>
+            <div><dt>{{ 'Discount' | t }}</dt><dd class="text-success">−{{ t.discountAmount | bdt }}</dd></div>
           }
-          <div class="total"><dt>Amount</dt><dd class="price-now">{{ t.amount | bdt }}</dd></div>
-          <div><dt>Date</dt><dd>{{ t.updatedAt | date: 'd MMM y, h:mm a' }}</dd></div>
+          <div class="total"><dt>{{ 'Amount' | t }}</dt><dd class="price-now">{{ t.amount | bdt }}</dd></div>
+          <div><dt>{{ 'Date' | t }}</dt><dd>{{ t.updatedAt | ldate: 'd MMM y, h:mm a' }}</dd></div>
           @if (t.failureReason) {
-            <div><dt>Reason</dt><dd>{{ t.failureReason }}</dd></div>
+            <div><dt>{{ 'Reason' | t }}</dt><dd>{{ t.failureReason | t }}</dd></div>
           }
         </dl>
 
         <div class="actions">
           @if (canOpenCourse()) {
             <a [routerLink]="['/learn', t.courseSlug]" class="btn btn-accent btn-lg">
-              <i class="bi bi-play-circle" aria-hidden="true"></i> Start learning
+              <i class="bi bi-play-circle" aria-hidden="true"></i> {{ 'Start learning' | t }}
             </a>
           } @else if (t.status === 'failed' || t.status === 'cancelled') {
             <a [routerLink]="['/checkout', t.courseSlug]" class="btn btn-accent btn-lg">
-              <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Try again
+              <i class="bi bi-arrow-repeat" aria-hidden="true"></i> {{ 'Try again' | t }}
             </a>
           } @else if (t.status === 'pending' && t.userId === auth.user()?.id) {
-            <a [routerLink]="['/checkout/pay', t.id]" class="btn btn-accent btn-lg">Continue payment</a>
+            <a [routerLink]="['/checkout/pay', t.id]" class="btn btn-accent btn-lg">{{ 'Continue payment' | t }}</a>
           }
-          <a [routerLink]="auth.homeUrl()" class="btn btn-outline btn-lg">{{ auth.isAdmin() ? 'Admin dashboard' : 'My dashboard' }}</a>
+          <a [routerLink]="auth.homeUrl()" class="btn btn-outline btn-lg">{{ (auth.isAdmin() ? 'Admin dashboard' : 'My dashboard') | t }}</a>
         </div>
 
         <p class="demo-footnote">
           <i class="bi bi-info-circle" aria-hidden="true"></i>
-          Demo record stored in this browser. It is not a real receipt, and no money has moved.
+          {{ 'Demo record stored in this browser. It is not a real receipt, and no money has moved.' | t }}
         </p>
       </div>
     } @else {
       <app-empty-state icon="bi-receipt" title="Payment not found"
         message="This payment doesn't exist or belongs to another account.">
-        <a routerLink="/courses" class="btn btn-primary">Browse courses</a>
+        <a routerLink="/courses" class="btn btn-primary">{{ 'Browse courses' | t }}</a>
       </app-empty-state>
     }
   </div>

@@ -11,11 +11,12 @@ import { CourseCover } from '../../shared/components/course-cover/course-cover';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** Step 1 of checkout: review the order and choose how to pay. */
 @Component({
   selector: 'app-checkout',
-  imports: [FormsModule, RouterLink, BdtPipe, CourseCover, EmptyState, FormatBadge],
+  imports: [TranslatePipe, FormsModule, RouterLink, BdtPipe, CourseCover, EmptyState, FormatBadge],
   templateUrl: './checkout.html',
   styleUrl: './checkout.scss',
 })
@@ -61,7 +62,7 @@ export class Checkout {
     try {
       if (course.price === 0) {
         await this.enrollments.grant(user.id, course.id);
-        this.toast.success(`You're enrolled in ${course.title}.`);
+        this.toast.success("You're enrolled in {0}.", [course.title]);
         await this.router.navigate(['/learn', course.slug]);
       } else {
         await this.router.navigateByUrl(await this.payments.checkout(course, this.method()));

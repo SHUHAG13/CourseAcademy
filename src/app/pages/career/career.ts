@@ -4,12 +4,13 @@ import { RouterLink } from '@angular/router';
 import { OPPORTUNITIES, Opportunity } from '../../core/data/site.data';
 import { ToastService } from '../../core/services/toast.service';
 import { BD_PHONE_PATTERN, URL_PATTERN, showError } from '../../shared/forms/validators';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 type Team = Opportunity['team'] | 'All';
 
 @Component({
   selector: 'app-career',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [LocalNumberPipe, TranslatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './career.html',
   styleUrl: './career.scss',
 })

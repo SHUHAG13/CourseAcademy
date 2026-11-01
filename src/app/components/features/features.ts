@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** "Why Learn With Us?" section. */
 @Component({
   selector: 'app-features',
-  imports: [RouterLink],
+  imports: [TranslatePipe, RouterLink],
   templateUrl: './features.html',
   styleUrl: './features.scss',
 })

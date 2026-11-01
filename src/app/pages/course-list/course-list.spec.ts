@@ -8,6 +8,7 @@ import { CourseList } from './course-list';
 describe('CourseList', () => {
   beforeEach(async () => {
     localStore.clear();
+    localStore.setItem('ca-language', 'en');
     await TestBed.configureTestingModule({
       imports: [CourseList],
       providers: [provideRouter([])],

@@ -1,9 +1,9 @@
 <section class="section" aria-labelledby="categories-title">
   <div class="container">
     <div class="section-head centered">
-      <span class="eyebrow">Course categories</span>
-      <h2 id="categories-title" class="section-title">Four career tracks. One place to learn them.</h2>
-      <p class="section-sub">Pick a track and start with beginner-friendly courses, then grow into advanced, project-based learning.</p>
+      <span class="eyebrow">{{ 'Course categories' | t }}</span>
+      <h2 id="categories-title" class="section-title">{{ 'Four career tracks. One place to learn them.' | t }}</h2>
+      <p class="section-sub">{{ 'Pick a track and start with beginner-friendly courses, then grow into advanced, project-based learning.' | t }}</p>
     </div>
 
     <div class="row g-4">
@@ -11,23 +11,23 @@
         <div class="col-md-6 col-xl-3">
           <article class="cat-card ca-card ca-card-hover" [class]="'tone-' + cat.tone">
             <div class="media">
-              <img [src]="cat.image" [alt]="cat.name + ' students at work'" loading="lazy" decoding="async"
+              <img [src]="cat.image" [alt]="'{0} students at work' | t: [cat.name]" loading="lazy" decoding="async"
                 width="1200" height="655" />
               <span class="icon-tile" [class]="cat.tone"><i class="bi" [class]="cat.icon" aria-hidden="true"></i></span>
             </div>
             <div class="body">
               <div class="d-flex justify-content-between align-items-start gap-2">
-                <h3 class="h5 mb-0">{{ cat.name }}</h3>
-                <span class="tag">{{ cat.count }} {{ cat.count === 1 ? 'course' : 'courses' }}</span>
+                <h3 class="h5 mb-0">{{ cat.name | t }}</h3>
+                <span class="tag">{{ (cat.count === 1 ? '{0} course' : '{0} courses') | t: [cat.count] }}</span>
               </div>
-              <p class="desc">{{ cat.description }}</p>
-              <ul class="skills" aria-label="Skills covered">
+              <p class="desc">{{ cat.description | t }}</p>
+              <ul class="skills" [attr.aria-label]="'Skills covered' | t">
                 @for (skill of cat.skills; track skill) {
-                  <li>{{ skill }}</li>
+                  <li>{{ skill | t }}</li>
                 }
               </ul>
               <a class="btn btn-outline w-100" routerLink="/courses" [queryParams]="{ category: cat.id }">
-                Explore Courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                {{ 'Explore Courses' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
               </a>
             </div>
           </article>

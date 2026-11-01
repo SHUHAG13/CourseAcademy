@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Course, LiveSession } from '../../core/models/course.model';
@@ -12,10 +11,11 @@ import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, RouterLink, BdtPipe, CourseCover, EmptyState, FormatBadge, StatusPill],
+  imports: [LocalNumberPipe, TranslatePipe, LocalDatePipe, RouterLink, BdtPipe, CourseCover, EmptyState, FormatBadge, StatusPill],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })

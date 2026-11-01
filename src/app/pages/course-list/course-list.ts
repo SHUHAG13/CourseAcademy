@@ -11,16 +11,18 @@ import {
   Level,
   PriceRange,
 } from '../../core/models/course.model';
+import { LanguageService } from '../../core/i18n/language.service';
 import { CourseService, DEFAULT_FILTER, PRICE_RANGES, filterCourses } from '../../core/services/course.service';
 import { CourseCard } from '../../shared/components/course-card/course-card';
 import { CourseCardSkeleton } from '../../shared/components/course-card/course-card-skeleton';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 const PAGE_SIZE = 6;
 
 @Component({
   selector: 'app-course-list',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, CourseCard, CourseCardSkeleton, EmptyState],
+  imports: [LocalNumberPipe, TranslatePipe, FormsModule, NgTemplateOutlet, RouterLink, CourseCard, CourseCardSkeleton, EmptyState],
   templateUrl: './course-list.html',
   styleUrl: './course-list.scss',
   host: { '(document:keydown.escape)': 'filtersOpen.set(false)' },
@@ -28,6 +30,7 @@ const PAGE_SIZE = 6;
 export class CourseList {
   private readonly courseService = inject(CourseService);
   private readonly router = inject(Router);
+  private readonly language = inject(LanguageService);
 
   /** Bound from the `?category=` and `?q=` query params. */
   readonly category = input<string>();
@@ -68,7 +71,7 @@ export class CourseList {
     sort: this.sort(),
   }));
 
-  protected readonly results = computed(() => filterCourses(this.courses(), this.filter()));
+  protected readonly results = computed(() => filterCourses(this.courses(), this.filter(), (text) => this.language.t(text)));
   protected readonly visibleCount = linkedSignal({ source: this.filter, computation: () => PAGE_SIZE });
   protected readonly visible = computed(() => this.results().slice(0, this.visibleCount()));
   protected readonly remaining = computed(() => this.results().length - this.visible().length);

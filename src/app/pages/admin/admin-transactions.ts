@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -13,11 +12,13 @@ import {
   filterTransactions,
   paymentMethod,
 } from '../../core/payments/payment.model';
+import { LanguageService } from '../../core/i18n/language.service';
 import { PaymentService } from '../../core/payments/payment.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 const ACTIONS: Partial<Record<PaymentStatus, { label: string; title: string; message: string; danger: boolean }>> = {
   success: {
@@ -42,13 +43,14 @@ const ACTIONS: Partial<Record<PaymentStatus, { label: string; title: string; mes
 
 @Component({
   selector: 'app-admin-transactions',
-  imports: [DatePipe, FormsModule, RouterLink, BdtPipe, StatusPill],
+  imports: [LocalNumberPipe, TranslatePipe, LocalDatePipe, FormsModule, RouterLink, BdtPipe, StatusPill],
   templateUrl: './admin-transactions.html',
 })
 export class AdminTransactions {
   protected readonly payments = inject(PaymentService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly language = inject(LanguageService);
 
   protected readonly methods = PAYMENT_METHODS;
   protected readonly statuses = PAYMENT_STATUSES;
@@ -101,16 +103,16 @@ export class AdminTransactions {
     const action = ACTIONS[status];
     if (!action) return;
     const confirmed = await this.confirm.ask({
-      title: action.title,
-      message: `${transaction.id}: ${action.message}`,
-      confirmLabel: action.label,
+      title: this.language.t(action.title),
+      message: `${transaction.id}: ${this.language.t(action.message)}`,
+      confirmLabel: this.language.t(action.label),
       danger: action.danger,
     });
     if (!confirmed) return;
 
     try {
       await this.payments.setStatus(transaction.id, status);
-      this.toast.success(`${transaction.id} is now ${status}.`);
+      this.toast.success('{0} is now {1}.', [transaction.id, status]);
     } catch (error) {
       this.toast.error((error as Error).message);
     }
@@ -119,7 +121,7 @@ export class AdminTransactions {
   protected async remove(transaction: PaymentTransaction): Promise<void> {
     const confirmed = await this.confirm.ask({
       title: 'Delete this record?',
-      message: `${transaction.id} will be removed from the list. This cannot be undone, except by resetting all demo data.`,
+      message: this.language.t('{0} will be removed from the list. This cannot be undone, except by resetting all demo data.', [transaction.id]),
       confirmLabel: 'Delete record',
       danger: true,
     });

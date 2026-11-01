@@ -1,16 +1,18 @@
 import { Component, computed, effect, inject, input, linkedSignal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import { LanguageService } from '../../core/i18n/language.service';
 import { CourseService } from '../../core/services/course.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { SessionList } from '../../shared/components/session-list/session-list';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** The course area for enrolled users: lessons, live classes and materials. */
 @Component({
   selector: 'app-learn',
-  imports: [RouterLink, EmptyState, FormatBadge, SessionList],
+  imports: [TranslatePipe, RouterLink, EmptyState, FormatBadge, SessionList],
   templateUrl: './learn.html',
   styleUrl: './learn.scss',
 })
@@ -38,9 +40,10 @@ export class Learn {
 
   constructor() {
     const title = inject(Title);
+    const language = inject(LanguageService);
     effect(() => {
       const c = this.course();
-      title.setTitle(`${c?.title ?? 'Course'} | Course Academy`);
+      title.setTitle(language.t('{0} | Course Academy', [c?.title ?? 'Course']));
     });
   }
 

@@ -3,15 +3,15 @@
     <div class="wa">
       <span class="wa-icon" aria-hidden="true"><i class="bi bi-whatsapp"></i></span>
       <div class="flex-grow-1">
-        <h2 id="wa-title">Questions before you enroll?</h2>
-        <p>Get answers about courses, payment and career guidance directly from our team on WhatsApp.</p>
+        <h2 id="wa-title">{{ 'Questions before you enroll?' | t }}</h2>
+        <p>{{ 'Get answers about courses, payment and career guidance directly from our team on WhatsApp.' | t }}</p>
       </div>
       <div class="actions">
         <a [href]="whatsappLink" target="_blank" rel="noopener" class="btn btn-wa">
-          <i class="bi bi-whatsapp" aria-hidden="true"></i> Chat on WhatsApp
+          <i class="bi bi-whatsapp" aria-hidden="true"></i> {{ 'Chat on WhatsApp' | t }}
         </a>
         <a [href]="phoneLink" class="btn btn-outline">
-          <i class="bi bi-telephone" aria-hidden="true"></i> Call Now
+          <i class="bi bi-telephone" aria-hidden="true"></i> {{ 'Call Now' | t }}
         </a>
       </div>
     </div>

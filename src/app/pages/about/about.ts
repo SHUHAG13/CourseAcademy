@@ -3,10 +3,11 @@ import { RouterLink } from '@angular/router';
 import { CourseService } from '../../core/services/course.service';
 import { FinalCta } from '../../components/final-cta/final-cta';
 import { LearningJourney } from '../../components/learning-journey/learning-journey';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-about',
-  imports: [RouterLink, FinalCta, LearningJourney],
+  imports: [LocalNumberPipe, TranslatePipe, RouterLink, FinalCta, LearningJourney],
   templateUrl: './about.html',
   styleUrl: './about.scss',
 })

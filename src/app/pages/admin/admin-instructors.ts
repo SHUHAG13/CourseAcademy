@@ -1,3 +1,4 @@
+import { LanguageService } from '../../core/i18n/language.service';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { uid } from '../../core/data/repository';
@@ -7,69 +8,70 @@ import { CourseService } from '../../core/services/course.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
 import { showError } from '../../shared/forms/validators';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-admin-instructors',
-  imports: [ReactiveFormsModule, Avatar],
+  imports: [TranslatePipe, ReactiveFormsModule, Avatar],
   template: `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-      <h1 class="h3 mb-0">Instructors</h1>
+      <h1 class="h3 mb-0">{{ 'Instructors' | t }}</h1>
       @if (!formOpen()) {
         <button type="button" class="btn btn-primary" (click)="startCreate()">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> New instructor
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'New instructor' | t }}
         </button>
       }
     </div>
 
     @if (formOpen()) {
       <form class="panel ca-card mb-3" [formGroup]="form" (ngSubmit)="save()" novalidate>
-        <h2 class="panel-title">{{ editing() ? 'Edit instructor' : 'New instructor' }}</h2>
+        <h2 class="panel-title">{{ (editing() ? 'Edit instructor' : 'New instructor') | t }}</h2>
         <div class="row g-3">
           <div class="col-md-6">
-            <label for="i-name" class="form-label">Name</label>
+            <label for="i-name" class="form-label">{{ 'Name' | t }}</label>
             <input id="i-name" class="form-control" formControlName="name" [class.is-invalid]="showError('name')" />
             @if (showError('name')) {
-              <div class="field-error">Enter a name.</div>
+              <div class="field-error">{{ 'Enter a name.' | t }}</div>
             }
           </div>
           <div class="col-md-6">
-            <label for="i-title" class="form-label">Professional title</label>
+            <label for="i-title" class="form-label">{{ 'Professional title' | t }}</label>
             <input id="i-title" class="form-control" formControlName="title" [class.is-invalid]="showError('title')" />
             @if (showError('title')) {
-              <div class="field-error">Enter a title.</div>
+              <div class="field-error">{{ 'Enter a title.' | t }}</div>
             }
           </div>
           <div class="col-12">
-            <label for="i-bio" class="form-label">Biography</label>
+            <label for="i-bio" class="form-label">{{ 'Biography' | t }}</label>
             <textarea id="i-bio" class="form-control" rows="3" formControlName="bio" [class.is-invalid]="showError('bio')"></textarea>
             @if (showError('bio')) {
-              <div class="field-error">Enter a short biography.</div>
+              <div class="field-error">{{ 'Enter a short biography.' | t }}</div>
             }
           </div>
           <div class="col-md-6">
-            <label for="i-expertise" class="form-label">Expertise <span class="text-muted fw-normal">(comma separated)</span></label>
+            <label for="i-expertise" class="form-label">{{ 'Expertise' | t }} <span class="text-muted fw-normal">{{ '(comma separated)' | t }}</span></label>
             <input id="i-expertise" class="form-control" formControlName="expertise" />
           </div>
           <div class="col-6 col-md-3">
-            <label for="i-years" class="form-label">Years' experience</label>
+            <label for="i-years" class="form-label">{{ 'Years\\' experience' | t }}</label>
             <input id="i-years" type="number" min="0" class="form-control" formControlName="experienceYears"
               [class.is-invalid]="showError('experienceYears')" />
             @if (showError('experienceYears')) {
-              <div class="field-error">Enter 0 or more.</div>
+              <div class="field-error">{{ 'Enter 0 or more.' | t }}</div>
             }
           </div>
           <div class="col-6 col-md-3">
-            <label for="i-students" class="form-label">Students taught</label>
+            <label for="i-students" class="form-label">{{ 'Students taught' | t }}</label>
             <input id="i-students" type="number" min="0" class="form-control" formControlName="students"
               [class.is-invalid]="showError('students')" />
             @if (showError('students')) {
-              <div class="field-error">Enter 0 or more.</div>
+              <div class="field-error">{{ 'Enter 0 or more.' | t }}</div>
             }
           </div>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-3">
-          <button type="button" class="btn btn-outline" (click)="closeForm()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save instructor</button>
+          <button type="button" class="btn btn-outline" (click)="closeForm()">{{ 'Cancel' | t }}</button>
+          <button type="submit" class="btn btn-primary">{{ 'Save instructor' | t }}</button>
         </div>
       </form>
     }
@@ -81,14 +83,14 @@ import { showError } from '../../shared/forms/validators';
             <div class="d-flex gap-3 align-items-start">
               <app-avatar [name]="i.name" [size]="52" />
               <div class="flex-grow-1 min-w-0">
-                <h2 class="h6 mb-0">{{ i.name }}</h2>
-                <p class="small text-muted mb-1">{{ i.title }}</p>
-                <p class="small mb-2">{{ i.bio }}</p>
-                <p class="small text-muted mb-0">{{ i.experienceYears }} years · {{ courses.assignedCourses(i.id).length }} assigned courses</p>
+                <h2 class="h6 mb-0">{{ i.name | t }}</h2>
+                <p class="small text-muted mb-1">{{ i.title | t }}</p>
+                <p class="small mb-2">{{ i.bio | t }}</p>
+                <p class="small text-muted mb-0">{{ '{0} years · {1} assigned courses' | t: [i.experienceYears, courses.assignedCourses(i.id).length] }}</p>
               </div>
               <div class="d-flex gap-1">
-                <button type="button" class="icon-btn" (click)="startEdit(i)" [attr.aria-label]="'Edit ' + i.name" title="Edit"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                <button type="button" class="icon-btn danger" (click)="remove(i)" [attr.aria-label]="'Delete ' + i.name" title="Delete"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                <button type="button" class="icon-btn" (click)="startEdit(i)" [attr.aria-label]="'Edit {0}' | t: [i.name]" [title]="'Edit' | t"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                <button type="button" class="icon-btn danger" (click)="remove(i)" [attr.aria-label]="'Delete {0}' | t: [i.name]" [title]="'Delete' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
               </div>
             </div>
           </article>
@@ -101,6 +103,7 @@ export class AdminInstructors {
   protected readonly courses = inject(CourseService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly language = inject(LanguageService);
 
   protected readonly formOpen = signal(false);
   protected readonly editing = signal<Instructor | null>(null);
@@ -150,7 +153,7 @@ export class AdminInstructors {
         expertise: value.expertise.split(',').map((e) => e.trim()).filter(Boolean),
         rating: previous?.rating ?? 0,
       });
-      this.toast.success(`${value.name.trim()} was saved.`);
+      this.toast.success('{0} was saved.', [value.name.trim()]);
       this.closeForm();
     } catch {
       this.toast.error('The instructor could not be saved. Browser storage may be full or blocked.');
@@ -160,11 +163,11 @@ export class AdminInstructors {
   protected async remove(instructor: Instructor): Promise<void> {
     const assigned = this.courses.assignedCourses(instructor.id).length;
     if (assigned) {
-      this.toast.error(`${instructor.name} teaches ${assigned} course${assigned === 1 ? '' : 's'}. Reassign them before deleting.`);
+      this.toast.error('{0} teaches {1} course(s). Reassign them before deleting.', [instructor.name, assigned]);
       return;
     }
     const confirmed = await this.confirm.ask({
-      title: `Delete ${instructor.name}?`,
+      title: this.language.t('Delete {0}?', [instructor.name]),
       message: 'This cannot be undone, except by resetting all demo data.',
       confirmLabel: 'Delete instructor',
       danger: true,
@@ -173,7 +176,7 @@ export class AdminInstructors {
 
     try {
       await this.courses.removeInstructor(instructor.id);
-      this.toast.success(`${instructor.name} was deleted.`);
+      this.toast.success('{0} was deleted.', [instructor.name]);
     } catch {
       this.toast.error('The instructor could not be deleted. Browser storage may be full or blocked.');
     }

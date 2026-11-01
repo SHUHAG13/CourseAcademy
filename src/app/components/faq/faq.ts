@@ -1,10 +1,11 @@
 import { Component, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FAQS } from '../../core/data/site.data';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-faq',
-  imports: [RouterLink],
+  imports: [TranslatePipe, RouterLink],
   templateUrl: './faq.html',
   styleUrl: './faq.scss',
 })

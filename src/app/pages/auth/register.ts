@@ -7,10 +7,11 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { BD_PHONE_PATTERN, PASSWORD_PATTERN, matchFields, showError } from '../../shared/forms/validators';
 import { AuthShell } from './auth-shell';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, AuthShell],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink, AuthShell],
   templateUrl: './register.html',
   styleUrl: './auth-form.scss',
 })
@@ -65,7 +66,7 @@ export class Register {
     const { name, email, password, phone } = this.form.getRawValue();
     try {
       await this.auth.register(name.trim(), email, password, phone);
-      this.toast.success(`Welcome to Course Academy, ${name.trim()}! (Demo account)`);
+      this.toast.success('Welcome to Course Academy, {0}! (Demo account)', [name.trim()]);
       this.router.navigateByUrl(this.returnUrl() || this.auth.homeUrl());
     } catch (error) {
       this.error.set((error as Error).message);

@@ -1,69 +1,69 @@
 <app-auth-shell tagline="Welcome back. Continue where you left off.">
-  <h1 class="title">Log in to your account</h1>
-  <p class="sub">New here? <a routerLink="/register" queryParamsHandling="preserve">Create a free account</a></p>
+  <h1 class="title">{{ 'Log in to your account' | t }}</h1>
+  <p class="sub">{{ 'New here?' | t }} <a routerLink="/register" queryParamsHandling="preserve">{{ 'Create a free account' | t }}</a></p>
 
   <div class="demo-accounts">
-    <strong>Demo accounts</strong>
+    <strong>{{ 'Demo accounts' | t }}</strong>
     @for (a of demoAccounts; track a.email) {
       <div class="account">
         <span>
-          <b>{{ a.label }}:</b> {{ a.email }} / {{ a.password }}
+          <b>{{ a.label | t }}:</b> {{ a.email }} / {{ a.password }}
         </span>
         <button type="button" class="link" (click)="useDemoAccount(a.email, a.password)"
-          [attr.aria-label]="'Fill in the ' + a.label + ' demo account'">Use</button>
+          [attr.aria-label]="'Fill in the {0} demo account' | t: [a.label]">{{ 'Use' | t }}</button>
       </div>
     }
-    <small>This is a browser-only demo. Accounts are not secure, so don't use a real password.</small>
+    <small>{{ 'This is a browser-only demo. Accounts are not secure, so don\'t use a real password.' | t }}</small>
   </div>
 
   @if (error()) {
     <div class="form-alert" role="alert">
-      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() }}
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() | t }}
     </div>
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="mb-3">
-      <label for="l-email" class="form-label">Email address</label>
+      <label for="l-email" class="form-label">{{ 'Email address' | t }}</label>
       <div class="input-icon">
         <i class="bi bi-envelope" aria-hidden="true"></i>
         <input id="l-email" type="email" class="form-control" formControlName="email" autocomplete="email"
           placeholder="you@example.com" [class.is-invalid]="showError('email')" aria-describedby="l-email-err" />
       </div>
       @if (showError('email')) {
-        <div id="l-email-err" class="error">Please enter a valid email address.</div>
+        <div id="l-email-err" class="error">{{ 'Please enter a valid email address.' | t }}</div>
       }
     </div>
 
     <div class="mb-3">
       <div class="d-flex justify-content-between">
-        <label for="l-password" class="form-label">Password</label>
-        <button type="button" class="link" (click)="forgotPassword()">Forgot password?</button>
+        <label for="l-password" class="form-label">{{ 'Password' | t }}</label>
+        <button type="button" class="link" (click)="forgotPassword()">{{ 'Forgot password?' | t }}</button>
       </div>
       <div class="input-icon pw">
         <i class="bi bi-lock" aria-hidden="true"></i>
         <input id="l-password" [type]="showPassword() ? 'text' : 'password'" class="form-control" formControlName="password"
           autocomplete="current-password" [class.is-invalid]="showError('password')" aria-describedby="l-pw-err" />
         <button type="button" class="toggle" (click)="showPassword.set(!showPassword())"
-          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+          [attr.aria-label]="(showPassword() ? 'Hide password' : 'Show password') | t">
           <i class="bi" [class]="showPassword() ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
         </button>
       </div>
       @if (showError('password')) {
-        <div id="l-pw-err" class="error">Password must be at least 6 characters.</div>
+        <div id="l-pw-err" class="error">{{ 'Password must be at least 6 characters.' | t }}</div>
       }
     </div>
 
     <div class="form-check mb-4">
       <input id="l-remember" type="checkbox" class="form-check-input" formControlName="remember" />
-      <label for="l-remember" class="form-check-label">Keep me signed in</label>
+      <label for="l-remember" class="form-check-label">{{ 'Keep me signed in' | t }}</label>
     </div>
 
     <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="loading()">
       @if (loading()) {
-        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Logging in…
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ 'Logging in…' | t }}
       } @else {
-        Log in
+        {{ 'Log in' | t }}
       }
     </button>
   </form>

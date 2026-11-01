@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 const TONES: Record<string, string> = {
   success: 'green',
@@ -13,7 +14,8 @@ const TONES: Record<string, string> = {
 /** Coloured label for payment, enrollment and publishing states. */
 @Component({
   selector: 'app-status-pill',
-  template: `<span [class]="'tag text-capitalize ' + tone()">{{ status() }}</span>`,
+  imports: [TranslatePipe],
+  template: `<span [class]="'tag text-capitalize ' + tone()">{{ status() | t }}</span>`,
 })
 export class StatusPill {
   readonly status = input.required<string>();

@@ -1,11 +1,11 @@
 <section class="page-hero">
   <div class="container">
-    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-      <li><a routerLink="/">Home</a></li>
-      <li aria-current="page">About Us</li>
+    <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+      <li><a routerLink="/">{{ 'Home' | t }}</a></li>
+      <li aria-current="page">{{ 'About Us' | t }}</li>
     </ol>
-    <h1>About Course Academy</h1>
-    <p>A skill development platform from Bangladesh, built around one idea: learning should lead to real work.</p>
+    <h1>{{ 'About Course Academy' | t }}</h1>
+    <p>{{ 'A skill development platform from Bangladesh, built around one idea: learning should lead to real work.' | t }}</p>
   </div>
 </section>
 
@@ -13,23 +13,20 @@
   <div class="container">
     <div class="row g-4 g-lg-5 align-items-center">
       <div class="col-lg-6">
-        <span class="eyebrow">Who we are</span>
-        <h2 class="section-title">Practical skills for creative and tech careers</h2>
+        <span class="eyebrow">{{ 'Who we are' | t }}</span>
+        <h2 class="section-title">{{ 'Practical skills for creative and tech careers' | t }}</h2>
         <p>
-          Course Academy is an online learning platform where students start as beginners and grow into
-          professionals. We teach four career tracks —
-          <strong class="text-navy">Video Editing</strong>, <strong class="text-navy">Digital Marketing</strong>,
-          <strong class="text-navy">Sports Journalism</strong> and
-          <strong class="text-navy">Software Development</strong> — through recorded and live courses taught in Bangla by people
-          who do this work every day.
+          {{ 'Course Academy is an online learning platform where students start as beginners and grow into professionals. We teach four career tracks —' | t }}
+          <strong class="text-navy">{{ 'Video Editing' | t }}</strong>, <strong class="text-navy">{{ 'Digital Marketing' | t }}</strong>,
+          <strong class="text-navy">{{ 'Sports Journalism' | t }}</strong> {{ 'and' | t }}
+          <strong class="text-navy">{{ 'Software Development' | t }}</strong> {{ '— through recorded and live courses taught in Bangla by people who do this work every day.' | t }}
         </p>
         <p class="mb-0">
-          Beyond courses, we're building an ecosystem: our own sports media channel and software projects give
-          skilled students a place to gain experience, earn and grow.
+          {{ 'Beyond courses, we\'re building an ecosystem: our own sports media channel and software projects give skilled students a place to gain experience, earn and grow.' | t }}
         </p>
       </div>
       <div class="col-lg-6">
-        <img class="feature-img" src="/images/web/creative-studio.webp" alt="Students working on creative projects in a studio"
+        <img class="feature-img" src="/images/web/creative-studio.webp" [alt]="'Students working on creative projects in a studio' | t"
           width="1200" height="655" loading="lazy" decoding="async" />
       </div>
     </div>
@@ -42,20 +39,18 @@
       <div class="col-md-6">
         <div class="mv ca-card">
           <span class="icon-tile orange mb-3"><i class="bi bi-bullseye" aria-hidden="true"></i></span>
-          <h2 class="h4">Our mission</h2>
+          <h2 class="h4">{{ 'Our mission' | t }}</h2>
           <p class="mb-0">
-            To empower students in Bangladesh with practical digital skills — video editing, sports journalism and
-            software development — so they can build creative, professional and well-paid careers.
+            {{ 'To empower students in Bangladesh with practical digital skills — video editing, sports journalism and software development — so they can build creative, professional and well-paid careers.' | t }}
           </p>
         </div>
       </div>
       <div class="col-md-6">
         <div class="mv ca-card">
           <span class="icon-tile mb-3"><i class="bi bi-eye" aria-hidden="true"></i></span>
-          <h2 class="h4">Our vision</h2>
+          <h2 class="h4">{{ 'Our vision' | t }}</h2>
           <p class="mb-0">
-            To become a leading skill development ecosystem in Bangladesh, producing editors, journalists and
-            developers who can work with teams anywhere in the world.
+            {{ 'To become a leading skill development ecosystem in Bangladesh, producing editors, journalists and developers who can work with teams anywhere in the world.' | t }}
           </p>
         </div>
       </div>
@@ -66,19 +61,19 @@
 <section class="section">
   <div class="container">
     <div class="section-head centered">
-      <span class="eyebrow">How our programs work</span>
-      <h2 class="section-title">A structured 4-month career program</h2>
-      <p class="section-sub">Skill development needs a clear path. Every track follows the same two-phase structure.</p>
+      <span class="eyebrow">{{ 'How our programs work' | t }}</span>
+      <h2 class="section-title">{{ 'A structured 4-month career program' | t }}</h2>
+      <p class="section-sub">{{ 'Skill development needs a clear path. Every track follows the same two-phase structure.' | t }}</p>
     </div>
     <div class="row g-4">
       @for (p of program; track p.title; let i = $index) {
         <div class="col-md-6">
           <div class="phase ca-card">
-            <span class="num">{{ i + 1 }}</span>
+            <span class="num">{{ i + 1 | n }}</span>
             <div>
-              <span class="tag blue mb-2">{{ p.phase }}</span>
-              <h3 class="h5">{{ p.title }}</h3>
-              <p class="mb-0 text-muted">{{ p.text }}</p>
+              <span class="tag blue mb-2">{{ p.phase | t }}</span>
+              <h3 class="h5">{{ p.title | t }}</h3>
+              <p class="mb-0 text-muted">{{ p.text | t }}</p>
             </div>
           </div>
         </div>
@@ -89,7 +84,7 @@
       @for (cat of categories; track cat.id) {
         <a class="track" routerLink="/courses" [queryParams]="{ category: cat.id }">
           <i class="bi" [class]="cat.icon" aria-hidden="true"></i>
-          <span>{{ cat.name }}</span>
+          <span>{{ cat.name | t }}</span>
           <i class="bi bi-arrow-right ms-auto" aria-hidden="true"></i>
         </a>
       }

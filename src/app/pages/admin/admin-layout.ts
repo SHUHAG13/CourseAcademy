@@ -1,18 +1,19 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [TranslatePipe, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="admin container-fluid">
-      <nav class="side" aria-label="Admin">
-        <p class="side-title">Admin dashboard</p>
+      <nav class="side" [attr.aria-label]="'Admin' | t">
+        <p class="side-title">{{ 'Admin dashboard' | t }}</p>
         <ul>
           @for (link of links; track link.path) {
             <li>
               <a [routerLink]="link.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!link.exact }">
-                <i class="bi" [class]="link.icon" aria-hidden="true"></i>{{ link.label }}
+                <i class="bi" [class]="link.icon" aria-hidden="true"></i>{{ link.label | t }}
               </a>
             </li>
           }
@@ -22,8 +23,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <div class="demo-note mb-4">
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <p>
-            Frontend demo: this data lives only in this browser. It is not secure and is not shared with other devices
-            or users.
+            {{ 'Frontend demo: this data lives only in this browser. It is not secure and is not shared with other devices or users.' | t }}
           </p>
         </div>
         <router-outlet />

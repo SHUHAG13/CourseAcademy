@@ -2,7 +2,7 @@
   <div class="container">
     @if (transaction(); as t) {
       <div class="gateway ca-card">
-        <div class="ribbon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Simulated payment: no money moves</div>
+        <div class="ribbon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ 'Simulated payment: no money moves' | t }}</div>
 
         <div class="body">
           <div class="d-flex align-items-center gap-3 mb-3">
@@ -14,39 +14,39 @@
               }
             </span>
             <div>
-              <h1 class="h5 mb-0">{{ method()?.name }}</h1>
-              <small class="text-muted">Course Academy Demo Gateway</small>
+              <h1 class="h5 mb-0">{{ method()?.name | t }}</h1>
+              <small class="text-muted">{{ 'Course Academy Demo Gateway' | t }}</small>
             </div>
           </div>
 
           <dl class="details">
-            <div><dt>Course</dt><dd>{{ t.courseTitle }}</dd></div>
-            <div><dt>Transaction ID</dt><dd class="mono">{{ t.id }}</dd></div>
-            <div><dt>{{ method()?.testAccountLabel }}</dt><dd class="mono">{{ method()?.testAccount }}</dd></div>
-            <div class="amount"><dt>Amount</dt><dd class="price-now">{{ t.amount | bdt }}</dd></div>
+            <div><dt>{{ 'Course' | t }}</dt><dd>{{ t.courseTitle | t }}</dd></div>
+            <div><dt>{{ 'Transaction ID' | t }}</dt><dd class="mono">{{ t.id }}</dd></div>
+            <div><dt>{{ method()?.testAccountLabel | t }}</dt><dd class="mono">{{ method()?.testAccount }}</dd></div>
+            <div class="amount"><dt>{{ 'Amount' | t }}</dt><dd class="price-now">{{ t.amount | bdt }}</dd></div>
           </dl>
 
           <p class="small text-muted">
-            This page takes no card, wallet or PIN details. Choose what happens next to see how the site responds.
+            {{ 'This page takes no card, wallet or PIN details. Choose what happens next to see how the site responds.' | t }}
           </p>
 
           <div class="d-grid gap-2">
             <button type="button" class="btn btn-accent btn-lg" [disabled]="processing()" (click)="finish('success')">
               @if (processing() === 'success') {
-                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Processing…
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ 'Processing…' | t }}
               } @else {
-                <i class="bi bi-check-circle" aria-hidden="true"></i> Simulate successful payment
+                <i class="bi bi-check-circle" aria-hidden="true"></i> {{ 'Simulate successful payment' | t }}
               }
             </button>
             <button type="button" class="btn btn-outline" [disabled]="processing()" (click)="finish('failed')">
               @if (processing() === 'failed') {
-                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Processing…
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ 'Processing…' | t }}
               } @else {
-                <i class="bi bi-x-circle" aria-hidden="true"></i> Simulate failed payment
+                <i class="bi bi-x-circle" aria-hidden="true"></i> {{ 'Simulate failed payment' | t }}
               }
             </button>
             <button type="button" class="btn btn-link" [disabled]="processing()" (click)="finish('cancelled')">
-              Cancel payment
+              {{ 'Cancel payment' | t }}
             </button>
           </div>
         </div>
@@ -54,7 +54,7 @@
     } @else {
       <app-empty-state icon="bi-receipt" title="Payment not found"
         message="This payment doesn't exist or belongs to another account.">
-        <a routerLink="/courses" class="btn btn-primary">Browse courses</a>
+        <a routerLink="/courses" class="btn btn-primary">{{ 'Browse courses' | t }}</a>
       </app-empty-state>
     }
   </div>

@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /**
  * Stands in for the hosted page a real gateway would show. With a real provider
@@ -15,7 +16,7 @@ import { BdtPipe } from '../../shared/pipes/bdt.pipe';
  */
 @Component({
   selector: 'app-demo-gateway',
-  imports: [RouterLink, BdtPipe, EmptyState],
+  imports: [TranslatePipe, RouterLink, BdtPipe, EmptyState],
   templateUrl: './demo-gateway.html',
   styleUrl: './demo-gateway.scss',
 })

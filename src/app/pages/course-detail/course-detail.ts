@@ -1,7 +1,7 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import { LanguageService } from '../../core/i18n/language.service';
 import { CONTACT } from '../../core/data/site.data';
 import { AuthService } from '../../core/services/auth.service';
 import { CourseService, discountPercent, lessonCount } from '../../core/services/course.service';
@@ -15,6 +15,7 @@ import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { RatingStars } from '../../shared/components/rating-stars/rating-stars';
 import { SessionList } from '../../shared/components/session-list/session-list';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 const FORMAT_INTRO = {
   'Pre-recorded': 'Self-paced recorded lessons you can watch anytime.',
@@ -25,9 +26,8 @@ const FORMAT_INTRO = {
 @Component({
   selector: 'app-course-detail',
   imports: [
+    TranslatePipe, LocalNumberPipe, LocalDatePipe,
     RouterLink,
-    DatePipe,
-    DecimalPipe,
     BdtPipe,
     Avatar,
     CourseCard,
@@ -45,6 +45,7 @@ export class CourseDetail {
   private readonly enrollments = inject(EnrollmentService);
   protected readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly language = inject(LanguageService);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
 
@@ -123,10 +124,10 @@ export class CourseDetail {
       if (this.loading()) return;
       const course = this.course();
       if (course) {
-        this.title.setTitle(`${course.title} | Course Academy`);
-        this.meta.updateTag({ name: 'description', content: course.subtitle });
+        this.title.setTitle(this.language.t('{0} | Course Academy', [course.title]));
+        this.meta.updateTag({ name: 'description', content: this.language.t(course.subtitle) });
       } else {
-        this.title.setTitle('Course not found | Course Academy');
+        this.title.setTitle(this.language.t('{0} | Course Academy', ['Course not found']));
       }
     });
   }
@@ -166,7 +167,7 @@ export class CourseDetail {
   }
 
   protected previewLesson(title: string): void {
-    this.toast.show(`“${title}” — free preview playback will be available when the video platform is connected.`);
+    this.toast.show('“{0}” — free preview playback will be available when the video platform is connected.', 'info', [title]);
   }
 
   protected share(): void {

@@ -6,10 +6,11 @@ import { Navbar } from './components/navbar/navbar';
 import { Footer } from './components/footer/footer';
 import { ConfirmDialog } from './shared/components/confirm-dialog/confirm-dialog';
 import { ToastContainer } from './shared/components/toast-container/toast-container';
+import { TranslatePipe } from './shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, Footer, ToastContainer, ConfirmDialog],
+  imports: [TranslatePipe, RouterOutlet, Navbar, Footer, ToastContainer, ConfirmDialog],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

@@ -6,10 +6,11 @@ import { CourseService } from '../../core/services/course.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappCta } from '../../components/whatsapp-cta/whatsapp-cta';
 import { BD_PHONE_PATTERN, showError } from '../../shared/forms/validators';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-contact',
-  imports: [ReactiveFormsModule, RouterLink, WhatsappCta],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink, WhatsappCta],
   templateUrl: './contact.html',
   styleUrl: './contact.scss',
 })

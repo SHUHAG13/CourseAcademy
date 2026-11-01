@@ -45,8 +45,14 @@ function inPriceRange(price: number, range: PriceRange): boolean {
 }
 
 /** Pure filter + sort, kept separate from the service so it is easy to test. */
-export function filterCourses(courses: Course[], filter: CourseFilter): Course[] {
+export function filterCourses(
+  courses: Course[],
+  filter: CourseFilter,
+  /** Also matches the translated text, so people can search in the language they see. */
+  translate: (text: string) => string = (text) => text,
+): Course[] {
   const term = filter.search.trim().toLowerCase();
+  const matches = (text: string) => text.toLowerCase().includes(term) || translate(text).toLowerCase().includes(term);
 
   const result = courses.filter(
     (c) =>
@@ -54,10 +60,7 @@ export function filterCourses(courses: Course[], filter: CourseFilter): Course[]
       inPriceRange(c.price, filter.price) &&
       (filter.levels.length === 0 || filter.levels.includes(c.level)) &&
       (filter.formats.length === 0 || filter.formats.includes(c.format)) &&
-      (!term ||
-        c.title.toLowerCase().includes(term) ||
-        c.subtitle.toLowerCase().includes(term) ||
-        c.coverLabel.toLowerCase().includes(term)),
+      (!term || matches(c.title) || matches(c.subtitle) || matches(c.coverLabel)),
   );
 
   switch (filter.sort) {

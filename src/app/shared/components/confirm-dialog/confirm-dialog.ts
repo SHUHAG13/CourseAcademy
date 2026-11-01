@@ -1,17 +1,19 @@
 import { Component, ElementRef, effect, inject, viewChild } from '@angular/core';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-confirm-dialog',
+  imports: [TranslatePipe],
   template: `
     <dialog #dialog class="confirm" aria-labelledby="confirm-title" (cancel)="confirm.answer(false)">
       @if (confirm.request(); as r) {
-        <h2 id="confirm-title" class="h5">{{ r.title }}</h2>
-        <p>{{ r.message }}</p>
+        <h2 id="confirm-title" class="h5">{{ r.title | t }}</h2>
+        <p>{{ r.message | t }}</p>
         <div class="actions">
-          <button type="button" class="btn btn-outline" (click)="confirm.answer(false)">Go back</button>
+          <button type="button" class="btn btn-outline" (click)="confirm.answer(false)">{{ 'Go back' | t }}</button>
           <button type="button" class="btn" [class]="r.danger ? 'btn-danger' : 'btn-primary'" (click)="confirm.answer(true)">
-            {{ r.confirmLabel }}
+            {{ r.confirmLabel | t }}
           </button>
         </div>
       }

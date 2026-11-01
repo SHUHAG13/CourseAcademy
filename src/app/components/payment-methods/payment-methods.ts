@@ -6,11 +6,12 @@ import { CourseService } from '../../core/services/course.service';
 import { CourseCover } from '../../shared/components/course-cover/course-cover';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
 import { WhatsappCta } from '../whatsapp-cta/whatsapp-cta';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 /** Explains how enrollment and the demo checkout work. Payments happen at `/checkout`. */
 @Component({
   selector: 'app-payment-methods',
-  imports: [RouterLink, BdtPipe, CourseCover, WhatsappCta],
+  imports: [LocalNumberPipe, TranslatePipe, RouterLink, BdtPipe, CourseCover, WhatsappCta],
   templateUrl: './payment-methods.html',
   styleUrl: './payment-methods.scss',
 })

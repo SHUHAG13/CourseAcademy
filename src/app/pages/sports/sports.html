@@ -1,24 +1,24 @@
 <section class="page-hero">
   <div class="container">
-    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-      <li><a routerLink="/">Home</a></li>
-      <li aria-current="page">Sports Media</li>
+    <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+      <li><a routerLink="/">{{ 'Home' | t }}</a></li>
+      <li aria-current="page">{{ 'Sports Media' | t }}</li>
     </ol>
-    <h1>More Than Learning. We Live Sports.</h1>
-    <p>Cricket, football, match analysis and interviews — produced by our journalists and the students we train.</p>
+    <h1>{{ 'More Than Learning. We Live Sports.' | t }}</h1>
+    <p>{{ 'Cricket, football, match analysis and interviews — produced by our journalists and the students we train.' | t }}</p>
   </div>
 </section>
 
 <section class="section-tight">
   <div class="container">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div class="topics" role="tablist" aria-label="Filter stories by topic">
+      <div class="topics" role="tablist" [attr.aria-label]="'Filter stories by topic' | t">
         @for (t of topics; track t) {
           <button type="button" role="tab" class="chip" [class.active]="topic() === t" [attr.aria-selected]="topic() === t"
-            (click)="topic.set(t)">{{ t }}</button>
+            (click)="topic.set(t)">{{ t | t }}</button>
         }
       </div>
-      <span class="tag">Demo stories</span>
+      <span class="tag">{{ 'Demo stories' | t }}</span>
     </div>
 
     <div class="row g-4">
@@ -27,19 +27,19 @@
           <article class="story ca-card ca-card-hover" [class.lead]="first && topic() === 'All'">
             <div class="media">
               @if (s.image) {
-                <img [src]="s.image" [alt]="s.title" loading="lazy" decoding="async" />
+                <img [src]="s.image" [alt]="s.title | t" loading="lazy" decoding="async" />
               } @else {
                 <span class="placeholder-media"><i class="bi" [class]="s.icon" aria-hidden="true"></i></span>
               }
-              <span class="tag orange topic-tag">{{ s.topic }}</span>
+              <span class="tag orange topic-tag">{{ s.topic | t }}</span>
             </div>
             <div class="body">
-              <h2 class="h5">{{ s.title }}</h2>
-              <p>{{ s.excerpt }}</p>
+              <h2 class="h5">{{ s.title | t }}</h2>
+              <p>{{ s.excerpt | t }}</p>
               <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">{{ s.date | date: 'd MMM y' }} · {{ s.readMinutes }} min read</small>
+                <small class="text-muted">{{ '{0} · {1} min read' | t: [(s.date | ldate: 'd MMM y'), s.readMinutes] }}</small>
                 <button type="button" class="btn-link-arrow border-0 bg-transparent p-0" (click)="open(s)"
-                  [attr.aria-label]="'Read: ' + s.title">Read <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                  [attr.aria-label]="'Read: {0}' | t: [s.title]">{{ 'Read' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
               </div>
             </div>
           </article>
@@ -50,11 +50,11 @@
         <div class="col-md-6 col-lg-4">
           <div class="write ca-card">
             <span class="icon-tile orange mb-3"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
-            <h2 class="h5">Want to write for us?</h2>
+            <h2 class="h5">{{ 'Want to write for us?' | t }}</h2>
             <p class="text-muted">
-              Students of our sports journalism courses can publish match reports and analysis on our channel.
+              {{ 'Students of our sports journalism courses can publish match reports and analysis on our channel.' | t }}
             </p>
-            <a routerLink="/career" class="btn btn-navy w-100">See opportunities</a>
+            <a routerLink="/career" class="btn btn-navy w-100">{{ 'See opportunities' | t }}</a>
           </div>
         </div>
       }
@@ -66,12 +66,12 @@
   <div class="container">
     <div class="section-head-row">
       <div class="section-head">
-        <span class="eyebrow">Become a sports journalist</span>
-        <h2 class="section-title">Learn the skills behind the stories</h2>
-        <p class="section-sub">The same people who run our sports desk teach these courses.</p>
+        <span class="eyebrow">{{ 'Become a sports journalist' | t }}</span>
+        <h2 class="section-title">{{ 'Learn the skills behind the stories' | t }}</h2>
+        <p class="section-sub">{{ 'The same people who run our sports desk teach these courses.' | t }}</p>
       </div>
       <a routerLink="/courses" [queryParams]="{ category: 'sports-journalism' }" class="btn-link-arrow">
-        Sports journalism courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        {{ 'Sports journalism courses' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
       </a>
     </div>
     <div class="row row-cols-1 row-cols-md-3 g-4">

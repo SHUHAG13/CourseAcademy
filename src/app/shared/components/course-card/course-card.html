@@ -2,36 +2,36 @@
   <a class="thumb" [routerLink]="link()" tabindex="-1" aria-hidden="true">
     <app-course-cover [course]="course()" />
     @if (course().badge) {
-      <span class="badge-flag" [class.new]="course().badge === 'New'">{{ course().badge }}</span>
+      <span class="badge-flag" [class.new]="course().badge === 'New'">{{ course().badge | t }}</span>
     }
   </a>
 
   <div class="body">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <span class="category">{{ categoryName() }}</span>
+      <span class="category">{{ categoryName() | t }}</span>
       <app-format-badge [format]="course().format" />
     </div>
 
     <h3 class="title">
-      <a [routerLink]="link()">{{ course().title }}</a>
+      <a [routerLink]="link()">{{ course().title | t }}</a>
     </h3>
 
-    <p class="instructor">{{ instructor()?.name }}</p>
+    <p class="instructor">{{ instructor()?.name | t }}</p>
 
     @if (course().ratingCount) {
       <div class="rating">
-        <strong>{{ course().rating | number: '1.1-1' }}</strong>
+        <strong>{{ course().rating | n: '1.1-1' }}</strong>
         <app-rating-stars [rating]="course().rating" />
-        <span class="count">({{ course().ratingCount | number }})</span>
+        <span class="count">({{ course().ratingCount | n }})</span>
       </div>
     }
 
-    <ul class="meta" aria-label="Course details">
+    <ul class="meta" [attr.aria-label]="'Course details' | t">
       @if (course().students) {
-        <li><i class="bi bi-people" aria-hidden="true"></i>{{ course().students | number }} students</li>
+        <li><i class="bi bi-people" aria-hidden="true"></i>{{ '{0} students' | t: [(course().students | n)] }}</li>
       }
-      <li><i class="bi bi-clock" aria-hidden="true"></i>{{ course().durationHours }} hours</li>
-      <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ course().level }}</li>
+      <li><i class="bi bi-clock" aria-hidden="true"></i>{{ '{0} hours' | t: [course().durationHours] }}</li>
+      <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ course().level | t }}</li>
     </ul>
   </div>
 
@@ -40,11 +40,11 @@
       <span class="price-now">{{ course().price | bdt }}</span>
       @if (discount() > 0) {
         <span class="price-was">{{ course().originalPrice | bdt }}</span>
-        <span class="off">{{ discount() }}% off</span>
+        <span class="off">{{ '{0}% off' | t: [discount()] }}</span>
       }
     </div>
-    <a class="btn btn-sm btn-outline" [routerLink]="link()" [attr.aria-label]="'View course: ' + course().title">
-      View Course
+    <a class="btn btn-sm btn-outline" [routerLink]="link()" [attr.aria-label]="'View course: {0}' | t: [course().title]">
+      {{ 'View Course' | t }}
     </a>
   </div>
 </article>

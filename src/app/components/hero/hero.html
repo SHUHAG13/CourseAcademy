@@ -4,38 +4,37 @@
       <div class="col-lg-6">
         <span class="pill">
           <i class="bi bi-play-circle-fill" aria-hidden="true"></i>
-          Recorded and live courses in Bangla
+          {{ 'Recorded and live courses in Bangla' | t }}
         </span>
 
         <h1 id="hero-title" class="title">
-          Build Real Skills.
-          <span>Create Your Future.</span>
+          {{ 'Build Real Skills.' | t }}
+          <span>{{ 'Create Your Future.' | t }}</span>
         </h1>
 
         <p class="lead-text">
-          Learn practical skills from industry-focused courses in video editing, digital marketing, sports
-          journalism, and software development. Turn your knowledge into real opportunities.
+          {{ 'Learn practical skills from industry-focused courses in video editing, digital marketing, sports journalism, and software development. Turn your knowledge into real opportunities.' | t }}
         </p>
 
         <div class="ctas">
           <a routerLink="/courses" class="btn btn-lg btn-accent">
-            Explore Courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            {{ 'Explore Courses' | t }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
           </a>
-          <a routerLink="/register" class="btn btn-lg btn-outline">Start Learning</a>
+          <a routerLink="/register" class="btn btn-lg btn-outline">{{ 'Start Learning' | t }}</a>
         </div>
 
         <dl class="stats">
           <div>
-            <dt>{{ learners() | number }}+</dt>
-            <dd>Enrolments</dd>
+            <dt>{{ learners() | n }}+</dt>
+            <dd>{{ 'Enrolments' | t }}</dd>
           </div>
           <div>
-            <dt>{{ courseCount() }}</dt>
-            <dd>Expert-led courses</dd>
+            <dt>{{ courseCount() | n }}</dt>
+            <dd>{{ 'Expert-led courses' | t }}</dd>
           </div>
           <div>
-            <dt><i class="bi bi-star-fill" aria-hidden="true"></i> {{ avgRating() | number: '1.1-1' }}</dt>
-            <dd>Average rating</dd>
+            <dt><i class="bi bi-star-fill" aria-hidden="true"></i> {{ avgRating() | n: '1.1-1' }}</dt>
+            <dd>{{ 'Average rating' | t }}</dd>
           </div>
         </dl>
       </div>
@@ -45,21 +44,21 @@
           <div class="player">
             <div class="player-bar">
               <span></span><span></span><span></span>
-              <em>Course player</em>
+              <em>{{ 'Course player' | t }}</em>
             </div>
             @if (showcase(); as course) {
               <app-course-cover [course]="course" [showPlay]="true" />
             }
             <div class="player-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <strong>Module 2 · The match report</strong>
-                <small>64%</small>
+                <strong>{{ 'Module 2 · The match report' | t }}</strong>
+                <small>{{ 64 | n }}%</small>
               </div>
               <div class="progress-track"><span style="width: 64%"></span></div>
               <ul class="lessons">
-                <li class="done"><i class="bi bi-check-circle-fill"></i>Writing the sports news story</li>
-                <li class="current"><i class="bi bi-play-circle-fill"></i>The match report</li>
-                <li><i class="bi bi-circle"></i>Features and profiles</li>
+                <li class="done"><i class="bi bi-check-circle-fill"></i>{{ 'Writing the sports news story' | t }}</li>
+                <li class="current"><i class="bi bi-play-circle-fill"></i>{{ 'The match report' | t }}</li>
+                <li><i class="bi bi-circle"></i>{{ 'Features and profiles' | t }}</li>
               </ul>
             </div>
           </div>
@@ -67,16 +66,16 @@
           <div class="float-card fc-cert">
             <span class="icon-tile sm orange"><i class="bi bi-award"></i></span>
             <div>
-              <strong>Certificate earned</strong>
-              <small>Video Editing track</small>
+              <strong>{{ 'Certificate earned' | t }}</strong>
+              <small>{{ 'Video Editing track' | t }}</small>
             </div>
           </div>
 
           <div class="float-card fc-project">
             <img src="/images/web/reporter-stadium.webp" alt="" width="44" height="44" />
             <div>
-              <strong>Portfolio project</strong>
-              <small>Live match coverage</small>
+              <strong>{{ 'Portfolio project' | t }}</strong>
+              <small>{{ 'Live match coverage' | t }}</small>
             </div>
           </div>
         </div>

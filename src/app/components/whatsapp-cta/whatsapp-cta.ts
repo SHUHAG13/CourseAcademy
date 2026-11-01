@@ -1,8 +1,10 @@
 import { Component } from '@angular/core';
 import { CONTACT } from '../../core/data/site.data';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-whatsapp-cta',
+  imports: [TranslatePipe],
   templateUrl: './whatsapp-cta.html',
   styleUrl: './whatsapp-cta.scss',
 })

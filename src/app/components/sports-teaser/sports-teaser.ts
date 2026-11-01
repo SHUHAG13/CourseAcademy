@@ -1,11 +1,11 @@
-import { DatePipe } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SPORTS_STORIES } from '../../core/data/site.data';
+import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-sports-teaser',
-  imports: [RouterLink, DatePipe],
+  imports: [TranslatePipe, LocalDatePipe, RouterLink],
   templateUrl: './sports-teaser.html',
   styleUrl: './sports-teaser.scss',
 })

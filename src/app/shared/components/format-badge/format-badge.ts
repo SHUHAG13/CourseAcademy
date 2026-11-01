@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { CourseFormat } from '../../../core/models/course.model';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 const STYLES: Record<CourseFormat, { icon: string; tone: string }> = {
   'Pre-recorded': { icon: 'bi-play-btn', tone: 'blue' },
@@ -9,7 +10,8 @@ const STYLES: Record<CourseFormat, { icon: string; tone: string }> = {
 
 @Component({
   selector: 'app-format-badge',
-  template: `<span [class]="'tag ' + style().tone"><i class="bi" [class]="style().icon" aria-hidden="true"></i>{{ format() }}</span>`,
+  imports: [TranslatePipe],
+  template: `<span [class]="'tag ' + style().tone"><i class="bi" [class]="style().icon" aria-hidden="true"></i>{{ format() | t }}</span>`,
 })
 export class FormatBadge {
   readonly format = input.required<CourseFormat>();

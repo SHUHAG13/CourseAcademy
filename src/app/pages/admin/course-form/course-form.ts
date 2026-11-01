@@ -25,6 +25,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { URL_PATTERN } from '../../../shared/forms/validators';
 import { BdtPipe } from '../../../shared/pipes/bdt.pipe';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const IMAGE_PATTERN = /^(?:\/[^\s/]|https?:\/\/)\S*$/i;
@@ -54,7 +55,7 @@ function lines(value: string): string[] {
 
 @Component({
   selector: 'app-course-form',
-  imports: [ReactiveFormsModule, RouterLink, BdtPipe, EmptyState],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink, BdtPipe, EmptyState],
   templateUrl: './course-form.html',
   styleUrl: './course-form.scss',
 })
@@ -293,7 +294,7 @@ export class CourseForm implements OnInit {
     try {
       await this.courses.saveCourse(course);
       this.form.markAsPristine();
-      this.toast.success(`${course.title} was saved.`);
+      this.toast.success('{0} was saved.', [course.title]);
       await this.router.navigateByUrl('/admin/courses');
     } catch {
       this.toast.error('The course could not be saved. Browser storage may be full or blocked.');

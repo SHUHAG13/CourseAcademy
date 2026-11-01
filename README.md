@@ -27,6 +27,15 @@ Checkout talks to the abstract `PaymentGateway` in `src/app/core/payments/paymen
 
 Never put gateway secret keys or payment verification in this frontend: everything shipped to the browser is public, and anything it sends can be altered.
 
+## Languages
+
+The site runs in Bangla by default, with a switch to English in the top bar and the mobile menu. The choice is saved in the browser.
+
+- `LanguageService` in `src/app/core/i18n` holds the current language and formats text, numbers and dates.
+- Templates use the `t`, `n` and `ldate` pipes, plus `bdt` for prices: `{{ 'Log in' | t }}`, `{{ '{0} lessons' | t: [count] }}`.
+- The English text is the key. To add or change Bangla, edit `bn.translations.ts` (interface) or `bn-content.translations.ts` (default courses and site content).
+- Text with no entry is shown as written, so a course an admin types appears in that one language in both modes.
+
 ## Development server
 
 To start a local development server, run:

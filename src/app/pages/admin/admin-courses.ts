@@ -1,3 +1,4 @@
+import { LanguageService } from '../../core/i18n/language.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,30 +11,31 @@ import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-admin-courses',
-  imports: [FormsModule, RouterLink, BdtPipe, EmptyState, FormatBadge, StatusPill],
+  imports: [LocalNumberPipe, TranslatePipe, FormsModule, RouterLink, BdtPipe, EmptyState, FormatBadge, StatusPill],
   template: `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-      <h1 class="h3 mb-0">Courses</h1>
+      <h1 class="h3 mb-0">{{ 'Courses' | t }}</h1>
       <a routerLink="/admin/courses/new" class="btn btn-primary">
-        <i class="bi bi-plus-lg" aria-hidden="true"></i> New course
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'New course' | t }}
       </a>
     </div>
 
     <div class="row g-2 mb-3">
       <div class="col-md-8">
-        <label for="course-q" class="visually-hidden">Search courses</label>
-        <input id="course-q" type="search" class="form-control" placeholder="Search by title"
+        <label for="course-q" class="visually-hidden">{{ 'Search courses' | t }}</label>
+        <input id="course-q" type="search" class="form-control" [placeholder]="'Search by title' | t"
           [ngModel]="search()" (ngModelChange)="search.set($event)" />
       </div>
       <div class="col-md-4">
-        <label for="course-format" class="visually-hidden">Filter by format</label>
+        <label for="course-format" class="visually-hidden">{{ 'Filter by format' | t }}</label>
         <select id="course-format" class="form-select" [ngModel]="format()" (ngModelChange)="format.set($event)">
-          <option value="all">All formats</option>
+          <option value="all">{{ 'All formats' | t }}</option>
           @for (f of formats; track f) {
-            <option [value]="f">{{ f }}</option>
+            <option [value]="f">{{ f | t }}</option>
           }
         </select>
       </div>
@@ -44,44 +46,44 @@ import { BdtPipe } from '../../shared/pipes/bdt.pipe';
         <table class="ca-table">
           <thead>
             <tr>
-              <th scope="col">Course</th><th scope="col">Format</th><th scope="col">Price</th>
-              <th scope="col">Content</th><th scope="col">Enrolled</th><th scope="col">Status</th>
-              <th scope="col"><span class="visually-hidden">Actions</span></th>
+              <th scope="col">{{ 'Course' | t }}</th><th scope="col">{{ 'Format' | t }}</th><th scope="col">{{ 'Price' | t }}</th>
+              <th scope="col">{{ 'Content' | t }}</th><th scope="col">{{ 'Enrolled' | t }}</th><th scope="col">{{ 'Status' | t }}</th>
+              <th scope="col"><span class="visually-hidden">{{ 'Actions' | t }}</span></th>
             </tr>
           </thead>
           <tbody>
             @for (c of filtered(); track c.id) {
               <tr>
                 <td>
-                  <a class="primary" [routerLink]="['/admin/courses', c.id]">{{ c.title }}</a>
-                  <span class="secondary">{{ instructorName(c) }}</span>
+                  <a class="primary" [routerLink]="['/admin/courses', c.id]">{{ c.title | t }}</a>
+                  <span class="secondary">{{ instructorName(c) | t }}</span>
                 </td>
                 <td><app-format-badge [format]="c.format" /></td>
                 <td class="text-nowrap">
                   {{ c.price | bdt }}
                   @if (discount(c) > 0) {
-                    <span class="secondary">{{ discount(c) }}% off {{ c.originalPrice | bdt }}</span>
+                    <span class="secondary">{{ '{0}% off {1}' | t: [discount(c), (c.originalPrice | bdt)] }}</span>
                   }
                 </td>
                 <td class="text-nowrap">
-                  {{ lessons(c) }} lessons
-                  <span class="secondary">{{ c.schedule.length }} live · {{ c.materials.length }} materials</span>
+                  {{ '{0} lessons' | t: [lessons(c)] }}
+                  <span class="secondary">{{ '{0} live · {1} materials' | t: [c.schedule.length, c.materials.length] }}</span>
                 </td>
-                <td>{{ enrolledCount(c) }}</td>
+                <td>{{ enrolledCount(c) | n }}</td>
                 <td><app-status-pill [status]="c.published ? 'published' : 'draft'" /></td>
                 <td class="actions">
                   <button type="button" class="icon-btn" (click)="togglePublished(c)"
-                    [title]="c.published ? 'Unpublish' : 'Publish'"
-                    [attr.aria-label]="(c.published ? 'Unpublish ' : 'Publish ') + c.title">
+                    [title]="(c.published ? 'Unpublish' : 'Publish') | t"
+                    [attr.aria-label]="(c.published ? 'Unpublish {0}' : 'Publish {0}') | t: [c.title]">
                     <i class="bi" [class]="c.published ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
                   </button>
-                  <a class="icon-btn ms-1" [routerLink]="['/courses', c.slug]" title="View page" [attr.aria-label]="'View ' + c.title">
+                  <a class="icon-btn ms-1" [routerLink]="['/courses', c.slug]" [title]="'View page' | t" [attr.aria-label]="'View {0}' | t: [c.title]">
                     <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                   </a>
-                  <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id]" title="Edit" [attr.aria-label]="'Edit ' + c.title">
+                  <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id]" [title]="'Edit' | t" [attr.aria-label]="'Edit {0}' | t: [c.title]">
                     <i class="bi bi-pencil" aria-hidden="true"></i>
                   </a>
-                  <button type="button" class="icon-btn danger ms-1" (click)="remove(c)" title="Delete" [attr.aria-label]="'Delete ' + c.title">
+                  <button type="button" class="icon-btn danger ms-1" (click)="remove(c)" [title]="'Delete' | t" [attr.aria-label]="'Delete {0}' | t: [c.title]">
                     <i class="bi bi-trash" aria-hidden="true"></i>
                   </button>
                 </td>
@@ -101,6 +103,7 @@ export class AdminCourses {
   private readonly enrollments = inject(EnrollmentService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly language = inject(LanguageService);
 
   protected readonly formats = COURSE_FORMATS;
   protected readonly search = signal('');
@@ -132,7 +135,7 @@ export class AdminCourses {
   protected async togglePublished(course: Course): Promise<void> {
     try {
       await this.courses.saveCourse({ ...course, published: !course.published });
-      this.toast.success(`${course.title} is now ${course.published ? 'unpublished' : 'published'}.`);
+      this.toast.success(course.published ? '{0} is now unpublished.' : '{0} is now published.', [course.title]);
     } catch {
       this.toast.error('The change could not be saved. Browser storage may be full or blocked.');
     }
@@ -141,10 +144,13 @@ export class AdminCourses {
   protected async remove(course: Course): Promise<void> {
     const count = this.enrollments.countAllForCourse(course.id);
     const confirmed = await this.confirm.ask({
-      title: `Delete "${course.title}"?`,
-      message:
-        (count ? `This also removes ${count} enrollment${count === 1 ? '' : 's'}. ` : '') +
-        'Payment records are kept. This cannot be undone, except by resetting all demo data.',
+      title: this.language.t('Delete "{0}"?', [course.title]),
+      message: this.language.t(
+        count
+          ? 'This also removes {0} enrollment(s). Payment records are kept. This cannot be undone, except by resetting all demo data.'
+          : 'Payment records are kept. This cannot be undone, except by resetting all demo data.',
+        [count],
+      ),
       confirmLabel: 'Delete course',
       danger: true,
     });
@@ -153,7 +159,7 @@ export class AdminCourses {
     try {
       await this.enrollments.removeForCourse(course.id);
       await this.courses.removeCourse(course.id);
-      this.toast.success(`${course.title} was deleted.`);
+      this.toast.success('{0} was deleted.', [course.title]);
     } catch {
       this.toast.error('The course could not be deleted. Browser storage may be full or blocked.');
     }

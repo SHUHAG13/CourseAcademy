@@ -1,37 +1,37 @@
 <section class="page-hero">
   <div class="container">
-    <ol class="breadcrumb-ca" aria-label="Breadcrumb">
-      <li><a routerLink="/">Home</a></li>
+    <ol class="breadcrumb-ca" [attr.aria-label]="'Breadcrumb' | t">
+      <li><a routerLink="/">{{ 'Home' | t }}</a></li>
       @if (heading(); as cat) {
-        <li><a routerLink="/courses">Courses</a></li>
-        <li aria-current="page">{{ cat.name }}</li>
+        <li><a routerLink="/courses">{{ 'Courses' | t }}</a></li>
+        <li aria-current="page">{{ cat.name | t }}</li>
       } @else {
-        <li aria-current="page">Courses</li>
+        <li aria-current="page">{{ 'Courses' | t }}</li>
       }
     </ol>
 
-    <h1>{{ heading()?.name ?? 'All Courses' }}</h1>
-    <p>{{ heading()?.description ?? 'Practical, project-based courses in video editing, digital marketing, sports journalism and software development.' }}</p>
+    <h1>{{ (heading()?.name ?? 'All Courses') | t }}</h1>
+    <p>{{ (heading()?.description ?? 'Practical, project-based courses in video editing, digital marketing, sports journalism and software development.') | t }}</p>
 
     <form class="search" role="search" (submit)="$event.preventDefault()">
-      <label for="course-search" class="visually-hidden">Search courses</label>
+      <label for="course-search" class="visually-hidden">{{ 'Search courses' | t }}</label>
       <i class="bi bi-search" aria-hidden="true"></i>
-      <input id="course-search" type="search" class="form-control" placeholder="Search courses, e.g. video, marketing, sports, software"
+      <input id="course-search" type="search" class="form-control" [placeholder]="'Search courses, e.g. video, marketing, sports, software' | t"
         [ngModel]="search()" (ngModelChange)="search.set($event)" name="search" autocomplete="off" />
     </form>
   </div>
 </section>
 
-<nav class="cat-nav" aria-label="Course categories">
+<nav class="cat-nav" [attr.aria-label]="'Course categories' | t">
   <div class="container">
     <div class="cat-scroll">
       <button type="button" class="chip" [class.active]="activeCategory() === 'all'" (click)="setCategory('all')">
-        All courses <span class="count">{{ countFor('all') }}</span>
+        {{ 'All courses' | t }} <span class="count">{{ countFor('all') | n }}</span>
       </button>
       @for (cat of categories; track cat.id) {
         <button type="button" class="chip" [class.active]="activeCategory() === cat.id" (click)="setCategory(cat.id)">
-          <i class="bi" [class]="cat.icon" aria-hidden="true"></i>{{ cat.name }}
-          <span class="count">{{ countFor(cat.id) }}</span>
+          <i class="bi" [class]="cat.icon" aria-hidden="true"></i>{{ cat.name | t }}
+          <span class="count">{{ countFor(cat.id) | n }}</span>
         </button>
       }
     </div>
@@ -42,7 +42,7 @@
   <div class="container">
     <div class="row g-4">
       <!-- Desktop sidebar -->
-      <aside class="col-lg-3 d-none d-lg-block" aria-label="Filters">
+      <aside class="col-lg-3 d-none d-lg-block" [attr.aria-label]="'Filters' | t">
         <div class="filters ca-card">
           <ng-container [ngTemplateOutlet]="filterPanel" [ngTemplateOutletContext]="{ id: 'd' }" />
         </div>
@@ -52,23 +52,23 @@
         <div class="toolbar">
           <p class="result-count" aria-live="polite">
             @if (loading()) {
-              Loading courses…
+              {{ 'Loading courses…' | t }}
             } @else {
-              <strong>{{ results().length }}</strong> {{ results().length === 1 ? 'course' : 'courses' }} found
+              <strong>{{ results().length | n }}</strong> {{ '{0} found' | t: [(results().length === 1 ? 'course' : 'courses')] }}
             }
           </p>
 
           <div class="d-flex gap-2 align-items-center">
             <button type="button" class="btn btn-outline btn-sm d-lg-none" (click)="filtersOpen.set(true)">
-              <i class="bi bi-sliders" aria-hidden="true"></i> Filters
+              <i class="bi bi-sliders" aria-hidden="true"></i> {{ 'Filters' | t }}
               @if (activeFilterCount()) {
-                <span class="badge-count">{{ activeFilterCount() }}</span>
+                <span class="badge-count">{{ activeFilterCount() | n }}</span>
               }
             </button>
-            <label for="sort" class="visually-hidden">Sort by</label>
+            <label for="sort" class="visually-hidden">{{ 'Sort by' | t }}</label>
             <select id="sort" class="form-select form-select-sm sort" [ngModel]="sort()" (ngModelChange)="sort.set($event)" name="sort">
               @for (opt of sortOptions; track opt.id) {
-                <option [value]="opt.id">{{ opt.label }}</option>
+                <option [value]="opt.id">{{ opt.label | t }}</option>
               }
             </select>
           </div>
@@ -77,18 +77,18 @@
         @if (search() || price() !== 'all' || levels().length || formats().length) {
           <div class="active-filters">
             @if (search()) {
-              <button type="button" class="pill" (click)="search.set('')">“{{ search() }}” <i class="bi bi-x" aria-label="Remove"></i></button>
+              <button type="button" class="pill" (click)="search.set('')">“{{ search() }}” <i class="bi bi-x" [attr.aria-label]="'Remove' | t"></i></button>
             }
             @if (price() !== 'all') {
-              <button type="button" class="pill" (click)="price.set('all')">{{ priceLabel(price()) }} <i class="bi bi-x" aria-label="Remove"></i></button>
+              <button type="button" class="pill" (click)="price.set('all')">{{ priceLabel(price()) | t }} <i class="bi bi-x" [attr.aria-label]="'Remove' | t"></i></button>
             }
             @for (level of levels(); track level) {
-              <button type="button" class="pill" (click)="toggleLevel(level)">{{ level }} <i class="bi bi-x" aria-label="Remove"></i></button>
+              <button type="button" class="pill" (click)="toggleLevel(level)">{{ level | t }} <i class="bi bi-x" [attr.aria-label]="'Remove' | t"></i></button>
             }
             @for (format of formats(); track format) {
-              <button type="button" class="pill" (click)="toggleFormat(format)">{{ format }} <i class="bi bi-x" aria-label="Remove"></i></button>
+              <button type="button" class="pill" (click)="toggleFormat(format)">{{ format | t }} <i class="bi bi-x" [attr.aria-label]="'Remove' | t"></i></button>
             }
-            <button type="button" class="clear" (click)="clearAll()">Clear all</button>
+            <button type="button" class="clear" (click)="clearAll()">{{ 'Clear all' | t }}</button>
           </div>
         }
 
@@ -101,7 +101,7 @@
         } @else if (results().length === 0) {
           <app-empty-state title="No courses match your filters"
             message="Try a different search term, or clear some filters to see more courses.">
-            <button type="button" class="btn btn-primary" (click)="clearAll()">Clear all filters</button>
+            <button type="button" class="btn btn-primary" (click)="clearAll()">{{ 'Clear all filters' | t }}</button>
           </app-empty-state>
         } @else {
           <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-4">
@@ -113,11 +113,11 @@
           @if (remaining() > 0) {
             <div class="text-center mt-5">
               <button type="button" class="btn btn-outline btn-lg" (click)="loadMore()">
-                Load more courses <span class="text-muted fw-normal">({{ remaining() }} more)</span>
+                {{ 'Load more courses' | t }} <span class="text-muted fw-normal">{{ '({0} more)' | t: [remaining()] }}</span>
               </button>
             </div>
           } @else if (results().length > 6) {
-            <p class="text-center text-muted small mt-4 mb-0">You've reached the end of the list.</p>
+            <p class="text-center text-muted small mt-4 mb-0">{{ 'You\'ve reached the end of the list.' | t }}</p>
           }
         }
       </div>
@@ -127,71 +127,71 @@
 
 <!-- Mobile filter drawer -->
 <div class="drawer-backdrop d-lg-none" [class.open]="filtersOpen()" (click)="filtersOpen.set(false)" aria-hidden="true"></div>
-<div class="filter-drawer d-lg-none" [class.open]="filtersOpen()" role="dialog" aria-modal="true" aria-label="Filters"
+<div class="filter-drawer d-lg-none" [class.open]="filtersOpen()" role="dialog" aria-modal="true" [attr.aria-label]="'Filters' | t"
   [attr.inert]="filtersOpen() ? null : ''">
   <div class="drawer-head">
-    <strong>Filters</strong>
-    <button type="button" class="btn-close" (click)="filtersOpen.set(false)" aria-label="Close filters"></button>
+    <strong>{{ 'Filters' | t }}</strong>
+    <button type="button" class="btn-close" (click)="filtersOpen.set(false)" [attr.aria-label]="'Close filters' | t"></button>
   </div>
   <div class="drawer-body">
     <ng-container [ngTemplateOutlet]="filterPanel" [ngTemplateOutletContext]="{ id: 'm' }" />
   </div>
   <div class="drawer-foot">
     <button type="button" class="btn btn-primary w-100" (click)="filtersOpen.set(false)">
-      Show {{ results().length }} {{ results().length === 1 ? 'course' : 'courses' }}
+      {{ 'Show {0} {1}' | t: [results().length, (results().length === 1 ? 'course' : 'courses')] }}
     </button>
   </div>
 </div>
 
 <ng-template #filterPanel let-id="id">
   <fieldset class="group">
-    <legend>Category</legend>
+    <legend>{{ 'Category' | t }}</legend>
     <div class="form-check">
       <input class="form-check-input" type="radio" [id]="id + '-cat-all'" [name]="id + '-cat'"
         [checked]="activeCategory() === 'all'" (change)="setCategory('all')" />
-      <label class="form-check-label" [for]="id + '-cat-all'">All categories <span>{{ countFor('all') }}</span></label>
+      <label class="form-check-label" [for]="id + '-cat-all'">{{ 'All categories' | t }} <span>{{ countFor('all') | n }}</span></label>
     </div>
     @for (cat of categories; track cat.id) {
       <div class="form-check">
         <input class="form-check-input" type="radio" [id]="id + '-cat-' + cat.id" [name]="id + '-cat'"
           [checked]="activeCategory() === cat.id" (change)="setCategory(cat.id)" />
-        <label class="form-check-label" [for]="id + '-cat-' + cat.id">{{ cat.name }} <span>{{ countFor(cat.id) }}</span></label>
+        <label class="form-check-label" [for]="id + '-cat-' + cat.id">{{ cat.name | t }} <span>{{ countFor(cat.id) | n }}</span></label>
       </div>
     }
   </fieldset>
 
   <fieldset class="group">
-    <legend>Format</legend>
+    <legend>{{ 'Format' | t }}</legend>
     @for (format of formatOptions; track format) {
       <div class="form-check">
         <input class="form-check-input" type="checkbox" [id]="id + '-format-' + format"
           [checked]="formats().includes(format)" (change)="toggleFormat(format)" />
-        <label class="form-check-label" [for]="id + '-format-' + format">{{ format }} <span>{{ formatCount(format) }}</span></label>
+        <label class="form-check-label" [for]="id + '-format-' + format">{{ format | t }} <span>{{ formatCount(format) | n }}</span></label>
       </div>
     }
   </fieldset>
 
   <fieldset class="group">
-    <legend>Price</legend>
+    <legend>{{ 'Price' | t }}</legend>
     @for (range of priceRanges; track range.id) {
       <div class="form-check">
         <input class="form-check-input" type="radio" [id]="id + '-price-' + range.id" [name]="id + '-price'"
           [checked]="price() === range.id" (change)="price.set(range.id)" />
-        <label class="form-check-label" [for]="id + '-price-' + range.id">{{ range.label }}</label>
+        <label class="form-check-label" [for]="id + '-price-' + range.id">{{ range.label | t }}</label>
       </div>
     }
   </fieldset>
 
   <fieldset class="group">
-    <legend>Skill level</legend>
+    <legend>{{ 'Skill level' | t }}</legend>
     @for (level of levelOptions; track level) {
       <div class="form-check">
         <input class="form-check-input" type="checkbox" [id]="id + '-level-' + level"
           [checked]="levels().includes(level)" (change)="toggleLevel(level)" />
-        <label class="form-check-label" [for]="id + '-level-' + level">{{ level }} <span>{{ levelCount(level) }}</span></label>
+        <label class="form-check-label" [for]="id + '-level-' + level">{{ level | t }} <span>{{ levelCount(level) | n }}</span></label>
       </div>
     }
   </fieldset>
 
-  <button type="button" class="btn btn-outline btn-sm w-100" (click)="clearAll()">Reset filters</button>
+  <button type="button" class="btn btn-outline btn-sm w-100" (click)="clearAll()">{{ 'Reset filters' | t }}</button>
 </ng-template>
