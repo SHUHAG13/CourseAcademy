@@ -82,6 +82,70 @@
   }
 }
 
+.has-menu {
+  position: relative;
+
+  &.active > .menu-btn {
+    color: var(--ca-navy);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--ca-orange);
+  }
+}
+
+.menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.5rem;
+  border: 0;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ca-text-2);
+
+  i {
+    font-size: 0.7rem;
+  }
+
+  &:hover {
+    color: var(--ca-blue);
+  }
+}
+
+.submenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  min-width: 200px;
+  margin: 0;
+  padding: 0.4rem;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius);
+  background: var(--ca-surface);
+  box-shadow: var(--ca-shadow-lg);
+  list-style: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s var(--ca-ease);
+
+  &.open {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.nav-links .submenu a {
+  padding: 0.5rem 0.6rem;
+
+  &.active {
+    border-radius: var(--ca-radius-sm);
+    background: var(--ca-blue-50);
+    color: var(--ca-blue-600);
+    box-shadow: none;
+  }
+}
+
 .nav-actions {
   display: flex;
   align-items: center;

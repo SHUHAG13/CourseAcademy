@@ -1,0 +1,118 @@
+@if (course(); as c) {
+  @if (hasAccess()) {
+    <section class="page-hero">
+      <div class="container">
+        <ol class="breadcrumb-ca" aria-label="Breadcrumb">
+          <li><a routerLink="/dashboard">My dashboard</a></li>
+          <li aria-current="page">{{ c.title }}</li>
+        </ol>
+        <h1>{{ c.title }}</h1>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <app-format-badge [format]="c.format" />
+          <span class="tag">{{ instructor()?.name }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-tight">
+      <div class="container">
+        <div class="row g-4">
+          <div class="col-lg-8">
+            @if (c.format !== 'Live') {
+              <div class="player ca-card mb-4">
+                <div class="screen">
+                  <i class="bi bi-play-circle" aria-hidden="true"></i>
+                  <p class="mb-0">Demo player: lesson video would play here.</p>
+                </div>
+                @if (lesson(); as l) {
+                  <div class="now">
+                    <h2 class="h5 mb-1">{{ l.title }}</h2>
+                    <small class="text-muted">{{ l.minutes }} min</small>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (c.schedule.length) {
+              <section class="mb-4" aria-labelledby="learn-schedule">
+                <h2 id="learn-schedule" class="h5 mb-3">Live classes</h2>
+                <app-session-list [sessions]="c.schedule" [showLinks]="true" />
+                <p class="small text-muted mt-2 mb-0">Meeting links are demo placeholders. No meeting provider is connected.</p>
+              </section>
+            }
+
+            <section aria-labelledby="learn-materials">
+              <h2 id="learn-materials" class="h5 mb-3">Learning materials</h2>
+              @if (c.materials.length) {
+                <ul class="materials">
+                  @for (m of c.materials; track m.id) {
+                    <li>
+                      <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                      <span class="flex-grow-1">{{ m.title }}</span>
+                      <span class="tag">{{ m.type }}</span>
+                      <a [href]="m.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline"
+                        [attr.aria-label]="'Open (demo link): ' + m.title">Open</a>
+                    </li>
+                  }
+                </ul>
+                <p class="small text-muted mt-2 mb-0">Material links are demo placeholders.</p>
+              } @else {
+                <p class="text-muted">No materials have been added yet.</p>
+              }
+            </section>
+          </div>
+
+          <div class="col-lg-4">
+            <aside class="outline ca-card" aria-labelledby="learn-outline">
+              <h2 id="learn-outline" class="h6">{{ c.format === 'Live' ? 'Class topics' : 'Course content' }}</h2>
+              @for (sec of c.curriculum; track sec.id) {
+                <h3 class="sec-title">{{ sec.title }}</h3>
+                <ul>
+                  @for (l of sec.lessons; track l.id) {
+                    <li>
+                      @if (c.format === 'Live') {
+                        <span class="lesson static">
+                          <span class="flex-grow-1">{{ l.title }}</span>
+                          <small>{{ l.minutes }} min</small>
+                        </span>
+                      } @else {
+                        <button type="button" class="lesson" [class.active]="lesson()?.id === l.id"
+                          [attr.aria-current]="lesson()?.id === l.id ? 'true' : null" (click)="selectLesson(l.id)">
+                          <i class="bi" [class]="lesson()?.id === l.id ? 'bi-play-circle-fill' : 'bi-play-circle'" aria-hidden="true"></i>
+                          <span class="flex-grow-1">{{ l.title }}</span>
+                          <small>{{ l.minutes }} min</small>
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              } @empty {
+                <p class="small text-muted mb-0">The curriculum is being prepared.</p>
+              }
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <div class="container section">
+      <h1 class="visually-hidden">Enrollment required</h1>
+      <app-empty-state icon="bi-lock" title="Enroll to open this course"
+        message="Lessons, live classes and materials are available to enrolled students.">
+        @if (c.published) {
+          <a [routerLink]="['/courses', c.slug]" class="btn btn-primary">View course</a>
+        } @else {
+          <a routerLink="/courses" class="btn btn-primary">Browse courses</a>
+        }
+      </app-empty-state>
+    </div>
+  }
+} @else {
+  <div class="container section">
+    <h1 class="visually-hidden">Course not found</h1>
+    <app-empty-state icon="bi-journal-x" title="Course not found"
+      message="This course doesn't exist or may have been removed.">
+      <a routerLink="/dashboard" class="btn btn-primary">Back to dashboard</a>
+    </app-empty-state>
+  </div>
+}

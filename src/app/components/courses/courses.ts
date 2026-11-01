@@ -20,7 +20,8 @@ export class Courses {
   protected readonly courses = computed(() => {
     const tab = this.active();
     if (tab === 'featured') return this.courseService.featured();
-    return this.courseService.all
+    return this.courseService
+      .published()
       .filter((c) => c.category === tab)
       .sort((a, b) => b.students - a.students)
       .slice(0, 4);

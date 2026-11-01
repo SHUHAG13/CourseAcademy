@@ -24,10 +24,13 @@ export class Sports {
     return t === 'All' ? SPORTS_STORIES : SPORTS_STORIES.filter((s) => s.topic === t);
   });
 
-  protected readonly journalismCourses = this.courseService.all
-    .filter((c) => c.category === 'sports-journalism')
-    .sort((a, b) => b.students - a.students)
-    .slice(0, 3);
+  protected readonly journalismCourses = computed(() =>
+    this.courseService
+      .published()
+      .filter((c) => c.category === 'sports-journalism')
+      .sort((a, b) => b.students - a.students)
+      .slice(0, 3),
+  );
 
   protected open(story: SportsStory): void {
     this.toast.show(`Full articles will be published when our sports media channel launches. “${story.title}” is a preview.`);

@@ -17,7 +17,7 @@ export class Contact {
   private readonly toast = inject(ToastService);
 
   protected readonly contact = CONTACT;
-  protected readonly courses = inject(CourseService).all;
+  protected readonly courses = inject(CourseService).published;
   protected readonly sending = signal(false);
 
   protected readonly form = inject(NonNullableFormBuilder).group({

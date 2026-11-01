@@ -1,5 +1,9 @@
+@if (course().image) {
+  <img class="photo" [src]="course().image" alt="" loading="lazy" decoding="async" />
+}
+
 <span class="accent-bar" aria-hidden="true"></span>
-@if (!showPlay()) {
+@if (!showPlay() && !course().image) {
   <i class="bi glyph {{ course().coverIcon }}" aria-hidden="true"></i>
 }
 

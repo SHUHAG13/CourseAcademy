@@ -1,0 +1,146 @@
+// Shared by the user dashboard, checkout and the admin area.
+.table-responsive {
+  // Positioned so visually hidden column labels scroll with the table, not the page.
+  position: relative;
+  overflow-x: auto;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.tag.red {
+  background: var(--ca-danger-50);
+  color: var(--ca-danger);
+}
+
+.stat-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  height: 100%;
+  padding: 1.1rem 1.2rem;
+
+  .value {
+    display: block;
+    font-family: var(--ca-font-display);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--ca-text);
+  }
+
+  .label {
+    font-size: 0.85rem;
+    color: var(--ca-muted);
+  }
+}
+
+.panel {
+  padding: 1.25rem;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+}
+
+.panel-title {
+  margin-bottom: 1rem;
+  font-size: 1.05rem;
+}
+
+.ca-table {
+  width: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+  border-collapse: collapse;
+
+  th {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--ca-border);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ca-muted);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--ca-border);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .primary {
+    font-weight: 600;
+    color: var(--ca-text);
+  }
+
+  .secondary {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ca-muted);
+  }
+
+  .actions {
+    white-space: nowrap;
+    text-align: right;
+  }
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--ca-border);
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-surface);
+  color: var(--ca-text-2);
+
+  &:hover:not(:disabled) {
+    border-color: var(--ca-blue);
+    color: var(--ca-blue);
+  }
+
+  &.danger:hover:not(:disabled) {
+    border-color: var(--ca-danger);
+    color: var(--ca-danger);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.field-error {
+  margin-top: 0.3rem;
+  font-size: 0.83rem;
+  color: var(--ca-danger);
+}
+
+.demo-note {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #fed7aa;
+  border-radius: var(--ca-radius);
+  background: var(--ca-orange-50);
+  font-size: 0.88rem;
+  color: var(--ca-text-2);
+
+  > i {
+    color: var(--ca-orange-600);
+  }
+
+  p {
+    margin: 0;
+  }
+}

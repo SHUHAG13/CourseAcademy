@@ -138,21 +138,21 @@ export const OPPORTUNITIES: Opportunity[] = [
 export const TESTIMONIALS: Testimonial[] = [
   {
     name: 'Rakibul Islam',
-    course: 'Premiere Pro: Professional Video Editing',
+    course: 'Video Editing & Post-Production',
     outcome: 'Now freelancing as a video editor',
     rating: 5,
     text: 'The projects were the best part. I finished the course with three edits in my portfolio and got my first paid client a month later.',
   },
   {
     name: 'Sanjida Akter',
-    course: 'Sports Journalism Masterclass',
+    course: 'Sports Journalism & Sports Media',
     outcome: 'Writing for a student sports desk',
     rating: 5,
     text: 'Learning from a working journalist made a huge difference. The feedback on my match reports was honest and detailed.',
   },
   {
     name: 'Tanvir Ahmed',
-    course: 'Full-Stack Web Development',
+    course: 'Software Development & Programming',
     outcome: 'Hired as a junior developer',
     rating: 5,
     text: 'Clear explanations in Bangla, and the capstone project was exactly what I showed in my job interview.',
@@ -162,15 +162,15 @@ export const TESTIMONIALS: Testimonial[] = [
 export const FAQS: FaqItem[] = [
   {
     question: 'Are the courses fully online?',
-    answer: 'Yes. All lessons are recorded videos you can watch anytime, on any device. Some courses also include live Q&A sessions.',
+    answer: 'Yes. Every course is online and shows its format: Pre-recorded courses are videos you can watch anytime, Live courses are scheduled online classes, and Hybrid courses combine both.',
   },
   {
     question: 'How long will I have access to a course?',
-    answer: 'You get lifetime access to the course videos, including future updates to the same course.',
+    answer: 'You get lifetime access to recorded lessons, including future updates to the same course. Live classes run on the schedule shown on each course page.',
   },
   {
     question: 'How do I pay for a course?',
-    answer: 'You can pay with bKash, Nagad or bank transfer. Contact us on WhatsApp, complete the payment and send the transaction ID — access is given after verification.',
+    answer: 'Choose a course, review the price and pick bKash, Nagad, Rocket or Visa/Mastercard at checkout. This website currently runs a demo checkout, so no real money is taken.',
   },
   {
     question: 'Will I receive a certificate?',

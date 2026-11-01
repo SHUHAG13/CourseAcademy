@@ -2,7 +2,15 @@ import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { CategoryId, Course, CourseFilter, CourseSort, Level, PriceRange } from '../../core/models/course.model';
+import {
+  COURSE_FORMATS,
+  CategoryId,
+  CourseFilter,
+  CourseFormat,
+  CourseSort,
+  Level,
+  PriceRange,
+} from '../../core/models/course.model';
 import { CourseService, DEFAULT_FILTER, PRICE_RANGES, filterCourses } from '../../core/services/course.service';
 import { CourseCard } from '../../shared/components/course-card/course-card';
 import { CourseCardSkeleton } from '../../shared/components/course-card/course-card-skeleton';
@@ -28,6 +36,7 @@ export class CourseList {
   protected readonly categories = this.courseService.categories;
   protected readonly priceRanges = PRICE_RANGES;
   protected readonly levelOptions: Level[] = ['Beginner', 'Intermediate', 'Advanced'];
+  protected readonly formatOptions = COURSE_FORMATS;
   protected readonly sortOptions: { id: CourseSort; label: string }[] = [
     { id: 'popular', label: 'Most popular' },
     { id: 'rating', label: 'Highest rated' },
@@ -37,7 +46,7 @@ export class CourseList {
   ];
 
   protected readonly loading = signal(true);
-  protected readonly courses = signal<Course[]>([]);
+  protected readonly courses = this.courseService.published;
   protected readonly filtersOpen = signal(false);
 
   protected readonly activeCategory = computed<CategoryId | 'all'>(() => {
@@ -47,6 +56,7 @@ export class CourseList {
   protected readonly search = linkedSignal(() => this.q() ?? '');
   protected readonly price = signal<PriceRange>(DEFAULT_FILTER.price);
   protected readonly levels = signal<Level[]>([]);
+  protected readonly formats = signal<CourseFormat[]>([]);
   protected readonly sort = signal<CourseSort>(DEFAULT_FILTER.sort);
 
   protected readonly filter = computed<CourseFilter>(() => ({
@@ -54,6 +64,7 @@ export class CourseList {
     category: this.activeCategory(),
     price: this.price(),
     levels: this.levels(),
+    formats: this.formats(),
     sort: this.sort(),
   }));
 
@@ -68,16 +79,17 @@ export class CourseList {
   });
 
   protected readonly activeFilterCount = computed(
-    () => (this.price() !== 'all' ? 1 : 0) + this.levels().length + (this.activeCategory() !== 'all' ? 1 : 0),
+    () =>
+      (this.price() !== 'all' ? 1 : 0) +
+      this.levels().length +
+      this.formats().length +
+      (this.activeCategory() !== 'all' ? 1 : 0),
   );
 
-  protected readonly skeletons = Array.from({ length: 6 });
+  protected readonly skeletons = Array.from({ length: 4 });
 
   constructor() {
-    this.courseService.list().then((list) => {
-      this.courses.set(list);
-      this.loading.set(false);
-    });
+    this.courseService.whenLoaded().then(() => this.loading.set(false));
 
     // Lock page scroll while the mobile filter drawer is open.
     const body = inject(DOCUMENT).body;
@@ -88,13 +100,19 @@ export class CourseList {
   }
 
   protected countFor(category: CategoryId | 'all'): number {
-    const all = this.courses().length ? this.courses() : this.courseService.all;
+    const all = this.courses();
     return category === 'all' ? all.length : all.filter((c) => c.category === category).length;
   }
 
   protected levelCount(level: Level): number {
-    return this.courseService.all.filter(
+    return this.courses().filter(
       (c) => c.level === level && (this.activeCategory() === 'all' || c.category === this.activeCategory()),
+    ).length;
+  }
+
+  protected formatCount(format: CourseFormat): number {
+    return this.courses().filter(
+      (c) => c.format === format && (this.activeCategory() === 'all' || c.category === this.activeCategory()),
     ).length;
   }
 
@@ -109,6 +127,10 @@ export class CourseList {
     this.levels.update((list) => (list.includes(level) ? list.filter((l) => l !== level) : [...list, level]));
   }
 
+  protected toggleFormat(format: CourseFormat): void {
+    this.formats.update((list) => (list.includes(format) ? list.filter((f) => f !== format) : [...list, format]));
+  }
+
   protected priceLabel(id: PriceRange): string {
     return this.priceRanges.find((p) => p.id === id)!.label;
   }
@@ -117,6 +139,7 @@ export class CourseList {
     this.search.set('');
     this.price.set('all');
     this.levels.set([]);
+    this.formats.set([]);
     this.sort.set('popular');
     if (this.activeCategory() !== 'all' || this.q()) {
       this.router.navigate(['/courses']);

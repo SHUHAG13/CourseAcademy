@@ -1,6 +1,19 @@
 <app-auth-shell tagline="Join thousands of students building real skills.">
   <h1 class="title">Create your account</h1>
-  <p class="sub">Already have an account? <a routerLink="/login">Log in</a></p>
+  <p class="sub">Already have an account? <a routerLink="/login" queryParamsHandling="preserve">Log in</a></p>
+
+  <div class="demo-accounts">
+    <small>
+      <strong>Demo only:</strong> your details stay in this browser, and the password is stored without
+      protection. Please use a made-up password, not one you use elsewhere.
+    </small>
+  </div>
+
+  @if (error()) {
+    <div class="form-alert" role="alert">
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() }}
+    </div>
+  }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="row g-3">

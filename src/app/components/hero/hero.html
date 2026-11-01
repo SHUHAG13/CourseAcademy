@@ -4,7 +4,7 @@
       <div class="col-lg-6">
         <span class="pill">
           <i class="bi bi-play-circle-fill" aria-hidden="true"></i>
-          Online video courses in Bangla
+          Recorded and live courses in Bangla
         </span>
 
         <h1 id="hero-title" class="title">
@@ -13,8 +13,8 @@
         </h1>
 
         <p class="lead-text">
-          Learn practical skills from industry-focused courses in video editing, sports journalism, and
-          software development. Turn your knowledge into real opportunities.
+          Learn practical skills from industry-focused courses in video editing, digital marketing, sports
+          journalism, and software development. Turn your knowledge into real opportunities.
         </p>
 
         <div class="ctas">
@@ -26,15 +26,15 @@
 
         <dl class="stats">
           <div>
-            <dt>{{ learners | number }}+</dt>
+            <dt>{{ learners() | number }}+</dt>
             <dd>Enrolments</dd>
           </div>
           <div>
-            <dt>{{ courseCount }}</dt>
+            <dt>{{ courseCount() }}</dt>
             <dd>Expert-led courses</dd>
           </div>
           <div>
-            <dt><i class="bi bi-star-fill" aria-hidden="true"></i> {{ avgRating | number: '1.1-1' }}</dt>
+            <dt><i class="bi bi-star-fill" aria-hidden="true"></i> {{ avgRating() | number: '1.1-1' }}</dt>
             <dd>Average rating</dd>
           </div>
         </dl>
@@ -47,7 +47,9 @@
               <span></span><span></span><span></span>
               <em>Course player</em>
             </div>
-            <app-course-cover [course]="showcase" [showPlay]="true" />
+            @if (showcase(); as course) {
+              <app-course-cover [course]="course" [showPlay]="true" />
+            }
             <div class="player-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong>Module 2 · The match report</strong>

@@ -71,11 +71,11 @@
         <p class="section-sub">The same people who run our sports desk teach these courses.</p>
       </div>
       <a routerLink="/courses" [queryParams]="{ category: 'sports-journalism' }" class="btn-link-arrow">
-        All sports journalism courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        Sports journalism courses <i class="bi bi-arrow-right" aria-hidden="true"></i>
       </a>
     </div>
     <div class="row row-cols-1 row-cols-md-3 g-4">
-      @for (c of journalismCourses; track c.id) {
+      @for (c of journalismCourses(); track c.id) {
         <div class="col"><app-course-card [course]="c" /></div>
       }
     </div>

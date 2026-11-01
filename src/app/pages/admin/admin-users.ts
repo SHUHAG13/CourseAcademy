@@ -1,0 +1,61 @@
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
+import { EnrollmentService } from '../../core/services/enrollment.service';
+import { Avatar } from '../../shared/components/avatar/avatar';
+
+/** Read-only list of demo accounts. Passwords are never displayed. */
+@Component({
+  selector: 'app-admin-users',
+  imports: [DatePipe, FormsModule, Avatar],
+  template: `
+    <h1 class="h3 mb-3">Users</h1>
+
+    <div class="mb-3">
+      <label for="user-q" class="visually-hidden">Search users</label>
+      <input id="user-q" type="search" class="form-control" placeholder="Search by name or email"
+        [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
+
+    <div class="ca-card table-responsive">
+      <table class="ca-table">
+        <thead>
+          <tr>
+            <th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th>
+            <th scope="col">Active courses</th><th scope="col">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr>
+              <td>
+                <span class="d-flex align-items-center gap-2 primary"><app-avatar [name]="u.name" [size]="32" />{{ u.name }}</span>
+              </td>
+              <td>{{ u.email }}</td>
+              <td><span class="tag" [class.blue]="u.role === 'admin'">{{ u.role === 'admin' ? 'Admin' : 'User' }}</span></td>
+              <td>{{ activeCourses(u.id) }}</td>
+              <td class="text-nowrap">{{ u.createdAt | date: 'd MMM y' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="text-center text-muted py-4">No users match your search.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  `,
+})
+export class AdminUsers {
+  private readonly auth = inject(AuthService);
+  private readonly enrollments = inject(EnrollmentService);
+
+  protected readonly search = signal('');
+  protected readonly users = computed(() => {
+    const term = this.search().trim().toLowerCase();
+    return this.auth.users().filter((u) => !term || u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term));
+  });
+
+  protected activeCourses(userId: string): number {
+    return this.enrollments.enrollments().filter((e) => e.userId === userId && e.status === 'active').length;
+  }
+}

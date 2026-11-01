@@ -23,6 +23,9 @@
     <div class="container">
       <div class="row">
         <div class="col-lg-8">
+          @if (!c.published) {
+            <p class="unpublished-note"><i class="bi bi-eye-slash" aria-hidden="true"></i> Unpublished: only admins can see this page.</p>
+          }
           <ol class="breadcrumb-ca" aria-label="Breadcrumb">
             <li><a routerLink="/">Home</a></li>
             <li><a routerLink="/courses">Courses</a></li>
@@ -33,6 +36,7 @@
             @if (c.badge) {
               <span class="tag orange">{{ c.badge }}</span>
             }
+            <app-format-badge [format]="c.format" />
             <span class="tag on-dark">{{ c.level }}</span>
           </div>
 
@@ -40,12 +44,16 @@
           <p class="subtitle">{{ c.subtitle }}</p>
 
           <div class="hero-meta">
-            <span class="rating">
-              <strong>{{ c.rating | number: '1.1-1' }}</strong>
-              <app-rating-stars [rating]="c.rating" />
-              <a href="#reviews">({{ c.ratingCount | number }} ratings)</a>
-            </span>
-            <span><i class="bi bi-people" aria-hidden="true"></i>{{ c.students | number }} students</span>
+            @if (c.ratingCount) {
+              <span class="rating">
+                <strong>{{ c.rating | number: '1.1-1' }}</strong>
+                <app-rating-stars [rating]="c.rating" />
+                <a href="#reviews">({{ c.ratingCount | number }} ratings)</a>
+              </span>
+            }
+            @if (c.students) {
+              <span><i class="bi bi-people" aria-hidden="true"></i>{{ c.students | number }} students</span>
+            }
           </div>
 
           <div class="hero-meta small-meta">
@@ -70,25 +78,44 @@
           <div class="enroll-body">
             <div class="price-row">
               <span class="price-now">{{ c.price | bdt }}</span>
-              <span class="price-was">{{ c.originalPrice | bdt }}</span>
-              <span class="tag green">{{ discount() }}% off</span>
+              @if (discount() > 0) {
+                <span class="price-was">{{ c.originalPrice | bdt }}</span>
+                <span class="tag green">{{ discount() }}% off</span>
+              }
             </div>
 
-            <a class="btn btn-accent btn-lg w-100" routerLink="/payment" [queryParams]="{ course: c.slug }">
-              Enroll Now
-            </a>
+            @if (hasAccess()) {
+              <a class="btn btn-primary btn-lg w-100" [routerLink]="['/learn', c.slug]">
+                <i class="bi bi-play-circle" aria-hidden="true"></i> Go to course
+              </a>
+            } @else {
+              <a class="btn btn-accent btn-lg w-100" [routerLink]="['/checkout', c.slug]">
+                Enroll Now
+              </a>
+            }
             <a class="btn btn-outline w-100 mt-2" [href]="whatsappLink()" target="_blank" rel="noopener">
               <i class="bi bi-whatsapp" aria-hidden="true"></i> Ask on WhatsApp
             </a>
-            <p class="pay-note">Pay with bKash, Nagad or bank transfer. <a routerLink="/payment" [queryParams]="{ course: c.slug }">How it works</a></p>
+            <p class="pay-note">Pay with bKash, Nagad, Rocket or card in our demo checkout. <a routerLink="/payment" [queryParams]="{ course: c.slug }">How it works</a></p>
 
             <h2 class="includes-title">This course includes</h2>
             <ul class="includes">
-              <li><i class="bi bi-play-btn" aria-hidden="true"></i>{{ c.durationHours }} hours of video</li>
+              <li>
+                <i class="bi bi-play-btn" aria-hidden="true"></i>
+                {{ c.durationHours }} hours of {{ c.format === 'Live' ? 'live classes' : c.format === 'Hybrid' ? 'video and live classes' : 'video' }}
+              </li>
               <li><i class="bi bi-collection-play" aria-hidden="true"></i>{{ lessonCount() }} lessons</li>
+              @if (c.schedule.length) {
+                <li><i class="bi bi-broadcast" aria-hidden="true"></i>{{ c.schedule.length }} scheduled live sessions</li>
+              }
+              @if (c.materials.length) {
+                <li><i class="bi bi-folder2-open" aria-hidden="true"></i>{{ c.materials.length }} learning resources</li>
+              }
               <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ c.level }} level</li>
               <li><i class="bi bi-translate" aria-hidden="true"></i>{{ c.language }} instruction</li>
-              <li><i class="bi bi-infinity" aria-hidden="true"></i>Lifetime access</li>
+              @if (c.format !== 'Live') {
+                <li><i class="bi bi-infinity" aria-hidden="true"></i>Lifetime access to recorded lessons</li>
+              }
               <li><i class="bi bi-award" aria-hidden="true"></i>Certificate of completion</li>
             </ul>
 
@@ -101,6 +128,12 @@
 
       <!-- Main content -->
       <div class="col-lg-8 order-lg-1 main">
+        <section class="block" aria-labelledby="about-title">
+          <h2 id="about-title" class="block-title">About this course</h2>
+          <p class="mb-2">{{ c.description }}</p>
+          <p class="mb-0 text-muted small"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ c.format }}: {{ formatIntro() }}</p>
+        </section>
+
         <section class="block learn" aria-labelledby="learn-title">
           <h2 id="learn-title" class="block-title">What you will learn</h2>
           <ul class="check-list two-col">
@@ -124,7 +157,7 @@
           </div>
 
           <div class="curriculum">
-            @for (sec of c.curriculum; track sec.title; let i = $index) {
+            @for (sec of c.curriculum; track sec.id; let i = $index) {
               <div class="sec" [class.open]="openSections().has(i)">
                 <h3 class="m-0">
                   <button type="button" class="sec-head" (click)="toggleSection(i)"
@@ -137,7 +170,7 @@
                 <div class="sec-body" [id]="'sec-' + i">
                   <div class="inner">
                     <ul>
-                      @for (l of sec.lessons; track l.title) {
+                      @for (l of sec.lessons; track l.id) {
                         <li>
                           <i class="bi" [class]="l.preview ? 'bi-play-circle' : 'bi-lock'" aria-hidden="true"></i>
                           <span class="flex-grow-1">{{ l.title }}</span>
@@ -154,6 +187,31 @@
             }
           </div>
         </section>
+
+        @if (c.schedule.length) {
+          <section class="block" id="schedule" aria-labelledby="schedule-title">
+            <h2 id="schedule-title" class="block-title">Live class schedule</h2>
+            <app-session-list [sessions]="c.schedule" [showLinks]="hasAccess()" />
+            @if (!hasAccess()) {
+              <p class="text-muted small mt-2 mb-0">Meeting links appear in your course area after you enroll.</p>
+            }
+          </section>
+        }
+
+        @if (c.materials.length) {
+          <section class="block" aria-labelledby="materials-title">
+            <h2 id="materials-title" class="block-title">Learning materials</h2>
+            <ul class="resources">
+              @for (m of c.materials; track m.id) {
+                <li>
+                  <i class="bi" [class]="hasAccess() ? 'bi-file-earmark-text' : 'bi-lock'" aria-hidden="true"></i>
+                  <span class="flex-grow-1">{{ m.title }}</span>
+                  <span class="tag">{{ m.type }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
 
         <section class="block" aria-labelledby="req-title">
           <h2 id="req-title" class="block-title">Requirements</h2>
@@ -191,6 +249,7 @@
           </section>
         }
 
+        @if (c.ratingCount) {
         <section class="block" id="reviews" aria-labelledby="reviews-title">
           <h2 id="reviews-title" class="block-title">
             Student reviews <span class="tag ms-2 align-middle">Demo content</span>
@@ -229,6 +288,7 @@
             }
           </div>
         </section>
+        }
       </div>
     </div>
   </div>
@@ -256,9 +316,15 @@
   <div class="buy-bar d-lg-none">
     <div>
       <span class="price-now">{{ c.price | bdt }}</span>
-      <span class="price-was ms-1">{{ c.originalPrice | bdt }}</span>
+      @if (discount() > 0) {
+        <span class="price-was ms-1">{{ c.originalPrice | bdt }}</span>
+      }
     </div>
-    <a class="btn btn-accent" routerLink="/payment" [queryParams]="{ course: c.slug }">Enroll Now</a>
+    @if (hasAccess()) {
+      <a class="btn btn-primary" [routerLink]="['/learn', c.slug]">Go to course</a>
+    } @else {
+      <a class="btn btn-accent" [routerLink]="['/checkout', c.slug]">Enroll Now</a>
+    }
   </div>
 } @else {
   <div class="container section">

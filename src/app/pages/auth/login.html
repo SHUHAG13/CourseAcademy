@@ -1,6 +1,26 @@
 <app-auth-shell tagline="Welcome back. Continue where you left off.">
   <h1 class="title">Log in to your account</h1>
-  <p class="sub">New here? <a routerLink="/register">Create a free account</a></p>
+  <p class="sub">New here? <a routerLink="/register" queryParamsHandling="preserve">Create a free account</a></p>
+
+  <div class="demo-accounts">
+    <strong>Demo accounts</strong>
+    @for (a of demoAccounts; track a.email) {
+      <div class="account">
+        <span>
+          <b>{{ a.label }}:</b> {{ a.email }} / {{ a.password }}
+        </span>
+        <button type="button" class="link" (click)="useDemoAccount(a.email, a.password)"
+          [attr.aria-label]="'Fill in the ' + a.label + ' demo account'">Use</button>
+      </div>
+    }
+    <small>This is a browser-only demo. Accounts are not secure, so don't use a real password.</small>
+  </div>
+
+  @if (error()) {
+    <div class="form-alert" role="alert">
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ error() }}
+    </div>
+  }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="mb-3">

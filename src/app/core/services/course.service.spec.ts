@@ -1,6 +1,6 @@
 import { COURSES } from '../data/courses.data';
 import { CourseFilter } from '../models/course.model';
-import { DEFAULT_FILTER, filterCourses } from './course.service';
+import { DEFAULT_FILTER, discountPercent, filterCourses } from './course.service';
 
 const run = (patch: Partial<CourseFilter>) => filterCourses(COURSES, { ...DEFAULT_FILTER, ...patch });
 
@@ -20,8 +20,8 @@ describe('filterCourses', () => {
   });
 
   it('searches title, subtitle and cover label case-insensitively', () => {
-    expect(run({ search: 'PREMIERE' }).map((c) => c.slug)).toContain('premiere-pro-professional-video-editing');
-    expect(run({ search: 'cricket' }).length).toBeGreaterThan(0);
+    expect(run({ search: 'POST-PRODUCTION' }).map((c) => c.slug)).toContain('video-editing-post-production');
+    expect(run({ search: 'marketing' }).length).toBeGreaterThan(0);
     expect(run({ search: 'no-such-course-xyz' })).toEqual([]);
   });
 
@@ -32,9 +32,15 @@ describe('filterCourses', () => {
   });
 
   it('filters by one or more levels', () => {
-    const result = run({ levels: ['Intermediate', 'Advanced'] });
+    const result = run({ levels: ['Beginner'] });
     expect(result.length).toBeGreaterThan(0);
-    expect(result.every((c) => c.level !== 'Beginner')).toBe(true);
+    expect(result.every((c) => c.level === 'Beginner')).toBe(true);
+    expect(run({ levels: ['Advanced'] })).toEqual([]);
+  });
+
+  it('filters by delivery format', () => {
+    expect(run({ formats: ['Live'] }).map((c) => c.format)).toEqual(['Live']);
+    expect(run({ formats: ['Pre-recorded', 'Hybrid'] }).length).toBe(3);
   });
 
   it('sorts by price both ways and by rating', () => {
@@ -56,9 +62,29 @@ describe('filterCourses', () => {
 });
 
 describe('course data', () => {
+  it('has exactly four published courses covering all three formats', () => {
+    expect(COURSES.length).toBe(4);
+    expect(COURSES.every((c) => c.published)).toBe(true);
+    expect(new Set(COURSES.map((c) => c.format))).toEqual(new Set(['Pre-recorded', 'Live', 'Hybrid']));
+  });
+
   it('has unique slugs and a discount on every course', () => {
     const slugs = new Set(COURSES.map((c) => c.slug));
     expect(slugs.size).toBe(COURSES.length);
     expect(COURSES.every((c) => c.price < c.originalPrice)).toBe(true);
+  });
+
+  it('schedules live classes for every Live and Hybrid course', () => {
+    for (const course of COURSES) {
+      expect(course.schedule.length > 0).toBe(course.format !== 'Pre-recorded');
+    }
+  });
+});
+
+describe('discountPercent', () => {
+  it('handles courses with no discount or no price', () => {
+    expect(discountPercent({ price: 500, originalPrice: 1000 })).toBe(50);
+    expect(discountPercent({ price: 1000, originalPrice: 1000 })).toBe(0);
+    expect(discountPercent({ price: 0, originalPrice: 0 })).toBe(0);
   });
 });

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard, authGuard } from './core/guards/auth.guards';
 import { Home } from './pages/home/home';
 
 const SITE = 'Course Academy';
@@ -50,6 +51,84 @@ export const routes: Routes = [
     path: 'register',
     title: `Sign Up | ${SITE}`,
     loadComponent: () => import('./pages/auth/register').then((m) => m.Register),
+  },
+  {
+    path: 'dashboard',
+    title: `My Dashboard | ${SITE}`,
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
+  },
+  {
+    // Title is set by the component once the course is loaded.
+    path: 'learn/:slug',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/learn/learn').then((m) => m.Learn),
+  },
+  {
+    path: 'checkout/pay/:id',
+    title: `Demo Payment | ${SITE}`,
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/checkout/demo-gateway').then((m) => m.DemoGateway),
+  },
+  {
+    path: 'checkout/result/:id',
+    title: `Payment Status | ${SITE}`,
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/checkout/payment-result').then((m) => m.PaymentResult),
+  },
+  {
+    path: 'checkout/:slug',
+    title: `Checkout | ${SITE}`,
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/checkout/checkout').then((m) => m.Checkout),
+  },
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./pages/admin/admin-layout').then((m) => m.AdminLayout),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        title: `Admin Overview | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-overview').then((m) => m.AdminOverview),
+      },
+      {
+        path: 'courses',
+        title: `Manage Courses | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-courses').then((m) => m.AdminCourses),
+      },
+      {
+        path: 'courses/new',
+        title: `New Course | ${SITE}`,
+        loadComponent: () => import('./pages/admin/course-form/course-form').then((m) => m.CourseForm),
+      },
+      {
+        path: 'courses/:id',
+        title: `Edit Course | ${SITE}`,
+        loadComponent: () => import('./pages/admin/course-form/course-form').then((m) => m.CourseForm),
+      },
+      {
+        path: 'instructors',
+        title: `Manage Instructors | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-instructors').then((m) => m.AdminInstructors),
+      },
+      {
+        path: 'users',
+        title: `Users | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-users').then((m) => m.AdminUsers),
+      },
+      {
+        path: 'enrollments',
+        title: `Enrollments | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-enrollments').then((m) => m.AdminEnrollments),
+      },
+      {
+        path: 'transactions',
+        title: `Transactions | ${SITE}`,
+        loadComponent: () => import('./pages/admin/admin-transactions').then((m) => m.AdminTransactions),
+      },
+    ],
   },
   {
     path: 'testimonials',

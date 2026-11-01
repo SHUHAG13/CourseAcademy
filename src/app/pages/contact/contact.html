@@ -46,7 +46,7 @@
                   aria-describedby="c-topic-err">
                   <option value="" disabled>Select a topic</option>
                   <optgroup label="Courses">
-                    @for (c of courses; track c.id) {
+                    @for (c of courses(); track c.id) {
                       <option [value]="c.slug">{{ c.title }}</option>
                     }
                   </optgroup>

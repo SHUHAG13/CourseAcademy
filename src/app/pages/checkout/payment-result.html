@@ -1,0 +1,59 @@
+<section class="section-tight">
+  <div class="container">
+    @if (loading()) {
+      <div class="result ca-card" aria-busy="true" aria-label="Loading payment">
+        <span class="skeleton" style="height: 220px"></span>
+      </div>
+    } @else if (transaction(); as t) {
+      <div class="result ca-card">
+        <div class="head" [class]="'head ' + outcome()?.tone">
+          <i class="bi" [class]="outcome()?.icon" aria-hidden="true"></i>
+          <h1 class="h4">{{ outcome()?.title }}</h1>
+          <p>{{ outcome()?.message }}</p>
+        </div>
+
+        <dl class="details">
+          <div><dt>Transaction ID</dt><dd class="mono">{{ t.id }}</dd></div>
+          <div><dt>Status</dt><dd><app-status-pill [status]="t.status" /></dd></div>
+          <div><dt>Course</dt><dd>{{ t.courseTitle }}</dd></div>
+          <div><dt>Payment method</dt><dd>{{ methodName() }}</dd></div>
+          <div><dt>Test account</dt><dd class="mono">{{ t.maskedAccount }}</dd></div>
+          <div><dt>Original price</dt><dd>{{ t.originalAmount | bdt }}</dd></div>
+          @if (t.discountAmount > 0) {
+            <div><dt>Discount</dt><dd class="text-success">−{{ t.discountAmount | bdt }}</dd></div>
+          }
+          <div class="total"><dt>Amount</dt><dd class="price-now">{{ t.amount | bdt }}</dd></div>
+          <div><dt>Date</dt><dd>{{ t.updatedAt | date: 'd MMM y, h:mm a' }}</dd></div>
+          @if (t.failureReason) {
+            <div><dt>Reason</dt><dd>{{ t.failureReason }}</dd></div>
+          }
+        </dl>
+
+        <div class="actions">
+          @if (canOpenCourse()) {
+            <a [routerLink]="['/learn', t.courseSlug]" class="btn btn-accent btn-lg">
+              <i class="bi bi-play-circle" aria-hidden="true"></i> Start learning
+            </a>
+          } @else if (t.status === 'failed' || t.status === 'cancelled') {
+            <a [routerLink]="['/checkout', t.courseSlug]" class="btn btn-accent btn-lg">
+              <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Try again
+            </a>
+          } @else if (t.status === 'pending' && t.userId === auth.user()?.id) {
+            <a [routerLink]="['/checkout/pay', t.id]" class="btn btn-accent btn-lg">Continue payment</a>
+          }
+          <a [routerLink]="auth.homeUrl()" class="btn btn-outline btn-lg">{{ auth.isAdmin() ? 'Admin dashboard' : 'My dashboard' }}</a>
+        </div>
+
+        <p class="demo-footnote">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          Demo record stored in this browser. It is not a real receipt, and no money has moved.
+        </p>
+      </div>
+    } @else {
+      <app-empty-state icon="bi-receipt" title="Payment not found"
+        message="This payment doesn't exist or belongs to another account.">
+        <a routerLink="/courses" class="btn btn-primary">Browse courses</a>
+      </app-empty-state>
+    }
+  </div>
+</section>

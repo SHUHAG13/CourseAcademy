@@ -1,0 +1,125 @@
+<section class="page-hero">
+  <div class="container">
+    <h1>Welcome, {{ auth.user()?.name }}</h1>
+    <p>Your courses, upcoming live classes and payments, all in one place.</p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="row g-3 mb-4">
+      <div class="col-sm-4">
+        <div class="stat-tile ca-card">
+          <span class="icon-tile"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></span>
+          <div><span class="value">{{ activeCount() }}</span><span class="label">Enrolled courses</span></div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="stat-tile ca-card">
+          <span class="icon-tile orange"><i class="bi bi-broadcast" aria-hidden="true"></i></span>
+          <div><span class="value">{{ upcoming().length }}</span><span class="label">Upcoming live classes</span></div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="stat-tile ca-card">
+          <span class="icon-tile navy"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+          <div><span class="value">{{ transactions().length }}</span><span class="label">Payment records</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="h4 mb-3">My courses</h2>
+    @if (enrolled().length) {
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-5">
+        @for (e of enrolled(); track e.enrollment.id) {
+          <div class="col">
+            <article class="my-course ca-card">
+              <app-course-cover [course]="e.course" />
+              <div class="body">
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                  <app-format-badge [format]="e.course.format" />
+                  @if (e.enrollment.status === 'revoked') {
+                    <app-status-pill status="revoked" />
+                  }
+                </div>
+                <h3 class="h6">{{ e.course.title }}</h3>
+                <p class="small text-muted">
+                  {{ lessons(e.course) }} lessons
+                  @if (e.course.schedule.length) {
+                    · {{ e.course.schedule.length }} live sessions
+                  }
+                  · Enrolled {{ e.enrollment.enrolledAt | date: 'd MMM y' }}
+                </p>
+                @if (e.enrollment.status === 'active') {
+                  <a [routerLink]="['/learn', e.course.slug]" class="btn btn-primary w-100">Continue learning</a>
+                } @else {
+                  <p class="small mb-0">Access to this course has ended. Please contact support if this looks wrong.</p>
+                }
+              </div>
+            </article>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="mb-5">
+        <app-empty-state icon="bi-journal-plus" title="No courses yet"
+          message="Browse the catalogue and enroll to see your courses here.">
+          <a routerLink="/courses" class="btn btn-primary">Browse courses</a>
+        </app-empty-state>
+      </div>
+    }
+
+    @if (upcoming().length) {
+      <h2 class="h4 mb-3">Upcoming live classes</h2>
+      <div class="ca-card table-responsive mb-5">
+        <table class="ca-table">
+          <thead>
+            <tr><th scope="col">Date</th><th scope="col">Class</th><th scope="col">Course</th><th scope="col"><span class="visually-hidden">Join</span></th></tr>
+          </thead>
+          <tbody>
+            @for (u of upcoming(); track u.session.id) {
+              <tr>
+                <td class="text-nowrap">{{ u.session.startsAt | date: 'd MMM, h:mm a' }}</td>
+                <td class="primary">{{ u.session.title }}</td>
+                <td>{{ u.course.title }}</td>
+                <td class="actions">
+                  <a class="btn btn-sm btn-outline" [href]="u.session.meetingUrl" target="_blank" rel="noopener noreferrer">Join (demo)</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <h2 class="h4 mb-3">My payments</h2>
+    @if (transactions().length) {
+      <div class="ca-card table-responsive">
+        <table class="ca-table">
+          <thead>
+            <tr>
+              <th scope="col">Transaction</th><th scope="col">Course</th><th scope="col">Method</th>
+              <th scope="col">Amount</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">View</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of transactions(); track t.id) {
+              <tr>
+                <td><span class="primary">{{ t.id }}</span><span class="secondary">{{ t.createdAt | date: 'd MMM y, h:mm a' }}</span></td>
+                <td>{{ t.courseTitle }}</td>
+                <td class="text-nowrap">{{ methodName(t.method) }}</td>
+                <td class="text-nowrap">{{ t.amount | bdt }}</td>
+                <td><app-status-pill [status]="t.status" /></td>
+                <td class="actions">
+                  <a class="btn btn-sm btn-outline" [routerLink]="['/checkout/result', t.id]">View</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <app-empty-state icon="bi-receipt" title="No payments yet" message="Your demo payment records will appear here." />
+    }
+  </div>
+</section>

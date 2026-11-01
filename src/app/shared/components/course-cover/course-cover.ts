@@ -3,8 +3,8 @@ import { Course } from '../../../core/models/course.model';
 import { CourseService } from '../../../core/services/course.service';
 
 /**
- * Generated course thumbnail. Rendered in HTML/CSS so every course gets a
- * consistent, branded cover without stock photography or broken image URLs.
+ * Course thumbnail. Courses without a photo get a generated cover, rendered in
+ * HTML/CSS so every course stays branded without stock photography.
  */
 @Component({
   selector: 'app-course-cover',
@@ -13,8 +13,10 @@ import { CourseService } from '../../../core/services/course.service';
   host: {
     role: 'img',
     '[attr.aria-label]': 'course().title',
+    '[class.cat-digital-marketing]': `course().category === 'digital-marketing'`,
     '[class.cat-sports-journalism]': `course().category === 'sports-journalism'`,
     '[class.cat-software-development]': `course().category === 'software-development'`,
+    '[class.has-photo]': 'course().image',
   },
 })
 export class CourseCover {

@@ -2,6 +2,31 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.3.
 
+## Frontend-only demo
+
+There is no backend. Courses, accounts, enrollments and payments are stored in this browser's LocalStorage, so they are not secure and are not shared between devices or users. Admins can restore the defaults with **Reset demo data** on the admin overview page.
+
+| Role  | Email                        | Password      |
+| ----- | ---------------------------- | ------------- |
+| Admin | `admin@courseacademy.demo`   | `Admin@123`   |
+| User  | `student@courseacademy.demo` | `Student@123` |
+
+Passwords are stored unprotected and role checks run only in the browser. Real authentication and authorization must be enforced by the server.
+
+### Connecting the ASP.NET Core API
+
+Services read and write through the `Repository` contract in `src/app/core/data/repository.ts`. Provide HTTP implementations for the tokens in `src/app/core/data/repositories.ts`, then replace the `DemoDataService` start-up load if data needs to load differently.
+
+### Connecting a real payment gateway
+
+Checkout talks to the abstract `PaymentGateway` in `src/app/core/payments/payment-gateway.ts`, and `DemoPaymentGateway` is the current implementation. To use SSLCOMMERZ, aamarPay or bKash:
+
+1. Add ASP.NET Core Web API endpoints that start a payment and return the hosted gateway page URL, and that return a payment's verified status.
+2. On the server, read the price from the database, hold the secret keys, and verify the gateway's callback (IPN) before granting course access.
+3. Add a `PaymentGateway` implementation that calls those endpoints, register it in `src/app/app.config.ts`, and remove the demo payment page (`src/app/pages/checkout/demo-gateway.ts`).
+
+Never put gateway secret keys or payment verification in this frontend: everything shipped to the browser is public, and anything it sends can be altered.
+
 ## Development server
 
 To start a local development server, run:

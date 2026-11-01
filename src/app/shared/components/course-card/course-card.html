@@ -7,22 +7,29 @@
   </a>
 
   <div class="body">
-    <span class="category">{{ categoryName() }}</span>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span class="category">{{ categoryName() }}</span>
+      <app-format-badge [format]="course().format" />
+    </div>
 
     <h3 class="title">
       <a [routerLink]="link()">{{ course().title }}</a>
     </h3>
 
-    <p class="instructor">{{ instructor().name }}</p>
+    <p class="instructor">{{ instructor()?.name }}</p>
 
-    <div class="rating">
-      <strong>{{ course().rating | number: '1.1-1' }}</strong>
-      <app-rating-stars [rating]="course().rating" />
-      <span class="count">({{ course().ratingCount | number }})</span>
-    </div>
+    @if (course().ratingCount) {
+      <div class="rating">
+        <strong>{{ course().rating | number: '1.1-1' }}</strong>
+        <app-rating-stars [rating]="course().rating" />
+        <span class="count">({{ course().ratingCount | number }})</span>
+      </div>
+    }
 
     <ul class="meta" aria-label="Course details">
-      <li><i class="bi bi-people" aria-hidden="true"></i>{{ course().students | number }} students</li>
+      @if (course().students) {
+        <li><i class="bi bi-people" aria-hidden="true"></i>{{ course().students | number }} students</li>
+      }
       <li><i class="bi bi-clock" aria-hidden="true"></i>{{ course().durationHours }} hours</li>
       <li><i class="bi bi-bar-chart" aria-hidden="true"></i>{{ course().level }}</li>
     </ul>
@@ -31,8 +38,10 @@
   <div class="foot">
     <div class="price">
       <span class="price-now">{{ course().price | bdt }}</span>
-      <span class="price-was">{{ course().originalPrice | bdt }}</span>
-      <span class="off">{{ discount() }}% off</span>
+      @if (discount() > 0) {
+        <span class="price-was">{{ course().originalPrice | bdt }}</span>
+        <span class="off">{{ discount() }}% off</span>
+      }
     </div>
     <a class="btn btn-sm btn-outline" [routerLink]="link()" [attr.aria-label]="'View course: ' + course().title">
       View Course

@@ -3,24 +3,47 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { Meta, Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { CONTACT } from '../../core/data/site.data';
-import { Course } from '../../core/models/course.model';
-import { CourseService } from '../../core/services/course.service';
+import { AuthService } from '../../core/services/auth.service';
+import { CourseService, discountPercent, lessonCount } from '../../core/services/course.service';
+import { EnrollmentService } from '../../core/services/enrollment.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
 import { CourseCard } from '../../shared/components/course-card/course-card';
 import { CourseCover } from '../../shared/components/course-cover/course-cover';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
+import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { RatingStars } from '../../shared/components/rating-stars/rating-stars';
+import { SessionList } from '../../shared/components/session-list/session-list';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
+
+const FORMAT_INTRO = {
+  'Pre-recorded': 'Self-paced recorded lessons you can watch anytime.',
+  Live: 'Instructor-led live online classes on a fixed schedule.',
+  Hybrid: 'Self-paced recorded lessons plus scheduled live classes.',
+};
 
 @Component({
   selector: 'app-course-detail',
-  imports: [RouterLink, DatePipe, DecimalPipe, BdtPipe, Avatar, CourseCard, CourseCover, EmptyState, RatingStars],
+  imports: [
+    RouterLink,
+    DatePipe,
+    DecimalPipe,
+    BdtPipe,
+    Avatar,
+    CourseCard,
+    CourseCover,
+    EmptyState,
+    FormatBadge,
+    RatingStars,
+    SessionList,
+  ],
   templateUrl: './course-detail.html',
   styleUrl: './course-detail.scss',
 })
 export class CourseDetail {
   private readonly courseService = inject(CourseService);
+  private readonly enrollments = inject(EnrollmentService);
+  protected readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
@@ -29,8 +52,13 @@ export class CourseDetail {
   readonly slug = input.required<string>();
 
   protected readonly loading = signal(true);
-  protected readonly course = signal<Course | undefined>(undefined);
   protected readonly openSections = signal<Set<number>>(new Set([0]));
+
+  /** Follows the store, so admin edits appear immediately. Only admins can open unpublished courses. */
+  protected readonly course = computed(() => {
+    const c = this.courseService.bySlug(this.slug());
+    return c && (c.published || this.auth.isAdmin()) ? c : undefined;
+  });
 
   protected readonly category = computed(() => {
     const c = this.course();
@@ -44,12 +72,13 @@ export class CourseDetail {
     const i = this.instructor();
     return i ? this.courseService.coursesByInstructor(i.id) : 0;
   });
-  protected readonly lessonCount = computed(
-    () => this.course()?.curriculum.reduce((n, s) => n + s.lessons.length, 0) ?? 0,
-  );
+  protected readonly lessonCount = computed(() => {
+    const c = this.course();
+    return c ? lessonCount(c) : 0;
+  });
   protected readonly discount = computed(() => {
     const c = this.course();
-    return c ? Math.round((1 - c.price / c.originalPrice) * 100) : 0;
+    return c ? discountPercent(c) : 0;
   });
   protected readonly reviews = computed(() => {
     const c = this.course();
@@ -62,6 +91,18 @@ export class CourseDetail {
   protected readonly related = computed(() => {
     const c = this.course();
     return c ? this.courseService.related(c) : [];
+  });
+  protected readonly enrolled = computed(() => {
+    const c = this.course();
+    return !!c && this.enrollments.isEnrolled(c.id);
+  });
+  protected readonly hasAccess = computed(() => {
+    const c = this.course();
+    return !!c && this.enrollments.hasAccess(c.id);
+  });
+  protected readonly formatIntro = computed(() => {
+    const c = this.course();
+    return c ? FORMAT_INTRO[c.format] : '';
   });
   protected readonly allOpen = computed(
     () => this.openSections().size === (this.course()?.curriculum.length ?? 0),
@@ -77,23 +118,26 @@ export class CourseDetail {
       const slug = this.slug();
       untracked(() => this.load(slug));
     });
+
+    effect(() => {
+      if (this.loading()) return;
+      const course = this.course();
+      if (course) {
+        this.title.setTitle(`${course.title} | Course Academy`);
+        this.meta.updateTag({ name: 'description', content: course.subtitle });
+      } else {
+        this.title.setTitle('Course not found | Course Academy');
+      }
+    });
   }
 
   private async load(slug: string): Promise<void> {
     this.loading.set(true);
-    const course = await this.courseService.getBySlug(slug);
+    await this.courseService.whenLoaded();
     if (slug !== this.slug()) return;
 
-    this.course.set(course);
     this.openSections.set(new Set([0]));
     this.loading.set(false);
-
-    if (course) {
-      this.title.setTitle(`${course.title} | Course Academy`);
-      this.meta.updateTag({ name: 'description', content: course.subtitle });
-    } else {
-      this.title.setTitle('Course not found | Course Academy');
-    }
   }
 
   protected sectionMinutes(index: number): number {

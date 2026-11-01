@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -19,8 +19,12 @@ export class Register {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
+  /** Bound from `?returnUrl=`, passed along from the login page. */
+  readonly returnUrl = input<string>();
+
   protected readonly loading = signal(false);
   protected readonly showPassword = signal(false);
+  protected readonly error = signal('');
 
   protected readonly form = inject(NonNullableFormBuilder).group(
     {
@@ -57,10 +61,16 @@ export class Register {
       return;
     }
     this.loading.set(true);
-    const { name, email } = this.form.getRawValue();
-    await this.auth.register(name.trim(), email);
-    this.loading.set(false);
-    this.toast.success(`Welcome to Course Academy, ${name.trim()}! (Demo account)`);
-    this.router.navigateByUrl('/courses');
+    this.error.set('');
+    const { name, email, password, phone } = this.form.getRawValue();
+    try {
+      await this.auth.register(name.trim(), email, password, phone);
+      this.toast.success(`Welcome to Course Academy, ${name.trim()}! (Demo account)`);
+      this.router.navigateByUrl(this.returnUrl() || this.auth.homeUrl());
+    } catch (error) {
+      this.error.set((error as Error).message);
+    } finally {
+      this.loading.set(false);
+    }
   }
 }

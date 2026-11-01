@@ -8,7 +8,7 @@
       <li aria-current="page">Enroll</li>
     </ol>
     <h1>{{ selected() ? 'Complete your enrollment' : 'How to enroll & pay' }}</h1>
-    <p>Enrolling takes a few minutes. Pay with bKash, Nagad or bank transfer and get access after a quick verification.</p>
+    <p>Enrolling takes a few minutes. Choose bKash, Nagad, Rocket or Visa/Mastercard in our demo checkout. No real money is taken.</p>
   </div>
 </section>
 
@@ -31,12 +31,18 @@
 
         <h2 class="h4 mt-5 mb-3">Payment methods</h2>
         <div class="row g-3">
-          @for (m of methods; track m.name) {
-            <div class="col-sm-4">
+          @for (m of methods; track m.id) {
+            <div class="col-6 col-xl-3">
               <div class="method ca-card">
-                <span class="logo"><img [src]="m.logo" [alt]="m.name + ' logo'" loading="lazy" /></span>
+                <span class="logo">
+                  @if (m.logo) {
+                    <img [src]="m.logo" [alt]="m.name + ' logo'" loading="lazy" />
+                  } @else {
+                    <i class="bi fs-1 text-navy" [class]="m.icon" aria-hidden="true"></i>
+                  }
+                </span>
                 <strong>{{ m.name }}</strong>
-                <small>{{ m.text }}</small>
+                <small>{{ m.description }}</small>
               </div>
             </div>
           }
@@ -45,8 +51,8 @@
         <div class="note">
           <i class="bi bi-shield-check" aria-hidden="true"></i>
           <p class="mb-0">
-            <strong>Important:</strong> For your security, payment numbers and bank details are shared only
-            through our official WhatsApp after you contact us. Online card checkout is not available yet.
+            <strong>Demo only:</strong> Checkout is simulated. No payment provider is connected, no money moves, and
+            you are never asked for a real card number, PIN or password.
           </p>
         </div>
       </div>
@@ -67,14 +73,15 @@
               <div><dt>Discount</dt><dd class="text-success">−{{ c.originalPrice - c.price | bdt }}</dd></div>
               <div class="total"><dt>Total</dt><dd class="price-now">{{ c.price | bdt }}</dd></div>
             </dl>
+            <a [routerLink]="['/checkout', c.slug]" class="btn btn-accent btn-lg w-100 mb-3">Continue to checkout</a>
           } @else {
             <h2 class="h5">Haven't chosen a course yet?</h2>
             <p class="text-muted">Browse our catalogue and pick a course — then come back here to enroll.</p>
             <a routerLink="/courses" class="btn btn-outline w-100 mb-3">Browse courses</a>
           }
 
-          <a [href]="whatsappLink()" target="_blank" rel="noopener" class="btn btn-accent btn-lg w-100">
-            <i class="bi bi-whatsapp" aria-hidden="true"></i> Enroll via WhatsApp
+          <a [href]="whatsappLink()" target="_blank" rel="noopener" class="btn btn-outline btn-lg w-100">
+            <i class="bi bi-whatsapp" aria-hidden="true"></i> Ask on WhatsApp
           </a>
           <p class="small text-muted text-center mt-2 mb-0">Opens WhatsApp with a pre-filled message.</p>
         </div>

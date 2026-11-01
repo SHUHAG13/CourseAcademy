@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CourseService } from '../../core/services/course.service';
 import { CourseCover } from '../../shared/components/course-cover/course-cover';
@@ -11,11 +11,18 @@ import { CourseCover } from '../../shared/components/course-cover/course-cover';
   styleUrl: './hero.scss',
 })
 export class Hero {
-  private readonly courses = inject(CourseService);
+  private readonly courses = inject(CourseService).published;
 
-  protected readonly showcase = this.courses.all.find((c) => c.slug === 'sports-journalism-masterclass')!;
-  protected readonly courseCount = this.courses.all.length;
-  protected readonly learners = Math.floor(this.courses.all.reduce((s, c) => s + c.students, 0) / 1000) * 1000;
-  protected readonly avgRating =
-    this.courses.all.reduce((s, c) => s + c.rating, 0) / this.courses.all.length;
+  /** Admins can delete or unpublish any course, so fall back to whatever is available. */
+  protected readonly showcase = computed(
+    () => this.courses().find((c) => c.category === 'sports-journalism') ?? this.courses()[0],
+  );
+  protected readonly courseCount = computed(() => this.courses().length);
+  protected readonly learners = computed(
+    () => Math.floor(this.courses().reduce((s, c) => s + c.students, 0) / 1000) * 1000,
+  );
+  protected readonly avgRating = computed(() => {
+    const rated = this.courses().filter((c) => c.ratingCount > 0);
+    return rated.length ? rated.reduce((s, c) => s + c.rating, 0) / rated.length : 0;
+  });
 }

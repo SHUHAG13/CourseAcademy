@@ -25,20 +25,24 @@ const PREFIX: IsActiveMatchOptions = { paths: 'subset', queryParams: 'ignored', 
   styleUrl: './navbar.scss',
   host: {
     '(window:scroll)': 'onScroll()',
-    '(document:keydown.escape)': 'menuOpen.set(false)',
+    '(document:keydown.escape)': 'menuOpen.set(false); coursesOpen.set(false)',
+    '(document:click)': 'coursesOpen.set(false)',
   },
 })
 export class Navbar {
   protected readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly document = inject(DOCUMENT);
+  private readonly router = inject(Router);
 
   protected readonly menuOpen = signal(false);
+  protected readonly coursesOpen = signal(false);
   protected readonly scrolled = signal(false);
 
   protected readonly courseLinks: NavLink[] = [
     { label: 'All Courses', path: '/courses', exact: true },
     { label: 'Video Editing', path: '/courses', query: { category: 'video-editing' } },
+    { label: 'Marketing', path: '/courses', query: { category: 'digital-marketing' } },
     { label: 'Sports Journalism', path: '/courses', query: { category: 'sports-journalism' } },
     { label: 'Development', path: '/courses', query: { category: 'software-development' } },
   ];
@@ -50,17 +54,26 @@ export class Navbar {
   ];
 
   constructor() {
-    inject(Router)
-      .events.pipe(
+    this.router.events
+      .pipe(
         filter((e) => e instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.menuOpen.set(false));
+      .subscribe(() => {
+        this.menuOpen.set(false);
+        this.coursesOpen.set(false);
+      });
 
     // Prevent the page behind the drawer from scrolling.
     effect(() => {
       this.document.body.style.overflow = this.menuOpen() ? 'hidden' : '';
     });
+  }
+
+  protected toggleCourses(event: Event): void {
+    // Stops the document listener from closing the menu straight after it opens.
+    event.stopPropagation();
+    this.coursesOpen.update((open) => !open);
   }
 
   protected onScroll(): void {
@@ -76,5 +89,6 @@ export class Navbar {
     this.auth.logout();
     this.menuOpen.set(false);
     this.toast.show('You have been logged out.');
+    this.router.navigateByUrl('/');
   }
 }

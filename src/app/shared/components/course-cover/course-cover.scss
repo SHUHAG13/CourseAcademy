@@ -15,6 +15,39 @@
   color: #fff;
 }
 
+:host(.cat-digital-marketing) {
+  --cover-bg: #166534;
+  --cover-accent: #fde68a;
+  --cover-glyph: rgba(255, 255, 255, 0.92);
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+// Keeps the cover text readable on any photo.
+:host(.has-photo)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.1) 70%);
+}
+
+:host(.has-photo) .label,
+:host(.has-photo) .accent-bar,
+:host(.has-photo) .brand-tag,
+:host(.has-photo) .play {
+  z-index: 1;
+}
+
+:host(.has-photo) .label {
+  right: 8%;
+}
+
 :host(.cat-sports-journalism) {
   --cover-bg: #1d4ed8;
   --cover-accent: #fdba74;

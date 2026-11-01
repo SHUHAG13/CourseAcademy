@@ -16,6 +16,10 @@
   &.tone-navy {
     --tone: var(--ca-navy);
   }
+
+  &.tone-green {
+    --tone: var(--ca-success);
+  }
 }
 
 .media {
@@ -43,6 +47,11 @@
 
   .icon-tile.blue {
     background: var(--ca-blue);
+    color: #fff;
+  }
+
+  .icon-tile.green {
+    background: var(--ca-success);
     color: #fff;
   }
 }
