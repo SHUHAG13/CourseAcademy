@@ -98,11 +98,13 @@
               [attr.aria-expanded]="detailId() === t.id" [attr.aria-label]="'Details for {0}' | t: [t.id]">
               <i class="bi" [class]="detailId() === t.id ? 'bi-chevron-up' : 'bi-chevron-down'" aria-hidden="true"></i>
             </button>
-            <button type="button" class="icon-btn danger ms-1" [disabled]="!payments.canDelete(t)" (click)="remove(t)"
-              [title]="(payments.canDelete(t) ? 'Delete record' : 'Refund a successful payment before deleting it') | t"
-              [attr.aria-label]="'Delete {0}' | t: [t.id]">
-              <i class="bi bi-trash" aria-hidden="true"></i>
-            </button>
+            @if (permissions.can('transactions.delete')) {
+              <button type="button" class="icon-btn danger ms-1" [disabled]="!payments.canDelete(t)" (click)="remove(t)"
+                [title]="(payments.canDelete(t) ? 'Delete record' : 'Refund a successful payment before deleting it') | t"
+                [attr.aria-label]="'Delete {0}' | t: [t.id]">
+                <i class="bi bi-trash" aria-hidden="true"></i>
+              </button>
+            }
           </td>
         </tr>
         @if (detailId() === t.id) {
@@ -119,7 +121,7 @@
                 }
               </div>
               <div class="d-flex flex-wrap gap-2 mt-3">
-                @for (action of payments.allowedActions(t); track action) {
+                @for (action of permissions.can('transactions.edit') ? payments.allowedActions(t) : []; track action) {
                   <button type="button" class="btn btn-sm btn-outline" (click)="apply(t, action)">{{ actionLabel(action) | t }}</button>
                 }
                 <a class="btn btn-sm btn-outline" [routerLink]="['/checkout/result', t.id]">{{ 'View receipt' | t }}</a>

@@ -4,6 +4,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { ToastService } from '../../core/services/toast.service';
 import { BD_PHONE_PATTERN, PASSWORD_PATTERN, matchFields, showError } from '../../shared/forms/validators';
 import { AuthShell } from './auth-shell';
@@ -17,6 +18,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class Register {
   private readonly auth = inject(AuthService);
+  private readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -67,7 +69,7 @@ export class Register {
     try {
       await this.auth.register(name.trim(), email, password, phone);
       this.toast.success('Welcome to Course Academy, {0}! (Demo account)', [name.trim()]);
-      this.router.navigateByUrl(this.returnUrl() || this.auth.homeUrl());
+      this.router.navigateByUrl(this.returnUrl() || this.permissions.homeUrl());
     } catch (error) {
       this.error.set((error as Error).message);
     } finally {

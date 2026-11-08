@@ -3,8 +3,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { COURSE_FORMATS, Course, CourseFormat } from '../../core/models/course.model';
+import { CommunityService } from '../../core/services/community.service';
 import { ConfirmService } from '../../core/services/confirm.service';
-import { CourseService, discountPercent, lessonCount } from '../../core/services/course.service';
+import { CourseService, discountPercent, sectionCount } from '../../core/services/course.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
@@ -12,6 +13,7 @@ import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
 import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pipe';
+import { PermissionService, failureMessage } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-admin-courses',
@@ -19,9 +21,11 @@ import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pip
   template: `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <h1 class="h3 mb-0">{{ 'Courses' | t }}</h1>
-      <a routerLink="/admin/courses/new" class="btn btn-primary">
-        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'New course' | t }}
-      </a>
+      @if (permissions.can('courses.create')) {
+        <a routerLink="/admin/courses/new" class="btn btn-primary">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'New course' | t }}
+        </a>
+      }
     </div>
 
     <div class="row g-2 mb-3">
@@ -55,7 +59,11 @@ import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pip
             @for (c of filtered(); track c.id) {
               <tr>
                 <td>
-                  <a class="primary" [routerLink]="['/admin/courses', c.id]">{{ c.title | t }}</a>
+                  @if (permissions.can('courses.edit', c.id)) {
+                    <a class="primary" [routerLink]="['/admin/courses', c.id]">{{ c.title | t }}</a>
+                  } @else {
+                    <span class="primary">{{ c.title | t }}</span>
+                  }
                   <span class="secondary">{{ instructorName(c) | t }}</span>
                 </td>
                 <td><app-format-badge [format]="c.format" /></td>
@@ -66,26 +74,42 @@ import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pip
                   }
                 </td>
                 <td class="text-nowrap">
-                  {{ '{0} lessons' | t: [lessons(c)] }}
+                  {{ '{0} sections' | t: [sections(c)] }}
                   <span class="secondary">{{ '{0} live · {1} materials' | t: [c.schedule.length, c.materials.length] }}</span>
                 </td>
                 <td>{{ enrolledCount(c) | n }}</td>
                 <td><app-status-pill [status]="c.published ? 'published' : 'draft'" /></td>
                 <td class="actions">
-                  <button type="button" class="icon-btn" (click)="togglePublished(c)"
-                    [title]="(c.published ? 'Unpublish' : 'Publish') | t"
-                    [attr.aria-label]="(c.published ? 'Unpublish {0}' : 'Publish {0}') | t: [c.title]">
-                    <i class="bi" [class]="c.published ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
-                  </button>
+                  @if (permissions.can('courses.edit', c.id)) {
+                    <button type="button" class="icon-btn" (click)="togglePublished(c)"
+                      [title]="(c.published ? 'Unpublish' : 'Publish') | t"
+                      [attr.aria-label]="(c.published ? 'Unpublish {0}' : 'Publish {0}') | t: [c.title]">
+                      <i class="bi" [class]="c.published ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
+                    </button>
+                  }
                   <a class="icon-btn ms-1" [routerLink]="['/courses', c.slug]" [title]="'View page' | t" [attr.aria-label]="'View {0}' | t: [c.title]">
                     <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                   </a>
-                  <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id]" [title]="'Edit' | t" [attr.aria-label]="'Edit {0}' | t: [c.title]">
-                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                  </a>
-                  <button type="button" class="icon-btn danger ms-1" (click)="remove(c)" [title]="'Delete' | t" [attr.aria-label]="'Delete {0}' | t: [c.title]">
-                    <i class="bi bi-trash" aria-hidden="true"></i>
-                  </button>
+                  @if (permissions.can('certificates.manage', c.id)) {
+                    <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id, 'certification']" [title]="'Certification' | t"
+                      [attr.aria-label]="'Certification settings for {0}' | t: [c.title]">
+                      <i class="bi bi-award" aria-hidden="true"></i>
+                    </a>
+                  }
+                  @if (permissions.can('courses.edit', c.id)) {
+                    <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id, 'curriculum']" [title]="'Curriculum' | t"
+                      [attr.aria-label]="'Edit the curriculum of {0}' | t: [c.title]">
+                      <i class="bi bi-list-nested" aria-hidden="true"></i>
+                    </a>
+                    <a class="icon-btn ms-1" [routerLink]="['/admin/courses', c.id]" [title]="'Edit' | t" [attr.aria-label]="'Edit {0}' | t: [c.title]">
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </a>
+                  }
+                  @if (permissions.can('courses.delete', c.id)) {
+                    <button type="button" class="icon-btn danger ms-1" (click)="remove(c)" [title]="'Delete' | t" [attr.aria-label]="'Delete {0}' | t: [c.title]">
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                  }
                 </td>
               </tr>
             }
@@ -104,6 +128,8 @@ export class AdminCourses {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);
+  protected readonly permissions = inject(PermissionService);
+  private readonly community = inject(CommunityService);
 
   protected readonly formats = COURSE_FORMATS;
   protected readonly search = signal('');
@@ -113,6 +139,7 @@ export class AdminCourses {
     const term = this.search().trim().toLowerCase();
     return this.courses
       .courses()
+      .filter((c) => this.permissions.can('courses.view', c.id))
       .filter((c) => (this.format() === 'all' || c.format === this.format()) && (!term || c.title.toLowerCase().includes(term)));
   });
 
@@ -124,8 +151,8 @@ export class AdminCourses {
     return discountPercent(course);
   }
 
-  protected lessons(course: Course): number {
-    return lessonCount(course);
+  protected sections(course: Course): number {
+    return sectionCount(course);
   }
 
   protected enrolledCount(course: Course): number {
@@ -136,8 +163,8 @@ export class AdminCourses {
     try {
       await this.courses.saveCourse({ ...course, published: !course.published });
       this.toast.success(course.published ? '{0} is now unpublished.' : '{0} is now published.', [course.title]);
-    } catch {
-      this.toast.error('The change could not be saved. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The change could not be saved. Browser storage may be full or blocked.'));
     }
   }
 
@@ -158,10 +185,12 @@ export class AdminCourses {
 
     try {
       await this.enrollments.removeForCourse(course.id);
+      await this.community.removeForCourse(course.id);
+      await this.permissions.removeGrantsForCourse(course.id);
       await this.courses.removeCourse(course.id);
       this.toast.success('{0} was deleted.', [course.title]);
-    } catch {
-      this.toast.error('The course could not be deleted. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The course could not be deleted. Browser storage may be full or blocked.'));
     }
   }
 }

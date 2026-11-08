@@ -26,7 +26,7 @@ interface Stored<T> {
 }
 
 /** Bump when a stored record's shape changes. Older data is then replaced by the defaults. */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 7;
 
 /** Browser-storage implementation. This is a demo store, not a secure one. */
 export class LocalStorageRepository<T extends Entity> extends Repository<T> {

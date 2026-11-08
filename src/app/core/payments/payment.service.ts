@@ -4,6 +4,7 @@ import { EntityStore } from '../data/repository';
 import { Course } from '../models/course.model';
 import { AuthService } from '../services/auth.service';
 import { EnrollmentService } from '../services/enrollment.service';
+import { PermissionService } from '../services/permission.service';
 import { PaymentGateway } from './payment-gateway';
 import { PaymentMethodId, PaymentStatus, PaymentTransaction } from './payment.model';
 
@@ -22,6 +23,7 @@ export class PaymentService {
   private readonly gateway = inject(PaymentGateway);
   private readonly auth = inject(AuthService);
   private readonly enrollments = inject(EnrollmentService);
+  private readonly permissions = inject(PermissionService);
 
   readonly ready = this.store.ready;
   readonly recovered = this.store.recovered;
@@ -87,6 +89,7 @@ export class PaymentService {
 
   /** Admin action. Keeps course access in step with the payment. */
   async setStatus(id: string, status: PaymentStatus): Promise<PaymentTransaction> {
+    this.permissions.assert('transactions.edit');
     const transaction = this.find(id);
     if (!transaction) throw new Error('Transaction not found.');
     if (!ADMIN_TRANSITIONS[transaction.status].includes(status)) {
@@ -104,7 +107,8 @@ export class PaymentService {
     return transaction.status !== 'success';
   }
 
-  remove(id: string): Promise<void> {
+  async remove(id: string): Promise<void> {
+    this.permissions.assert('transactions.delete');
     return this.store.remove(id);
   }
 

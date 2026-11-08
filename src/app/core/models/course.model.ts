@@ -31,17 +31,63 @@ export interface Instructor {
   rating: number;
 }
 
-export interface Lesson {
+// Curriculum: Course → Module → Submodule → Section. Array order is display order.
+
+export interface SectionVideo {
   id: string;
   title: string;
+  /** YouTube, Vimeo or a direct .mp4/.webm link. Anything else shows a placeholder player. */
+  url: string;
   minutes: number;
-  preview?: boolean;
+  /** Visitors who are not enrolled can watch it, and open its documents. */
+  preview: boolean;
 }
 
-export interface CurriculumSection {
+export type DocumentType = 'PDF' | 'DOCX' | 'PPTX';
+
+export const DOCUMENT_TYPES: DocumentType[] = ['PDF', 'DOCX', 'PPTX'];
+
+export interface SectionDocument {
   id: string;
   title: string;
-  lessons: Lesson[];
+  type: DocumentType;
+  /** Must end in the file extension of `type`. */
+  url: string;
+  /** The video this document belongs to, shown right under it. Absent for documents for the whole section. */
+  videoId?: string;
+}
+
+export interface Section {
+  id: string;
+  title: string;
+  videos: SectionVideo[];
+  documents: SectionDocument[];
+  /** Sub-topics, e.g. "Static variables" under "Variables, conditions and loops". Each is a section of its own. */
+  topics: Section[];
+}
+
+/** How many levels of topics a section can have below it. */
+export const MAX_TOPIC_DEPTH = 3;
+
+/** Sections and all their topics, in reading order: each section, then its topics. */
+export function flattenSections(sections: Section[]): Section[] {
+  return sections.flatMap((s) => [s, ...flattenSections(s.topics)]);
+}
+
+export const MIN_SECTIONS_PER_SUBMODULE = 2;
+export const MAX_SECTIONS_PER_SUBMODULE = 3;
+
+export interface Submodule {
+  id: string;
+  title: string;
+  /** 2 or 3 sections. */
+  sections: Section[];
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  submodules: Submodule[];
 }
 
 export interface LiveSession {
@@ -94,7 +140,7 @@ export interface Course {
   updated: string;
   outcomes: string[];
   requirements: string[];
-  curriculum: CurriculumSection[];
+  modules: CourseModule[];
   schedule: LiveSession[];
   materials: Material[];
 }

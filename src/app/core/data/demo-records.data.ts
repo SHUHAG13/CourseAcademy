@@ -1,6 +1,9 @@
 import { AppUser } from '../models/user.model';
+import { flattenSections } from '../models/course.model';
 import { Enrollment } from '../models/enrollment.model';
+import { Progress, progressId } from '../models/progress.model';
 import { PaymentTransaction } from '../payments/payment.model';
+import { COURSES } from './courses.data';
 
 // Sample accounts and records so the dashboards have something to show on first run.
 
@@ -9,6 +12,9 @@ const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOStri
 
 export const DEMO_ADMIN_CREDENTIALS = { email: 'admin@courseacademy.demo', password: 'Admin@123' };
 export const DEMO_STUDENT_CREDENTIALS = { email: 'student@courseacademy.demo', password: 'Student@123' };
+export const DEMO_INSTRUCTOR_CREDENTIALS = { email: 'instructor@courseacademy.demo', password: 'Instructor@123' };
+export const DEMO_INSTRUCTOR_USER_ID = 'user-instructor';
+export const DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS = { email: 'sabbir@courseacademy.demo', password: 'Instructor@123' };
 
 export const DEMO_USERS: AppUser[] = [
   {
@@ -32,6 +38,22 @@ export const DEMO_USERS: AppUser[] = [
     password: 'Learner@123',
     role: 'user',
     createdAt: daysAgo(14),
+  },
+  {
+    id: DEMO_INSTRUCTOR_USER_ID,
+    name: 'Tanvir Hasan',
+    ...DEMO_INSTRUCTOR_CREDENTIALS,
+    role: 'instructor',
+    instructorId: 'tanvir-hasan',
+    createdAt: daysAgo(60),
+  },
+  {
+    id: 'user-instructor-sabbir',
+    name: 'Sabbir Ahmed',
+    ...DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS,
+    role: 'instructor',
+    instructorId: 'sabbir-ahmed',
+    createdAt: daysAgo(60),
   },
 ];
 
@@ -72,6 +94,13 @@ const MARKETING_COURSE = {
   originalAmount: 9000,
   amount: 5999,
 };
+const SOFTWARE_COURSE = {
+  courseId: 4,
+  courseSlug: 'software-development-programming',
+  courseTitle: 'Software Development & Programming',
+  originalAmount: 14000,
+  amount: 7999,
+};
 const SPORTS_COURSE = {
   courseId: 3,
   courseSlug: 'sports-journalism-sports-media',
@@ -102,6 +131,16 @@ export const DEMO_TRANSACTIONS: PaymentTransaction[] = [
     maskedAccount: '019••••••00-0',
     status: 'cancelled',
   }),
+  sampleTransaction('DEMO-SAMPLE-0005', 10, DEMO_USERS[1], SOFTWARE_COURSE, {
+    method: 'bkash',
+    maskedAccount: '017•••••000',
+    status: 'success',
+  }),
+  sampleTransaction('DEMO-SAMPLE-0006', 7, DEMO_USERS[2], SOFTWARE_COURSE, {
+    method: 'nagad',
+    maskedAccount: '018•••••000',
+    status: 'success',
+  }),
 ];
 
 export const DEMO_ENROLLMENTS: Enrollment[] = [
@@ -121,4 +160,40 @@ export const DEMO_ENROLLMENTS: Enrollment[] = [
     enrolledAt: daysAgo(8),
     transactionId: 'DEMO-SAMPLE-0003',
   },
+  {
+    id: 'enrollment-3',
+    userId: 'user-student',
+    courseId: 4,
+    status: 'active',
+    enrolledAt: daysAgo(10),
+    transactionId: 'DEMO-SAMPLE-0005',
+  },
+  {
+    id: 'enrollment-4',
+    userId: 'user-sample',
+    courseId: 4,
+    status: 'active',
+    enrolledAt: daysAgo(7),
+    transactionId: 'DEMO-SAMPLE-0006',
+  },
+];
+
+const allSectionIds = (courseIndex: number) =>
+  COURSES[courseIndex].modules.flatMap((m) => m.submodules.flatMap((s) => flattenSections(s.sections).map((sec) => sec.id)));
+
+function progress(userId: string, courseIndex: number, sectionIds: string[], days: number): Progress {
+  const courseId = COURSES[courseIndex].id;
+  return { id: progressId(userId, courseId), userId, courseId, completedSectionIds: sectionIds, updatedAt: daysAgo(days) };
+}
+
+/**
+ * The demo student has started the video course and finished the software
+ * course, so they can hand in its capstone. The sample learner has finished
+ * the sports and software courses.
+ */
+export const DEMO_PROGRESS: Progress[] = [
+  progress('user-student', 0, allSectionIds(0).slice(0, 2), 2),
+  progress('user-student', 3, allSectionIds(3), 1),
+  progress('user-sample', 2, allSectionIds(2), 3),
+  progress('user-sample', 3, allSectionIds(3), 2),
 ];

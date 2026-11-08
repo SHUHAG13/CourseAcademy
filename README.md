@@ -9,7 +9,13 @@ There is no backend. Courses, accounts, enrollments and payments are stored in t
 | Role  | Email                        | Password      |
 | ----- | ---------------------------- | ------------- |
 | Admin | `admin@courseacademy.demo`   | `Admin@123`   |
+| Instructor | `instructor@courseacademy.demo` | `Instructor@123` |
+| Instructor (Software) | `sabbir@courseacademy.demo` | `Instructor@123` |
 | User  | `student@courseacademy.demo` | `Student@123` |
+
+Certificates: each course is set to **course completion** or a **central exam** (a project or presentation that an instructor scores) under Admin → Courses → award icon. Exams are reviewed under **Admin → Certificates**. Certificates download as PDF (jsPDF) and are checked at `/verify/<ID>`, which only knows certificates stored in this browser.
+
+Admins manage roles, each user's screen access (which screens they can open and what they can do there) and per-course access under **Admin → Security**. Screens are listed once in `src/app/core/data/screens.data.ts`. Services check permissions before every change (`PermissionService` in `src/app/core/services`), but because the data is in the browser this is not real security.
 
 Passwords are stored unprotected and role checks run only in the browser. Real authentication and authorization must be enforced by the server.
 

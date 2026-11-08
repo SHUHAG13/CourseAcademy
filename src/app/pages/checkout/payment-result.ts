@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { PaymentStatus, paymentMethod } from '../../core/payments/payment.model';
 import { PaymentService } from '../../core/payments/payment.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
@@ -53,6 +54,7 @@ const OUTCOMES: Record<PaymentStatus, { icon: string; tone: string; title: strin
 export class PaymentResult {
   private readonly payments = inject(PaymentService);
   protected readonly auth = inject(AuthService);
+  protected readonly permissions = inject(PermissionService);
   private readonly enrollments = inject(EnrollmentService);
   private readonly toast = inject(ToastService);
 
@@ -64,7 +66,7 @@ export class PaymentResult {
   /** Visible to the buyer and to admins only. */
   protected readonly transaction = computed(() => {
     const t = this.payments.find(this.id());
-    return t && (t.userId === this.auth.user()?.id || this.auth.isAdmin()) ? t : undefined;
+    return t && (t.userId === this.auth.user()?.id || this.permissions.can('transactions.view')) ? t : undefined;
   });
   protected readonly outcome = computed(() => {
     const t = this.transaction();

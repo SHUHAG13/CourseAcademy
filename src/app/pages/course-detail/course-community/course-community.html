@@ -1,0 +1,198 @@
+<section class="block" id="community" aria-labelledby="community-title">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+      <h2 id="community-title" class="block-title mb-1">{{ 'Course community' | t }}</h2>
+      <p class="text-muted small mb-0">{{ '{0} discussions' | t: [community.publicCount(course().id)] }}</p>
+    </div>
+    @if (canPost() && !composing()) {
+      <button type="button" class="btn btn-primary btn-sm" (click)="composing.set(true)">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Start a discussion' | t }}
+      </button>
+    }
+  </div>
+
+  @if (!canRead()) {
+    <div class="teaser ca-card">
+      <span class="icon-tile"><i class="bi bi-chat-dots" aria-hidden="true"></i></span>
+      <div>
+        <h3 class="h6 mb-1">{{ 'Join the discussion' | t }}</h3>
+        <p class="small text-muted mb-2">
+          {{ 'Enrolled students and the instructor ask questions, share their work and help each other here.' | t }}
+        </p>
+        @if (auth.isLoggedIn()) {
+          <p class="small fw-semibold mb-0">{{ 'Enroll in this course to read and join its community.' | t }}</p>
+        } @else {
+          <a routerLink="/login" [queryParams]="{ returnUrl: loginUrl() }" class="btn btn-sm btn-outline">{{ 'Log in to join' | t }}</a>
+        }
+      </div>
+    </div>
+  } @else {
+    @if (composing()) {
+      <form class="compose ca-card mb-3" (ngSubmit)="createPost()" novalidate>
+        <label for="post-title" class="form-label">{{ 'Title' | t }}</label>
+        <input id="post-title" name="title" class="form-control mb-2" [(ngModel)]="newTitle" [maxlength]="limits.title"
+          [placeholder]="'What is your question or idea?' | t" required />
+        <label for="post-body" class="form-label">{{ 'Details' | t }}</label>
+        <textarea id="post-body" name="body" class="form-control" rows="4" [(ngModel)]="newBody" [maxlength]="limits.body"
+          [placeholder]="'Share the details, for example which lesson it is about.' | t" required></textarea>
+        <div class="d-flex justify-content-end gap-2 mt-2">
+          <button type="button" class="btn btn-outline btn-sm" (click)="composing.set(false)">{{ 'Cancel' | t }}</button>
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !newTitle.trim() || !newBody.trim()">
+            {{ 'Publish post' | t }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @for (post of posts(); track post.id) {
+      <article class="post ca-card" [class.is-hidden]="post.hidden" [attr.aria-labelledby]="'post-' + post.id">
+        <ng-container *ngTemplateOutlet="author; context: { $implicit: post, size: 40 }" />
+
+        @if (editingPost() === post.id) {
+          <form class="mt-2" (ngSubmit)="saveEditPost(post)" novalidate>
+            <label class="visually-hidden" [for]="'edit-title-' + post.id">{{ 'Title' | t }}</label>
+            <input [id]="'edit-title-' + post.id" name="editTitle" class="form-control mb-2" [(ngModel)]="editTitle" [maxlength]="limits.title" />
+            <label class="visually-hidden" [for]="'edit-body-' + post.id">{{ 'Details' | t }}</label>
+            <textarea [id]="'edit-body-' + post.id" name="editBody" class="form-control" rows="4" [(ngModel)]="editBody" [maxlength]="limits.body"></textarea>
+            <div class="d-flex justify-content-end gap-2 mt-2">
+              <button type="button" class="btn btn-outline btn-sm" (click)="editingPost.set(null)">{{ 'Cancel' | t }}</button>
+              <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy()">{{ 'Save' | t }}</button>
+            </div>
+          </form>
+        } @else {
+          <h3 class="post-title" [id]="'post-' + post.id">
+            @if (post.pinned) {
+              <i class="bi bi-pin-angle-fill pin" [title]="'Pinned' | t" aria-hidden="true"></i>
+            }
+            {{ post.title }}
+          </h3>
+          <p class="body">{{ post.body }}</p>
+        }
+
+        <div class="actions">
+          <button type="button" class="link-btn" (click)="toggleOpen(post)" [attr.aria-expanded]="isOpen(post)">
+            <i class="bi bi-chat" aria-hidden="true"></i> {{ '{0} comments' | t: [community.commentCount(post)] }}
+          </button>
+          @if (post.locked) {
+            <span class="tag"><i class="bi bi-lock" aria-hidden="true"></i> {{ 'Locked' | t }}</span>
+          }
+          @if (post.hidden) {
+            <span class="tag red"><i class="bi bi-eye-slash" aria-hidden="true"></i> {{ 'Hidden' | t }}</span>
+          }
+          <span class="flex-grow-1"></span>
+          @if (community.isAuthor(post) && editingPost() !== post.id) {
+            <button type="button" class="link-btn" (click)="startEditPost(post)">{{ 'Edit' | t }}</button>
+          }
+          @if (canModerate()) {
+            <button type="button" class="link-btn" (click)="setFlag(post, 'pinned')">{{ (post.pinned ? 'Unpin' : 'Pin') | t }}</button>
+            <button type="button" class="link-btn" (click)="setFlag(post, 'locked')">{{ (post.locked ? 'Unlock' : 'Lock') | t }}</button>
+            <button type="button" class="link-btn" (click)="setFlag(post, 'hidden')">{{ (post.hidden ? 'Unhide' : 'Hide') | t }}</button>
+          }
+          @if (community.isAuthor(post) || canModerate()) {
+            <button type="button" class="link-btn danger" (click)="deletePost(post)">{{ 'Delete' | t }}</button>
+          }
+        </div>
+
+        @if (isOpen(post)) {
+          <div class="thread">
+            @for (c of community.commentsFor(post); track c.id) {
+              <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: c, post: post }" />
+              @for (r of community.repliesTo(c); track r.id) {
+                <div class="reply">
+                  <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: r, post: post }" />
+                </div>
+              }
+              @if (replyingTo() === c.id) {
+                <form class="reply reply-form" (ngSubmit)="sendReply(c)" novalidate>
+                  <label class="visually-hidden" [for]="'reply-' + c.id">{{ 'Reply to {0}' | t: [community.authorName(c.authorId)] }}</label>
+                  <textarea [id]="'reply-' + c.id" name="reply" class="form-control form-control-sm" rows="2" [(ngModel)]="replyBody"
+                    [maxlength]="limits.comment" [placeholder]="'Write a reply…' | t"></textarea>
+                  <div class="d-flex justify-content-end gap-2 mt-1">
+                    <button type="button" class="btn btn-outline btn-sm" (click)="replyingTo.set(null)">{{ 'Cancel' | t }}</button>
+                    <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !replyBody.trim()">{{ 'Reply' | t }}</button>
+                  </div>
+                </form>
+              }
+            } @empty {
+              <p class="small text-muted mb-2">{{ 'No comments yet.' | t }}</p>
+            }
+
+            @if (community.canComment(post)) {
+              <form class="comment-form" (ngSubmit)="addComment(post)" novalidate>
+                <label class="visually-hidden" [for]="'comment-' + post.id">{{ 'Write a comment' | t }}</label>
+                <textarea [id]="'comment-' + post.id" [name]="'comment-' + post.id" class="form-control form-control-sm" rows="2"
+                  [(ngModel)]="commentDrafts[post.id]" [maxlength]="limits.comment" [placeholder]="'Write a comment…' | t"></textarea>
+                <div class="d-flex justify-content-end mt-1">
+                  <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !commentDrafts[post.id]?.trim()">{{ 'Comment' | t }}</button>
+                </div>
+              </form>
+            } @else if (post.locked) {
+              <p class="small text-muted mb-0"><i class="bi bi-lock" aria-hidden="true"></i> {{ 'This discussion is locked.' | t }}</p>
+            }
+          </div>
+        }
+      </article>
+    } @empty {
+      <div class="teaser ca-card">
+        <span class="icon-tile"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span>
+        <p class="mb-0 small">{{ 'No discussions yet. Start the first one!' | t }}</p>
+      </div>
+    }
+  }
+</section>
+
+<!-- Author line, shared by posts and comments. -->
+<ng-template #author let-item let-size="size">
+  <div class="author">
+    <app-avatar [name]="community.authorName(item.authorId)" [size]="size" />
+    <div class="min-w-0">
+      <span class="name">{{ community.authorName(item.authorId) | t }}</span>
+      @if (roleOf(item.authorId) !== 'student') {
+        <span class="tag role" [class.blue]="roleOf(item.authorId) === 'instructor'">{{ roleLabels[roleOf(item.authorId)] | t }}</span>
+      }
+      <span class="when">
+        {{ item.createdAt | ldate: 'd MMM y, h:mm a' }}
+        @if (item.editedAt) {
+          · {{ 'edited' | t }}
+        }
+      </span>
+    </div>
+  </div>
+</ng-template>
+
+<!-- One comment or reply. -->
+<ng-template #commentTpl let-c let-post="post">
+  <div class="comment" [class.is-hidden]="c.hidden">
+    <ng-container *ngTemplateOutlet="author; context: { $implicit: c, size: 30 }" />
+    @if (editingComment() === c.id) {
+      <form class="mt-1" (ngSubmit)="saveEditComment(c)" novalidate>
+        <label class="visually-hidden" [for]="'edit-comment-' + c.id">{{ 'Edit comment' | t }}</label>
+        <textarea [id]="'edit-comment-' + c.id" name="editComment" class="form-control form-control-sm" rows="2" [(ngModel)]="editBody"
+          [maxlength]="limits.comment"></textarea>
+        <div class="d-flex justify-content-end gap-2 mt-1">
+          <button type="button" class="btn btn-outline btn-sm" (click)="editingComment.set(null)">{{ 'Cancel' | t }}</button>
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy()">{{ 'Save' | t }}</button>
+        </div>
+      </form>
+    } @else {
+      <p class="body">{{ c.body }}</p>
+    }
+    <div class="actions small">
+      @if (c.hidden) {
+        <span class="tag red">{{ 'Hidden' | t }}</span>
+      }
+      @if (community.canComment(post)) {
+        <button type="button" class="link-btn" (click)="startReply(c)">{{ 'Reply' | t }}</button>
+      }
+      @if (community.isAuthor(c) && editingComment() !== c.id) {
+        <button type="button" class="link-btn" (click)="startEditComment(c)">{{ 'Edit' | t }}</button>
+      }
+      @if (canModerate()) {
+        <button type="button" class="link-btn" (click)="toggleCommentHidden(c)">{{ (c.hidden ? 'Unhide' : 'Hide') | t }}</button>
+      }
+      @if (community.isAuthor(c) || canModerate()) {
+        <button type="button" class="link-btn danger" (click)="deleteComment(c)">{{ 'Delete' | t }}</button>
+      }
+    </div>
+  </div>
+</ng-template>

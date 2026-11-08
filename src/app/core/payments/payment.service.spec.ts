@@ -3,6 +3,7 @@ import { localStore, sessionStore } from '../data/browser-storage';
 import { COURSES } from '../data/courses.data';
 import { AuthService } from '../services/auth.service';
 import { EnrollmentService } from '../services/enrollment.service';
+import { PermissionDeniedError, PermissionService } from '../services/permission.service';
 import { DemoPaymentGateway } from './demo-payment-gateway';
 import { PaymentGateway } from './payment-gateway';
 import { DEFAULT_TRANSACTION_FILTER, PaymentTransaction, filterTransactions } from './payment.model';
@@ -12,6 +13,7 @@ describe('PaymentService', () => {
   let payments: PaymentService;
   let gateway: DemoPaymentGateway;
   let enrollments: EnrollmentService;
+  let auth: AuthService;
   const course = COURSES[1];
 
   beforeEach(async () => {
@@ -23,14 +25,25 @@ describe('PaymentService', () => {
     payments = TestBed.inject(PaymentService);
     gateway = TestBed.inject(DemoPaymentGateway);
     enrollments = TestBed.inject(EnrollmentService);
-    const auth = TestBed.inject(AuthService);
-    await Promise.all([payments.ready, enrollments.ready, auth.ready]);
+    auth = TestBed.inject(AuthService);
+    await Promise.all([payments.ready, enrollments.ready, auth.ready, TestBed.inject(PermissionService).ready]);
+    await logIn('student@courseacademy.demo', 'Student@123');
+  });
+
+  async function logIn(email: string, password: string): Promise<void> {
     vi.useFakeTimers({ toFake: ['setTimeout'] });
-    const login = auth.login('student@courseacademy.demo', 'Student@123');
+    const login = auth.login(email, password);
     await vi.advanceTimersByTimeAsync(600);
     await login;
     vi.useRealTimers();
-  });
+  }
+
+  /** Runs an admin action, then returns to the student, who reopens their receipt. */
+  async function asAdmin(action: () => Promise<unknown>): Promise<void> {
+    await logIn('admin@courseacademy.demo', 'Admin@123');
+    await action();
+    await logIn('student@courseacademy.demo', 'Student@123');
+  }
 
   async function startPayment(): Promise<string> {
     const url = await payments.checkout(course, 'bkash');
@@ -75,7 +88,7 @@ describe('PaymentService', () => {
     await gateway.simulate(id, 'success');
     await payments.confirm(id);
 
-    await payments.setStatus(id, 'refunded');
+    await asAdmin(() => payments.setStatus(id, 'refunded'));
     await payments.confirm(id);
     expect(enrollments.isEnrolled(course.id)).toBe(false);
   });
@@ -86,7 +99,7 @@ describe('PaymentService', () => {
     await payments.confirm(id);
     const enrollment = enrollments.mine().find((e) => e.courseId === course.id)!;
 
-    await enrollments.setStatus(enrollment.id, 'revoked');
+    await asAdmin(() => enrollments.setStatus(enrollment.id, 'revoked'));
     await payments.confirm(id);
     expect(enrollments.isEnrolled(course.id)).toBe(false);
   });
@@ -96,7 +109,7 @@ describe('PaymentService', () => {
     await gateway.simulate(id, 'success');
     await payments.confirm(id);
 
-    await enrollments.removeForCourse(course.id);
+    await asAdmin(() => enrollments.removeForCourse(course.id));
     await payments.confirm(id);
     expect(enrollments.countAllForCourse(course.id)).toBe(0);
   });
@@ -105,7 +118,13 @@ describe('PaymentService', () => {
     const id = await startPayment();
     await gateway.simulate(id, 'failed');
     await payments.confirm(id);
-    await expect(payments.setStatus(id, 'refunded')).rejects.toThrow();
+    await logIn('admin@courseacademy.demo', 'Admin@123');
+    await expect(payments.setStatus(id, 'refunded')).rejects.toThrow('not allowed');
+  });
+
+  it('refuses admin actions from a student', async () => {
+    const id = await startPayment();
+    await expect(payments.setStatus(id, 'success')).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   it('keeps transactions after a refresh', async () => {

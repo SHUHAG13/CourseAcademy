@@ -44,13 +44,23 @@
                 </div>
                 <h3 class="h6">{{ e.course.title | t }}</h3>
                 <p class="small text-muted">
-                  {{ '{0} lessons' | t: [lessons(e.course)] }}
+                  {{ '{0} sections' | t: [sections(e.course)] }}
                   @if (e.course.schedule.length) {
                     {{ '· {0} live sessions' | t: [e.course.schedule.length] }}
                   }
                   {{ '· Enrolled {0}' | t: [(e.enrollment.enrolledAt | ldate: 'd MMM y')] }}
                 </p>
                 @if (e.enrollment.status === 'active') {
+                  @if (sections(e.course)) {
+                    <div class="d-flex justify-content-between small mb-1">
+                      <span class="text-muted">{{ 'Progress' | t }}</span>
+                      <strong>{{ '{0}% complete' | t: [progress.percent(e.course)] }}</strong>
+                    </div>
+                    <div class="progress mb-3" role="progressbar" [attr.aria-valuenow]="progress.percent(e.course)" aria-valuemin="0"
+                      aria-valuemax="100" [attr.aria-label]="'Course progress' | t" style="height: 6px">
+                      <div class="progress-bar bg-success" [style.width.%]="progress.percent(e.course)"></div>
+                    </div>
+                  }
                   <a [routerLink]="['/learn', e.course.slug]" class="btn btn-primary w-100">{{ 'Continue learning' | t }}</a>
                 } @else {
                   <p class="small mb-0">{{ 'Access to this course has ended. Please contact support if this looks wrong.' | t }}</p>
@@ -66,6 +76,46 @@
           message="Browse the catalogue and enroll to see your courses here.">
           <a routerLink="/courses" class="btn btn-primary">{{ 'Browse courses' | t }}</a>
         </app-empty-state>
+      </div>
+    }
+
+    @if (certificates.mine().length) {
+      <h2 class="h4 mb-3">{{ 'My certificates' | t }}</h2>
+      <div class="ca-card table-responsive mb-5">
+        <table class="ca-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'Course' | t }}</th><th scope="col">{{ 'Certificate ID' | t }}</th><th scope="col">{{ 'Issued' | t }}</th>
+              <th scope="col"><span class="visually-hidden">{{ 'Actions' | t }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of certificates.mine(); track c.id) {
+              <tr>
+                <td>
+                  <span class="primary">{{ c.courseTitle | t }}</span>
+                  <span class="secondary">
+                    {{ (c.mode === 'exam' ? 'Central exam' : 'Course completion') | t }}
+                    @if (c.scorePercent !== undefined) { · {{ c.scorePercent | n }}% }
+                  </span>
+                </td>
+                <td>
+                  <code>{{ c.code }}</code>
+                  @if (c.revoked) { <span class="tag red ms-1">{{ 'Revoked' | t }}</span> }
+                </td>
+                <td class="text-nowrap">{{ c.issuedAt | ldate: 'd MMM y' }}</td>
+                <td class="actions text-nowrap">
+                  @if (!c.revoked) {
+                    <button type="button" class="btn btn-sm btn-primary" (click)="download(c)">
+                      <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> {{ 'PDF' | t }}
+                    </button>
+                  }
+                  <a class="btn btn-sm btn-outline ms-1" [routerLink]="['/verify', c.code]">{{ 'Verify' | t }}</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     }
 

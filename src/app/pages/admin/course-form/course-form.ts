@@ -14,18 +14,17 @@ import { uid } from '../../../core/data/repository';
 import {
   COURSE_FORMATS,
   Course,
-  CurriculumSection,
-  Lesson,
   LiveSession,
   MATERIAL_TYPES,
   Material,
 } from '../../../core/models/course.model';
-import { CourseService } from '../../../core/services/course.service';
+import { CourseService, sectionCount } from '../../../core/services/course.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { URL_PATTERN } from '../../../shared/forms/validators';
 import { BdtPipe } from '../../../shared/pipes/bdt.pipe';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { failureMessage } from '../../../core/services/permission.service';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const IMAGE_PATTERN = /^(?:\/[^\s/]|https?:\/\/)\S*$/i;
@@ -105,11 +104,10 @@ export class CourseForm implements OnInit {
       published: [false],
       outcomes: ['', Validators.required],
       requirements: [''],
-      sections: this.fb.array<FormGroup>([]),
       sessions: this.fb.array<FormGroup>([]),
       materials: this.fb.array<FormGroup>([]),
     },
-    { validators: [saleNotAboveRegular, publishedHasContent] },
+    { validators: [saleNotAboveRegular, publishedHasContent(() => this.sectionTotal())] },
   );
 
   private readonly values = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
@@ -124,10 +122,6 @@ export class CourseForm implements OnInit {
   });
   protected readonly needsSchedule = computed(() => this.values().format !== 'Pre-recorded');
 
-  get sections(): FormArray<FormGroup> {
-    return this.form.controls.sections;
-  }
-
   get sessions(): FormArray<FormGroup> {
     return this.form.controls.sessions;
   }
@@ -136,8 +130,10 @@ export class CourseForm implements OnInit {
     return this.form.controls.materials;
   }
 
-  lessonsOf(section: AbstractControl): FormArray<FormGroup> {
-    return section.get('lessons') as FormArray<FormGroup>;
+  /** Sections in the saved curriculum, which is edited on its own page. */
+  protected sectionTotal(): number {
+    const course = this.existing();
+    return course ? sectionCount(course) : 0;
   }
 
   ngOnInit(): void {
@@ -155,29 +151,11 @@ export class CourseForm implements OnInit {
       outcomes: course.outcomes.join('\n'),
       requirements: course.requirements.join('\n'),
     });
-    course.curriculum.forEach((s) => this.sections.push(this.sectionGroup(s)));
     course.schedule.forEach((s) => this.sessions.push(this.sessionGroup(s)));
     course.materials.forEach((m) => this.materials.push(this.materialGroup(m)));
   }
 
   // ── Form rows ───────────────────────────────────────────────
-
-  private sectionGroup(section?: CurriculumSection): FormGroup {
-    return this.fb.group({
-      id: [section?.id ?? uid('section')],
-      title: [section?.title ?? '', Validators.required],
-      lessons: this.fb.array<FormGroup>((section?.lessons ?? []).map((l) => this.lessonGroup(l))),
-    });
-  }
-
-  private lessonGroup(lesson?: Lesson): FormGroup {
-    return this.fb.group({
-      id: [lesson?.id ?? uid('lesson')],
-      title: [lesson?.title ?? '', Validators.required],
-      minutes: [lesson?.minutes ?? 10, [Validators.required, Validators.min(1)]],
-      preview: [!!lesson?.preview],
-    });
-  }
 
   private sessionGroup(session?: LiveSession): FormGroup {
     return this.fb.group({
@@ -198,14 +176,6 @@ export class CourseForm implements OnInit {
     });
   }
 
-  protected addSection(): void {
-    this.sections.push(this.sectionGroup());
-  }
-
-  protected addLesson(section: AbstractControl): void {
-    this.lessonsOf(section).push(this.lessonGroup());
-  }
-
   protected addSession(): void {
     this.sessions.push(this.sessionGroup());
   }
@@ -219,7 +189,7 @@ export class CourseForm implements OnInit {
     this.form.markAsDirty();
   }
 
-  /** Moves a row up (-1) or down (+1). Also used for reordering lessons and sections. */
+  /** Moves a row up (-1) or down (+1). */
   protected move(array: FormArray, index: number, direction: -1 | 1): void {
     const target = index + direction;
     if (target < 0 || target >= array.length) return;
@@ -285,7 +255,7 @@ export class CourseForm implements OnInit {
       updated: new Date().toISOString().slice(0, 7),
       outcomes: lines(value.outcomes),
       requirements: lines(value.requirements),
-      curriculum: value.sections as CurriculumSection[],
+      modules: this.existing()?.modules ?? [],
       schedule: value.sessions as LiveSession[],
       materials: value.materials as Material[],
     };
@@ -296,8 +266,8 @@ export class CourseForm implements OnInit {
       this.form.markAsPristine();
       this.toast.success('{0} was saved.', [course.title]);
       await this.router.navigateByUrl('/admin/courses');
-    } catch {
-      this.toast.error('The course could not be saved. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The course could not be saved. Browser storage may be full or blocked.'));
     } finally {
       this.saving.set(false);
     }
@@ -310,13 +280,14 @@ function saleNotAboveRegular(group: AbstractControl): ValidationErrors | null {
 }
 
 /** Drafts can be incomplete, but a published course must have what its format promises. */
-function publishedHasContent(group: AbstractControl): ValidationErrors | null {
-  const { published, format, sections, sessions } = group.value;
-  if (!published) return null;
+function publishedHasContent(sectionTotal: () => number) {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const { published, format, sessions } = group.value;
+    if (!published) return null;
 
-  const hasLessons = (sections ?? []).some((s: { lessons?: unknown[] }) => s.lessons?.length);
-  const errors: ValidationErrors = {};
-  if (!hasLessons) errors['needsLessons'] = true;
-  if (format !== 'Pre-recorded' && !sessions?.length) errors['needsSessions'] = true;
-  return Object.keys(errors).length ? errors : null;
+    const errors: ValidationErrors = {};
+    if (!sectionTotal()) errors['needsLessons'] = true;
+    if (format !== 'Pre-recorded' && !sessions?.length) errors['needsSessions'] = true;
+    return Object.keys(errors).length ? errors : null;
+  };
 }

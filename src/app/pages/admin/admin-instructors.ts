@@ -9,6 +9,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
 import { showError } from '../../shared/forms/validators';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { PermissionService, failureMessage } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-admin-instructors',
@@ -16,7 +17,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   template: `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <h1 class="h3 mb-0">{{ 'Instructors' | t }}</h1>
-      @if (!formOpen()) {
+      @if (!formOpen() && permissions.can('instructors.create')) {
         <button type="button" class="btn btn-primary" (click)="startCreate()">
           <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'New instructor' | t }}
         </button>
@@ -89,8 +90,12 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
                 <p class="small text-muted mb-0">{{ '{0} years · {1} assigned courses' | t: [i.experienceYears, courses.assignedCourses(i.id).length] }}</p>
               </div>
               <div class="d-flex gap-1">
-                <button type="button" class="icon-btn" (click)="startEdit(i)" [attr.aria-label]="'Edit {0}' | t: [i.name]" [title]="'Edit' | t"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                <button type="button" class="icon-btn danger" (click)="remove(i)" [attr.aria-label]="'Delete {0}' | t: [i.name]" [title]="'Delete' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                @if (permissions.can('instructors.edit')) {
+                  <button type="button" class="icon-btn" (click)="startEdit(i)" [attr.aria-label]="'Edit {0}' | t: [i.name]" [title]="'Edit' | t"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                }
+                @if (permissions.can('instructors.delete')) {
+                  <button type="button" class="icon-btn danger" (click)="remove(i)" [attr.aria-label]="'Delete {0}' | t: [i.name]" [title]="'Delete' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                }
               </div>
             </div>
           </article>
@@ -104,6 +109,7 @@ export class AdminInstructors {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);
+  protected readonly permissions = inject(PermissionService);
 
   protected readonly formOpen = signal(false);
   protected readonly editing = signal<Instructor | null>(null);
@@ -155,8 +161,8 @@ export class AdminInstructors {
       });
       this.toast.success('{0} was saved.', [value.name.trim()]);
       this.closeForm();
-    } catch {
-      this.toast.error('The instructor could not be saved. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The instructor could not be saved. Browser storage may be full or blocked.'));
     }
   }
 
@@ -177,8 +183,8 @@ export class AdminInstructors {
     try {
       await this.courses.removeInstructor(instructor.id);
       this.toast.success('{0} was deleted.', [instructor.name]);
-    } catch {
-      this.toast.error('The instructor could not be deleted. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The instructor could not be deleted. Browser storage may be full or blocked.'));
     }
   }
 }

@@ -19,6 +19,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
 import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
+import { PermissionService, failureMessage } from '../../core/services/permission.service';
 
 const ACTIONS: Partial<Record<PaymentStatus, { label: string; title: string; message: string; danger: boolean }>> = {
   success: {
@@ -48,6 +49,7 @@ const ACTIONS: Partial<Record<PaymentStatus, { label: string; title: string; mes
 })
 export class AdminTransactions {
   protected readonly payments = inject(PaymentService);
+  protected readonly permissions = inject(PermissionService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);
@@ -130,8 +132,8 @@ export class AdminTransactions {
     try {
       await this.payments.remove(transaction.id);
       this.toast.success('The record was deleted.');
-    } catch {
-      this.toast.error('The record could not be deleted. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The record could not be deleted. Browser storage may be full or blocked.'));
     }
   }
 }

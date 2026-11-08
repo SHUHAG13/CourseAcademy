@@ -1,6 +1,13 @@
 import { COURSES } from '../data/courses.data';
-import { CourseFilter } from '../models/course.model';
-import { DEFAULT_FILTER, discountPercent, filterCourses } from './course.service';
+import { CourseFilter, Section } from '../models/course.model';
+import {
+  DEFAULT_FILTER,
+  allSections,
+  curriculumError,
+  discountPercent,
+  documentUrlMatchesType,
+  filterCourses,
+} from './course.service';
 
 const run = (patch: Partial<CourseFilter>) => filterCourses(COURSES, { ...DEFAULT_FILTER, ...patch });
 
@@ -88,3 +95,67 @@ describe('discountPercent', () => {
     expect(discountPercent({ price: 0, originalPrice: 0 })).toBe(0);
   });
 });
+
+describe('curriculum rules', () => {
+  const modules = structuredClone(COURSES[3].modules);
+
+  it('accepts every demo course', () => {
+    for (const c of COURSES) expect(curriculumError(c.modules)).toBeNull();
+  });
+
+  it('gives every top-level demo section a video with its notes attached under it', () => {
+    for (const s of COURSES[3].modules.flatMap((m) => m.submodules.flatMap((sub) => sub.sections))) {
+      expect(s.videos.length).toBeGreaterThan(0);
+      expect(s.documents.some((d) => d.type === 'PDF' && d.videoId === s.videos[0].id)).toBe(true);
+    }
+  });
+
+  it('needs 2 or 3 sections in each submodule', () => {
+    const sub = modules[0].submodules[0];
+    expect(curriculumError([{ ...modules[0], submodules: [{ ...sub, sections: sub.sections.slice(0, 1) }] }])).toContain('2 or 3');
+    const four = [...sub.sections, ...sub.sections].slice(0, 4);
+    expect(curriculumError([{ ...modules[0], submodules: [{ ...sub, sections: four }] }])).toContain('2 or 3');
+  });
+
+  it('checks document links against their type', () => {
+    expect(documentUrlMatchesType('https://x.com/notes.PDF?v=2', 'PDF')).toBe(true);
+    expect(documentUrlMatchesType('https://x.com/slides.pptx', 'DOCX')).toBe(false);
+
+    const sub = modules[0].submodules[0];
+    const [first, ...rest] = sub.sections;
+    const badDoc = { ...first, documents: [{ ...first.documents[0], type: 'DOCX' as const }] };
+    expect(curriculumError([{ ...modules[0], submodules: [{ ...sub, sections: [badDoc, ...rest] }] }])).toContain('.pdf');
+  });
+});
+
+describe('curriculum topics', () => {
+  const loops = () => allSections(COURSES[3]).find((s) => s.title === 'Variables, conditions and loops')!;
+
+  it('nests the demo topics under their section, each with its own videos and PDF', () => {
+    const [staticVars, dynamicVars] = loops().topics;
+    expect(staticVars.title).toBe('Static variables');
+    expect(staticVars.videos.length).toBe(2);
+    expect(staticVars.documents.map((d) => d.type)).toEqual(['PDF']);
+    expect(dynamicVars.title).toBe('Dynamic variables');
+    expect(dynamicVars.videos.length).toBe(1);
+  });
+
+  it('counts topics as sections, right after their parent', () => {
+    const sections = allSections(COURSES[3]);
+    const at = sections.indexOf(loops());
+    expect(sections.slice(at + 1, at + 3).map((s) => s.title)).toEqual(['Static variables', 'Dynamic variables']);
+  });
+
+  it('allows three levels of topics but not four, and needs topic titles', () => {
+    const level = (depth: number): Section => ({ ...loops(), topics: depth ? [level(depth - 1)] : [] });
+    const withTopics = (section: Section) => {
+      const modules = structuredClone(COURSES[3].modules);
+      modules[0].submodules[0].sections[1] = section;
+      return curriculumError(modules);
+    };
+    expect(withTopics(level(3))).toBeNull();
+    expect(withTopics(level(4))).toContain('3 levels');
+    expect(withTopics({ ...loops(), topics: [{ ...loops().topics[0], title: ' ' }] })).toContain('topic needs a title');
+  });
+});
+

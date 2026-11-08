@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'user';
+import { Permission } from './permission.model';
 
 export interface AppUser {
   id: string;
@@ -10,6 +10,11 @@ export interface AppUser {
    * salted hash on the server and never send it to the client.
    */
   password: string;
-  role: UserRole;
+  /** Id of the user's `Role`. */
+  role: string;
+  /** Screen access chosen for this user. When absent, the user has their role's permissions. */
+  access?: Permission[];
+  /** The instructor profile this account teaches as, if any. */
+  instructorId?: string;
   createdAt: string;
 }

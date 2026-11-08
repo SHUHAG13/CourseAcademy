@@ -53,6 +53,16 @@ describe('LocalStorageRepository and EntityStore', () => {
     expect(store.items().map((i) => i.name)).toEqual(['seeded']);
   });
 
+  it('replaces data saved in an older shape with the defaults', async () => {
+    localStore.setItem(KEY, JSON.stringify({ version: 1, data: [{ id: 1, name: 'old shape' }] }));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const store = new EntityStore(new LocalStorageRepository<Item>(KEY, seed));
+    await store.ready;
+    expect(store.recovered()).toBe(true);
+    expect(store.items().map((i) => i.name)).toEqual(['seeded']);
+  });
+
   it('leaves the cached data unchanged when a write fails', async () => {
     const store = new EntityStore(new LocalStorageRepository<Item>(KEY, seed));
     await store.ready;

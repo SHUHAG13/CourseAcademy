@@ -41,7 +41,7 @@
           } @else if (t.status === 'pending' && t.userId === auth.user()?.id) {
             <a [routerLink]="['/checkout/pay', t.id]" class="btn btn-accent btn-lg">{{ 'Continue payment' | t }}</a>
           }
-          <a [routerLink]="auth.homeUrl()" class="btn btn-outline btn-lg">{{ (auth.isAdmin() ? 'Admin dashboard' : 'My dashboard') | t }}</a>
+          <a [routerLink]="permissions.homeUrl()" class="btn btn-outline btn-lg">{{ (permissions.hasAdminPanel() ? 'Admin dashboard' : 'My dashboard') | t }}</a>
         </div>
 
         <p class="demo-footnote">

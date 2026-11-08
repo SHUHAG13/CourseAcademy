@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { localStore, sessionStore } from '../data/browser-storage';
 import { USER_REPOSITORY } from '../data/repositories';
 import { EntityStore, uid } from '../data/repository';
+import { ADMIN_ROLE_ID, STUDENT_ROLE_ID } from '../models/permission.model';
 import { AppUser } from '../models/user.model';
 
 const SESSION_KEY = 'ca-demo-session';
@@ -22,9 +23,7 @@ export class AuthService {
   readonly users = this.store.items;
   readonly user = computed(() => this.users().find((u) => u.id === this.sessionUserId()) ?? null);
   readonly isLoggedIn = computed(() => this.user() !== null);
-  readonly isAdmin = computed(() => this.user()?.role === 'admin');
-  /** Where this user's account pages live. */
-  readonly homeUrl = computed(() => (this.isAdmin() ? '/admin' : '/dashboard'));
+  readonly isAdmin = computed(() => this.user()?.role === ADMIN_ROLE_ID);
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -57,11 +56,16 @@ export class AuthService {
       email: email.trim().toLowerCase(),
       phone: phone || undefined,
       password,
-      role: 'user',
+      role: STUDENT_ROLE_ID,
       createdAt: new Date().toISOString(),
     });
     this.startSession(user.id, true);
     return user;
+  }
+
+  /** Saves account changes. Has no permission check of its own: `PermissionService` checks first. */
+  updateUser(user: AppUser): Promise<AppUser> {
+    return this.store.save(user);
   }
 
   logout(): void {

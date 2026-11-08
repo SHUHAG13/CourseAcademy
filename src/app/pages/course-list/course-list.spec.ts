@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { localStore } from '../../core/data/browser-storage';
 import { COURSES } from '../../core/data/courses.data';
+import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from '../../core/services/course.service';
 import { CourseList } from './course-list';
 
@@ -49,6 +50,14 @@ describe('CourseList', () => {
 
   it('hides unpublished courses as soon as an admin unpublishes one', async () => {
     const service = TestBed.inject(CourseService);
+    const auth = TestBed.inject(AuthService);
+    await auth.ready;
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    const login = auth.login('admin@courseacademy.demo', 'Admin@123');
+    await vi.advanceTimersByTimeAsync(1000);
+    await login;
+    vi.useRealTimers();
+
     const fixture = TestBed.createComponent(CourseList);
     await fixture.whenStable();
 

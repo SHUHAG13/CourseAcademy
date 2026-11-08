@@ -1,8 +1,14 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { DEMO_ADMIN_CREDENTIALS, DEMO_STUDENT_CREDENTIALS } from '../../core/data/demo-records.data';
+import {
+  DEMO_ADMIN_CREDENTIALS,
+  DEMO_INSTRUCTOR_CREDENTIALS,
+  DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS,
+  DEMO_STUDENT_CREDENTIALS,
+} from '../../core/data/demo-records.data';
 import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { ToastService } from '../../core/services/toast.service';
 import { showError } from '../../shared/forms/validators';
 import { AuthShell } from './auth-shell';
@@ -16,6 +22,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class Login {
   private readonly auth = inject(AuthService);
+  private readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -28,6 +35,8 @@ export class Login {
 
   protected readonly demoAccounts = [
     { label: 'Admin', ...DEMO_ADMIN_CREDENTIALS },
+    { label: 'Instructor', ...DEMO_INSTRUCTOR_CREDENTIALS },
+    { label: 'Software instructor', ...DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS },
     { label: 'Student', ...DEMO_STUDENT_CREDENTIALS },
   ];
 
@@ -55,7 +64,7 @@ export class Login {
     try {
       const user = await this.auth.login(email, password, remember);
       this.toast.success('Welcome back, {0}!', [user.name]);
-      this.router.navigateByUrl(this.returnUrl() || this.auth.homeUrl());
+      this.router.navigateByUrl(this.returnUrl() || this.permissions.homeUrl());
     } catch (error) {
       this.error.set((error as Error).message);
     } finally {

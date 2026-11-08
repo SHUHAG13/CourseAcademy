@@ -263,20 +263,78 @@
 
   ul {
     margin: 0;
-    padding: 0.5rem 1.1rem 0.75rem;
+    padding: 0.25rem 1.1rem 0.75rem;
     list-style: none;
   }
 
   li {
+    padding: 0.4rem 0;
+    font-size: 0.92rem;
+
+    & + li {
+      border-top: 1px solid var(--ca-border);
+    }
+  }
+
+  .sub-title {
+    margin: 0;
+    padding: 0.8rem 1.1rem 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ca-muted);
+  }
+
+  .section-name {
+    margin: 0 0 0.2rem;
+    font-weight: 600;
+  }
+
+  .video-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.45rem 0;
-    font-size: 0.92rem;
+    padding: 0.2rem 0;
 
     > i {
       color: var(--ca-muted);
     }
+  }
+
+  // Documents sit right under the video they belong to.
+  .attached {
+    display: block;
+    margin: 0.3rem 0 0.4rem 1.85rem;
+  }
+
+  // Topics sit under their section, one indent per level.
+  .topics {
+    margin: 0.35rem 0 0 0.6rem;
+    padding: 0 0 0 1rem;
+    border-left: 2px solid var(--ca-border);
+
+    li {
+      padding: 0.25rem 0;
+    }
+
+    li + li {
+      border-top: 0;
+    }
+
+    .section-name::before {
+      content: '\F132';
+      margin-right: 0.4rem;
+      font-family: 'bootstrap-icons';
+      font-weight: 400;
+      color: var(--ca-muted);
+    }
+  }
+
+  .preview-player {
+    margin: 0.4rem 0 0.5rem 1.85rem;
+    overflow: hidden;
+    border-radius: var(--ca-radius);
   }
 
   .dur {

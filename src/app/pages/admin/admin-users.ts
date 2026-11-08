@@ -1,7 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
+import { STUDENT_ROLE_ID } from '../../core/models/permission.model';
 import { EnrollmentService } from '../../core/services/enrollment.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
 import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
 
@@ -33,7 +35,7 @@ import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipe
                 <span class="d-flex align-items-center gap-2 primary"><app-avatar [name]="u.name" [size]="32" />{{ u.name | t }}</span>
               </td>
               <td>{{ u.email }}</td>
-              <td><span class="tag" [class.blue]="u.role === 'admin'">{{ (u.role === 'admin' ? 'Admin' : 'User') | t }}</span></td>
+              <td><span class="tag" [class.blue]="u.role !== studentRole">{{ roleName(u.role) | t }}</span></td>
               <td>{{ activeCourses(u.id) | n }}</td>
               <td class="text-nowrap">{{ u.createdAt | ldate: 'd MMM y' }}</td>
             </tr>
@@ -48,12 +50,19 @@ import { TranslatePipe, LocalNumberPipe, LocalDatePipe } from '../../shared/pipe
 export class AdminUsers {
   private readonly auth = inject(AuthService);
   private readonly enrollments = inject(EnrollmentService);
+  private readonly permissions = inject(PermissionService);
+
+  protected readonly studentRole = STUDENT_ROLE_ID;
 
   protected readonly search = signal('');
   protected readonly users = computed(() => {
     const term = this.search().trim().toLowerCase();
     return this.auth.users().filter((u) => !term || u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term));
   });
+
+  protected roleName(roleId: string): string {
+    return this.permissions.role(roleId)?.name ?? roleId;
+  }
 
   protected activeCourses(userId: string): number {
     return this.enrollments.enrollments().filter((e) => e.userId === userId && e.status === 'active').length;

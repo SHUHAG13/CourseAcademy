@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard } from './core/guards/auth.guards';
+import { authGuard, permissionGuard, screenGuard, sectionGuard } from './core/guards/auth.guards';
 import { Home } from './pages/home/home';
 
 const SITE = 'Course Academy';
@@ -55,80 +55,148 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     title: `My Dashboard | ${SITE}`,
-    canActivate: [authGuard],
+    canActivate: [authGuard, screenGuard('dashboard')],
     loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
   },
   {
     // Title is set by the component once the course is loaded.
     path: 'learn/:slug',
-    canActivate: [authGuard],
+    canActivate: [authGuard, screenGuard('learn')],
     loadComponent: () => import('./pages/learn/learn').then((m) => m.Learn),
   },
   {
     path: 'checkout/pay/:id',
     title: `Demo Payment | ${SITE}`,
-    canActivate: [authGuard],
+    canActivate: [authGuard, screenGuard('checkout')],
     loadComponent: () => import('./pages/checkout/demo-gateway').then((m) => m.DemoGateway),
   },
   {
     path: 'checkout/result/:id',
     title: `Payment Status | ${SITE}`,
-    canActivate: [authGuard],
+    canActivate: [authGuard, screenGuard('checkout')],
     loadComponent: () => import('./pages/checkout/payment-result').then((m) => m.PaymentResult),
   },
   {
     path: 'checkout/:slug',
     title: `Checkout | ${SITE}`,
-    canActivate: [authGuard],
+    canActivate: [authGuard, screenGuard('checkout')],
     loadComponent: () => import('./pages/checkout/checkout').then((m) => m.Checkout),
   },
   {
     path: 'admin',
-    canActivate: [adminGuard],
+    canActivate: [permissionGuard('admin.access')],
     loadComponent: () => import('./pages/admin/admin-layout').then((m) => m.AdminLayout),
     children: [
       {
         path: '',
         pathMatch: 'full',
         title: `Admin Overview | ${SITE}`,
+        canActivate: [screenGuard('overview')],
         loadComponent: () => import('./pages/admin/admin-overview').then((m) => m.AdminOverview),
       },
       {
         path: 'courses',
         title: `Manage Courses | ${SITE}`,
+        canActivate: [screenGuard('courses')],
         loadComponent: () => import('./pages/admin/admin-courses').then((m) => m.AdminCourses),
       },
       {
         path: 'courses/new',
         title: `New Course | ${SITE}`,
+        canActivate: [permissionGuard('courses.create')],
         loadComponent: () => import('./pages/admin/course-form/course-form').then((m) => m.CourseForm),
+      },
+      {
+        path: 'courses/:id/curriculum',
+        title: `Edit Curriculum | ${SITE}`,
+        canActivate: [permissionGuard('courses.edit', { courseParam: 'id' })],
+        loadComponent: () =>
+          import('./pages/admin/curriculum-editor/curriculum-editor').then((m) => m.CurriculumEditor),
+      },
+      {
+        path: 'courses/:id/certification',
+        title: `Certification | ${SITE}`,
+        canActivate: [permissionGuard('certificates.manage', { courseParam: 'id' })],
+        loadComponent: () => import('./pages/admin/certification-settings').then((m) => m.CertificationSettings),
       },
       {
         path: 'courses/:id',
         title: `Edit Course | ${SITE}`,
+        canActivate: [permissionGuard('courses.edit', { courseParam: 'id' })],
         loadComponent: () => import('./pages/admin/course-form/course-form').then((m) => m.CourseForm),
       },
       {
         path: 'instructors',
         title: `Manage Instructors | ${SITE}`,
+        canActivate: [screenGuard('instructors')],
         loadComponent: () => import('./pages/admin/admin-instructors').then((m) => m.AdminInstructors),
       },
       {
         path: 'users',
         title: `Users | ${SITE}`,
+        canActivate: [screenGuard('users')],
         loadComponent: () => import('./pages/admin/admin-users').then((m) => m.AdminUsers),
       },
       {
         path: 'enrollments',
         title: `Enrollments | ${SITE}`,
+        canActivate: [screenGuard('enrollments')],
         loadComponent: () => import('./pages/admin/admin-enrollments').then((m) => m.AdminEnrollments),
       },
       {
         path: 'transactions',
         title: `Transactions | ${SITE}`,
+        canActivate: [screenGuard('transactions')],
         loadComponent: () => import('./pages/admin/admin-transactions').then((m) => m.AdminTransactions),
       },
+      {
+        path: 'certificates',
+        title: `Certificates | ${SITE}`,
+        canActivate: [screenGuard('certificates')],
+        loadComponent: () => import('./pages/admin/admin-certificates').then((m) => m.AdminCertificates),
+      },
+      {
+        path: 'community',
+        title: `Community | ${SITE}`,
+        canActivate: [screenGuard('community-moderation')],
+        loadComponent: () => import('./pages/admin/admin-community').then((m) => m.AdminCommunity),
+      },
+      {
+        path: 'security',
+        loadComponent: () => import('./pages/admin/security/security-layout').then((m) => m.SecurityLayout),
+        children: [
+          { path: '', pathMatch: 'full', canActivate: [sectionGuard('security')], children: [] },
+          {
+            path: 'roles',
+            title: `Roles & Permissions | ${SITE}`,
+            canActivate: [screenGuard('roles')],
+            loadComponent: () => import('./pages/admin/security/admin-roles').then((m) => m.AdminRoles),
+          },
+          {
+            path: 'access',
+            title: `User Access | ${SITE}`,
+            canActivate: [screenGuard('access')],
+            loadComponent: () => import('./pages/admin/security/admin-access').then((m) => m.AdminAccess),
+          },
+          {
+            path: 'access/:userId',
+            title: `User Access | ${SITE}`,
+            canActivate: [screenGuard('access')],
+            loadComponent: () => import('./pages/admin/security/user-access').then((m) => m.UserAccess),
+          },
+        ],
+      },
     ],
+  },
+  {
+    path: 'verify',
+    title: `Verify a Certificate | ${SITE}`,
+    loadComponent: () => import('./pages/verify/verify').then((m) => m.Verify),
+  },
+  {
+    path: 'verify/:code',
+    title: `Verify a Certificate | ${SITE}`,
+    loadComponent: () => import('./pages/verify/verify').then((m) => m.Verify),
   },
   {
     path: 'testimonials',

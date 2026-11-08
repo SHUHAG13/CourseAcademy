@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { localStore } from '../data/browser-storage';
 import { COURSES, INSTRUCTORS } from '../data/courses.data';
 import { BN_TRANSLATIONS } from './bn.translations';
+import { flattenSections } from '../models/course.model';
 import { LanguageService } from './language.service';
 
 describe('LanguageService', () => {
@@ -62,7 +63,15 @@ describe('LanguageService', () => {
     };
     for (const c of COURSES) {
       [c.title, c.subtitle, c.description, c.coverLabel, ...c.outcomes, ...c.requirements].forEach(need);
-      c.curriculum.forEach((s) => [s.title, ...s.lessons.map((l) => l.title)].forEach(need));
+      for (const m of c.modules) {
+        need(m.title);
+        for (const sub of m.submodules) {
+          need(sub.title);
+          flattenSections(sub.sections).forEach((sec) =>
+            [sec.title, ...sec.videos.map((v) => v.title), ...sec.documents.map((d) => d.title)].forEach(need),
+          );
+        }
+      }
       c.schedule.forEach((s) => need(s.title));
       c.materials.forEach((m) => need(m.title));
     }

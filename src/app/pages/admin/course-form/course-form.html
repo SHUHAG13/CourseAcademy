@@ -200,52 +200,21 @@
     <section class="panel ca-card mb-3" aria-labelledby="f-curriculum">
       <div class="panel-head">
         <h2 id="f-curriculum" class="panel-title mb-0">{{ 'Curriculum' | t }}</h2>
-        <button type="button" class="btn btn-sm btn-outline" (click)="addSection()">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add section' | t }}
-        </button>
+        @if (existing(); as c) {
+          <a class="btn btn-sm btn-outline" [routerLink]="['/admin/courses', c.id, 'curriculum']">
+            <i class="bi bi-list-nested" aria-hidden="true"></i> {{ 'Edit curriculum' | t }}
+          </a>
+        }
       </div>
-      @if (form.hasError('needsLessons')) {
-        <div class="field-error mb-2">{{ 'A published course needs at least one lesson.' | t }}</div>
+      @if (existing(); as c) {
+        <p class="small text-muted mb-0">
+          {{ '{0} modules · {1} sections. Modules, submodules, sections, videos and documents are edited on their own page.' | t: [c.modules.length, sectionTotal()] }}
+        </p>
+      } @else {
+        <p class="small text-muted mb-0">{{ 'Save the course first, then add its modules, sections, videos and documents.' | t }}</p>
       }
-
-      @for (sec of sections.controls; track sec; let i = $index) {
-        <div class="section-row" [formGroup]="sec">
-          <div class="row-line">
-            <span class="visually-hidden">{{ 'Section {0}' | t: [i + 1] }}</span>
-            <input class="form-control" formControlName="title" [placeholder]="'Section title' | t"
-              [attr.aria-label]="'Section {0} title' | t: [i + 1]" [class.is-invalid]="invalid(sec.get('title'))" />
-            <span class="row-actions">
-              <button type="button" class="icon-btn" [disabled]="$first" (click)="move(sections, i, -1)" [attr.aria-label]="'Move section up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
-              <button type="button" class="icon-btn" [disabled]="$last" (click)="move(sections, i, 1)" [attr.aria-label]="'Move section down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-              <button type="button" class="icon-btn danger" (click)="removeAt(sections, i)" [attr.aria-label]="'Delete section' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
-            </span>
-          </div>
-
-          <div class="lessons">
-            @for (l of lessonsOf(sec).controls; track l; let j = $index) {
-              <div class="row-line lesson" [formGroup]="l">
-                <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Lesson title' | t"
-                  [attr.aria-label]="'Lesson {0} title' | t: [j + 1]" [class.is-invalid]="invalid(l.get('title'))" />
-                <input type="number" min="1" class="form-control form-control-sm minutes" formControlName="minutes"
-                  [attr.aria-label]="'Lesson {0} minutes' | t: [j + 1]" [class.is-invalid]="invalid(l.get('minutes'))" />
-                <span class="unit">{{ 'min' | t }}</span>
-                <label class="preview-toggle">
-                  <input type="checkbox" class="form-check-input" formControlName="preview" /> {{ 'Free preview' | t }}
-                </label>
-                <span class="row-actions">
-                  <button type="button" class="icon-btn" [disabled]="$first" (click)="move(lessonsOf(sec), j, -1)" [attr.aria-label]="'Move lesson up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
-                  <button type="button" class="icon-btn" [disabled]="$last" (click)="move(lessonsOf(sec), j, 1)" [attr.aria-label]="'Move lesson down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-                  <button type="button" class="icon-btn danger" (click)="removeAt(lessonsOf(sec), j)" [attr.aria-label]="'Delete lesson' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                </span>
-              </div>
-            }
-            <button type="button" class="btn btn-sm btn-link px-0" (click)="addLesson(sec)">
-              <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add lesson' | t }}
-            </button>
-          </div>
-        </div>
-      } @empty {
-        <p class="text-muted small mb-0">{{ 'No sections yet.' | t }}</p>
+      @if (form.hasError('needsLessons')) {
+        <div class="field-error mt-2">{{ 'A published course needs at least one section. Save it as a draft, then add the curriculum.' | t }}</div>
       }
     </section>
 

@@ -186,6 +186,49 @@ export const BN_CONTENT: Record<string, string> = {
   Worksheet: 'ওয়ার্কশিট',
   Link: 'লিংক',
 
+  // ── Curriculum structure ────────────────────────────────────
+  'Lesson notes': 'লেসন নোট',
+  'Lesson slides': 'লেসন স্লাইড',
+  'Practice worksheet': 'অনুশীলনী ওয়ার্কশিট',
+  'Your editing setup': 'আপনার এডিটিং সেটআপ',
+  'Building the edit': 'এডিট তৈরি করা',
+  Sound: 'সাউন্ড',
+  Colour: 'কালার',
+  'Titles and export': 'টাইটেল ও এক্সপোর্ট',
+  'Client-style projects': 'ক্লায়েন্টের মতো প্রজেক্ট',
+  'Know your market': 'আপনার বাজার চিনুন',
+  'Content and search': 'কনটেন্ট ও সার্চ',
+  'Running ads': 'অ্যাড চালানো',
+  'Results and strategy': 'ফলাফল ও কৌশল',
+  'Newsroom basics': 'নিউজরুমের মৌলিক বিষয়',
+  'Story formats': 'রিপোর্টের ধরন',
+  'On the ground': 'মাঠে কাজ',
+  'Digital storytelling': 'ডিজিটাল স্টোরিটেলিং',
+  'Core concepts': 'মূল ধারণা',
+  'Code and tools': 'কোড ও টুল',
+  'Web pages': 'ওয়েব পেজ',
+  Angular: 'অ্যাঙ্গুলার',
+  'APIs and data': 'API ও ডেটা',
+  'Ship your project': 'আপনার প্রজেক্ট প্রকাশ করুন',
+
+  // ── Certification and topics ────────────────────────────────
+  'Showreel project': 'শোরিল প্রজেক্ট',
+  'Edit a 60–90 second showreel from your course projects. Upload it to YouTube or Google Drive and share the link.':
+    'কোর্সের প্রজেক্ট থেকে ৬০–৯০ সেকেন্ডের একটি শোরিল এডিট করুন। ইউটিউব বা গুগল ড্রাইভে আপলোড করে লিংক দিন।',
+  'Growth strategy presentation': 'গ্রোথ স্ট্র্যাটেজি প্রেজেন্টেশন',
+  'Prepare a 10-slide growth strategy for a real brand and record yourself presenting it. Share the slides and the recording.':
+    'একটি বাস্তব ব্র্যান্ডের জন্য ১০ স্লাইডের গ্রোথ স্ট্র্যাটেজি তৈরি করে উপস্থাপনার রেকর্ডিং করুন। স্লাইড ও রেকর্ডিং শেয়ার করুন।',
+  'Capstone project': 'ক্যাপস্টোন প্রজেক্ট',
+  'Build and deploy a full-stack web app with an Angular front end and an ASP.NET Core API. Share the GitHub repository and the live link in your notes.':
+    'Angular ফ্রন্ট এন্ড ও ASP.NET Core API দিয়ে একটি ফুল-স্ট্যাক ওয়েব অ্যাপ তৈরি ও ডিপ্লয় করুন। GitHub রিপোজিটরি দিন এবং নোটে লাইভ লিংক লিখুন।',
+  'Static variables': 'স্ট্যাটিক ভেরিয়েবল',
+  'What is a static variable?': 'স্ট্যাটিক ভেরিয়েবল কী?',
+  'Static variables in practice': 'হাতে-কলমে স্ট্যাটিক ভেরিয়েবল',
+  'Static variables notes': 'স্ট্যাটিক ভেরিয়েবল নোট',
+  'Dynamic variables': 'ডাইনামিক ভেরিয়েবল',
+  'Dynamic variables explained': 'ডাইনামিক ভেরিয়েবল ব্যাখ্যা',
+  'Dynamic variables notes': 'ডাইনামিক ভেরিয়েবল নোট',
+
   // ── Reviews ─────────────────────────────────────────────────
   'Rakibul Islam': 'রাকিবুল ইসলাম',
   'Sanjida Akter': 'সানজিদা আক্তার',

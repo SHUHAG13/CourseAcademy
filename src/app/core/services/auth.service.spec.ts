@@ -1,18 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 import { localStore, sessionStore } from '../data/browser-storage';
-import { adminGuard, authGuard } from '../guards/auth.guards';
+import { authGuard, permissionGuard } from '../guards/auth.guards';
 import { AuthService } from './auth.service';
+import { PermissionService } from './permission.service';
 
 describe('AuthService', () => {
   let auth: AuthService;
+  let permissions: PermissionService;
 
   beforeEach(async () => {
     localStore.clear();
     sessionStore.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     auth = TestBed.inject(AuthService);
-    await auth.ready;
+    permissions = TestBed.inject(PermissionService);
+    await Promise.all([auth.ready, permissions.ready]);
     vi.useFakeTimers({ toFake: ['setTimeout'] });
   });
 
@@ -26,7 +29,7 @@ describe('AuthService', () => {
   it('logs in the seeded admin with the admin role', async () => {
     await settled(auth.login('ADMIN@courseacademy.demo', 'Admin@123'));
     expect(auth.isAdmin()).toBe(true);
-    expect(auth.homeUrl()).toBe('/admin');
+    expect(permissions.homeUrl()).toBe('/admin');
   });
 
   it('rejects a wrong password', async () => {
@@ -41,7 +44,7 @@ describe('AuthService', () => {
     const user = await settled(auth.register('New Student', 'new@example.com', 'Passw0rd1'));
     expect(user.role).toBe('user');
     expect(auth.isAdmin()).toBe(false);
-    expect(auth.homeUrl()).toBe('/dashboard');
+    expect(permissions.homeUrl()).toBe('/dashboard');
   });
 
   it('refuses a duplicate email', async () => {
@@ -61,7 +64,7 @@ describe('AuthService', () => {
     const state = { url: '/admin/courses' } as RouterStateSnapshot;
     const route = {} as ActivatedRouteSnapshot;
     const runAuth = () => TestBed.runInInjectionContext(() => authGuard(route, state));
-    const runAdmin = () => TestBed.runInInjectionContext(() => adminGuard(route, state));
+    const runAdmin = () => TestBed.runInInjectionContext(() => permissionGuard('admin.access')(route, state));
     const url = (result: unknown) => TestBed.inject(Router).serializeUrl(result as UrlTree);
 
     it('send visitors to login and remember where they were going', () => {
@@ -78,6 +81,12 @@ describe('AuthService', () => {
     it('let admins into the admin area', async () => {
       await settled(auth.login('admin@courseacademy.demo', 'Admin@123'));
       expect(runAdmin()).toBe(true);
+    });
+
+    it('let instructors into the admin area, starting at their courses', async () => {
+      await settled(auth.login('instructor@courseacademy.demo', 'Instructor@123'));
+      expect(runAdmin()).toBe(true);
+      expect(permissions.homeUrl()).toBe('/admin/courses');
     });
   });
 });

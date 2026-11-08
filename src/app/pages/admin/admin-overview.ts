@@ -11,6 +11,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { BdtPipe } from '../../shared/pipes/bdt.pipe';
 import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
+import { PermissionService, failureMessage } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-admin-overview',
@@ -59,15 +60,17 @@ import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe'
       </div>
     </section>
 
-    <section class="panel ca-card" aria-labelledby="reset-title">
-      <h2 id="reset-title" class="panel-title">{{ 'Reset demo data' | t }}</h2>
-      <p class="text-muted small">
-        {{ 'Restores the four default courses, instructors, demo accounts, enrollments and transactions. Everything created or changed in this browser is lost.' | t }}
-      </p>
-      <button type="button" class="btn btn-outline" [disabled]="resetting()" (click)="reset()">
-        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ 'Reset demo data' | t }}
-      </button>
-    </section>
+    @if (permissions.can('system.reset')) {
+      <section class="panel ca-card" aria-labelledby="reset-title">
+        <h2 id="reset-title" class="panel-title">{{ 'Reset demo data' | t }}</h2>
+        <p class="text-muted small">
+          {{ 'Restores the four default courses, instructors, demo accounts, enrollments and transactions. Everything created or changed in this browser is lost.' | t }}
+        </p>
+        <button type="button" class="btn btn-outline" [disabled]="resetting()" (click)="reset()">
+          <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ 'Reset demo data' | t }}
+        </button>
+      </section>
+    }
   `,
   styles: `
     a.stat-tile { color: inherit; }
@@ -82,6 +85,7 @@ export class AdminOverview {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);
+  protected readonly permissions = inject(PermissionService);
 
   protected readonly resetting = signal(false);
 
@@ -137,8 +141,8 @@ export class AdminOverview {
     try {
       await this.demoData.reset();
       this.toast.success('Demo data has been reset.');
-    } catch {
-      this.toast.error('The demo data could not be reset. Browser storage may be blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The demo data could not be reset. Browser storage may be blocked.'));
     } finally {
       this.resetting.set(false);
     }

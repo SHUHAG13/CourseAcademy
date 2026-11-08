@@ -1,13 +1,16 @@
 import {
   Category,
   Course,
-  CurriculumSection,
+  CourseModule,
+  DocumentType,
   Instructor,
-  Lesson,
   LiveSession,
   Material,
   MaterialType,
   Review,
+  Section,
+  SectionDocument,
+  Submodule,
 } from '../models/course.model';
 
 // Default demo catalogue, copied into browser storage on first run.
@@ -96,12 +99,76 @@ export const INSTRUCTORS: Instructor[] = [
 
 let nextId = 1;
 
-function lesson(title: string, minutes: number, preview = false): Lesson {
-  return { id: `lesson-${nextId++}`, title, minutes, preview };
+const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** The documents a section's video comes with. Every video gets lesson notes. */
+const DOCUMENTS: Record<'notes' | 'slides' | 'worksheet', { title: string; type: DocumentType; suffix: string }> = {
+  notes: { title: 'Lesson notes', type: 'PDF', suffix: 'notes.pdf' },
+  slides: { title: 'Lesson slides', type: 'PPTX', suffix: 'slides.pptx' },
+  worksheet: { title: 'Practice worksheet', type: 'DOCX', suffix: 'worksheet.docx' },
+};
+
+interface SectionOptions {
+  preview?: boolean;
+  extras?: ('slides' | 'worksheet')[];
+  /** Sub-topics shown under the section, each with its own video and notes. */
+  topics?: Section[];
 }
 
-function section(title: string, lessons: Lesson[]): CurriculumSection {
-  return { id: `section-${nextId++}`, title, lessons };
+/** A section with one video of the same name, and its documents attached under that video. */
+function section(title: string, minutes: number, { preview = false, extras = [], topics = [] }: SectionOptions = {}): Section {
+  const slug = slugify(title);
+  const videoId = `video-${nextId++}`;
+  const documents: SectionDocument[] = (['notes', ...extras] as const).map((kind) => ({
+    id: `document-${nextId++}`,
+    title: DOCUMENTS[kind].title,
+    type: DOCUMENTS[kind].type,
+    url: `https://example.com/demo-materials/${slug}-${DOCUMENTS[kind].suffix}`,
+    videoId,
+  }));
+  return {
+    id: `section-${nextId++}`,
+    title,
+    videos: [{ id: videoId, title, url: `https://example.com/demo-videos/${slug}`, minutes, preview }],
+    documents,
+    topics,
+  };
+}
+
+/** A topic with several videos and documents for the whole topic, listed under its videos. */
+function topic(
+  title: string,
+  videos: [title: string, minutes: number][],
+  documents: [title: string, type: DocumentType][],
+  topics: Section[] = [],
+): Section {
+  const slug = slugify(title);
+  return {
+    id: `section-${nextId++}`,
+    title,
+    videos: videos.map(([videoTitle, minutes]) => ({
+      id: `video-${nextId++}`,
+      title: videoTitle,
+      url: `https://example.com/demo-videos/${slugify(videoTitle)}`,
+      minutes,
+      preview: false,
+    })),
+    documents: documents.map(([docTitle, type]) => ({
+      id: `document-${nextId++}`,
+      title: docTitle,
+      type,
+      url: `https://example.com/demo-materials/${slug}-${slugify(docTitle)}.${type.toLowerCase()}`,
+    })),
+    topics,
+  };
+}
+
+function submodule(title: string, sections: Section[]): Submodule {
+  return { id: `submodule-${nextId++}`, title, sections };
+}
+
+function module(title: string, submodules: Submodule[]): CourseModule {
+  return { id: `module-${nextId++}`, title, submodules };
 }
 
 function material(title: string, type: MaterialType, file: string): Material {
@@ -160,31 +227,43 @@ export const COURSES: Course[] = [
       'Adobe Premiere Pro (the free trial is fine to start) and DaVinci Resolve (free)',
       'No previous editing experience needed',
     ],
-    curriculum: [
-      section('Getting started', [
-        lesson('Welcome and course roadmap', 6, true),
-        lesson('Setting up your workspace', 12, true),
-        lesson('Importing and organising footage', 15),
+    modules: [
+      module('Getting started', [
+        submodule('Your editing setup', [
+          section('Welcome and course roadmap', 6, { preview: true, extras: ['slides'] }),
+          section('Setting up your workspace', 12, { preview: true }),
+          section('Importing and organising footage', 15, { extras: ['worksheet'] }),
+        ]),
       ]),
-      section('Editing fundamentals', [
-        lesson('Cuts, trims and the timeline', 22),
-        lesson('Pacing and rhythm', 18),
-        lesson('B-roll and cutaways', 16),
+      module('Editing fundamentals', [
+        submodule('Building the edit', [
+          section('Cuts, trims and the timeline', 22, { extras: ['worksheet'] }),
+          section('Pacing and rhythm', 18),
+          section('B-roll and cutaways', 16),
+        ]),
       ]),
-      section('Sound and colour', [
-        lesson('Cleaning dialogue', 20),
-        lesson('Music and sound design', 18),
-        lesson('Reading scopes and balancing shots', 24),
-        lesson('Building a cinematic look', 26),
+      module('Sound and colour', [
+        submodule('Sound', [
+          section('Cleaning dialogue', 20),
+          section('Music and sound design', 18, { extras: ['worksheet'] }),
+        ]),
+        submodule('Colour', [
+          section('Reading scopes and balancing shots', 24, { extras: ['slides'] }),
+          section('Building a cinematic look', 26),
+        ]),
       ]),
-      section('Motion and delivery', [
-        lesson('Animated titles and lower thirds', 28),
-        lesson('Export settings for every platform', 15),
+      module('Motion and delivery', [
+        submodule('Titles and export', [
+          section('Animated titles and lower thirds', 28),
+          section('Export settings for every platform', 15, { extras: ['slides'] }),
+        ]),
       ]),
-      section('Portfolio projects', [
-        lesson('Project 1: YouTube video edit', 40),
-        lesson('Project 2: 30-second product ad', 35),
-        lesson('Project 3: Mini documentary', 45),
+      module('Portfolio projects', [
+        submodule('Client-style projects', [
+          section('Project 1: YouTube video edit', 40, { extras: ['worksheet'] }),
+          section('Project 2: 30-second product ad', 35, { extras: ['worksheet'] }),
+          section('Project 3: Mini documentary', 45, { extras: ['worksheet'] }),
+        ]),
       ]),
     ],
     schedule: [],
@@ -231,22 +310,30 @@ export const COURSES: Course[] = [
       'A Facebook account for ad exercises',
       'No marketing experience needed',
     ],
-    curriculum: [
-      section('Strategy foundations', [
-        lesson('How digital growth really works', 45, true),
-        lesson('Audience research and positioning', 60),
+    modules: [
+      module('Strategy foundations', [
+        submodule('Know your market', [
+          section('How digital growth really works', 45, { preview: true, extras: ['slides'] }),
+          section('Audience research and positioning', 60, { extras: ['worksheet'] }),
+        ]),
       ]),
-      section('Organic growth', [
-        lesson('Content strategy and calendars', 60),
-        lesson('SEO fundamentals', 60),
+      module('Organic growth', [
+        submodule('Content and search', [
+          section('Content strategy and calendars', 60, { extras: ['worksheet'] }),
+          section('SEO fundamentals', 60, { extras: ['slides'] }),
+        ]),
       ]),
-      section('Paid campaigns', [
-        lesson('Meta Ads from setup to launch', 90),
-        lesson('Google Search Ads', 75),
+      module('Paid campaigns', [
+        submodule('Running ads', [
+          section('Meta Ads from setup to launch', 90, { extras: ['slides'] }),
+          section('Google Search Ads', 75),
+        ]),
       ]),
-      section('Measure and grow', [
-        lesson('Analytics and reporting', 60),
-        lesson('Capstone: present your growth strategy', 90),
+      module('Measure and grow', [
+        submodule('Results and strategy', [
+          section('Analytics and reporting', 60, { extras: ['worksheet'] }),
+          section('Capstone: present your growth strategy', 90, { extras: ['slides'] }),
+        ]),
       ]),
     ],
     schedule: [
@@ -298,26 +385,34 @@ export const COURSES: Course[] = [
       'An interest in cricket, football or other sports',
       'No journalism experience required',
     ],
-    curriculum: [
-      section('Foundations of sports journalism', [
-        lesson('How a sports newsroom works', 12, true),
-        lesson('News values in sport', 14, true),
-        lesson('Ethics and fact-checking', 16),
+    modules: [
+      module('Foundations of sports journalism', [
+        submodule('Newsroom basics', [
+          section('How a sports newsroom works', 12, { preview: true }),
+          section('News values in sport', 14, { preview: true }),
+          section('Ethics and fact-checking', 16, { extras: ['worksheet'] }),
+        ]),
       ]),
-      section('Writing sport', [
-        lesson('Writing the sports news story', 22),
-        lesson('The match report', 24),
-        lesson('Features and profiles', 20),
+      module('Writing sport', [
+        submodule('Story formats', [
+          section('Writing the sports news story', 22, { extras: ['worksheet'] }),
+          section('The match report', 24, { extras: ['worksheet'] }),
+          section('Features and profiles', 20),
+        ]),
       ]),
-      section('Interviews and live coverage', [
-        lesson('Preparing for an interview', 16),
-        lesson('Press conferences and mixed zones', 18),
-        lesson('Live blogging a match', 20),
+      module('Interviews and live coverage', [
+        submodule('On the ground', [
+          section('Preparing for an interview', 16, { extras: ['worksheet'] }),
+          section('Press conferences and mixed zones', 18),
+          section('Live blogging a match', 20, { extras: ['slides'] }),
+        ]),
       ]),
-      section('Digital and video', [
-        lesson('Scripting a video report', 18),
-        lesson('Social media coverage', 16),
-        lesson('Final project: cover a full match day', 45),
+      module('Digital and video', [
+        submodule('Digital storytelling', [
+          section('Scripting a video report', 18, { extras: ['worksheet'] }),
+          section('Social media coverage', 16, { extras: ['slides'] }),
+          section('Final project: cover a full match day', 45, { extras: ['worksheet'] }),
+        ]),
       ]),
     ],
     schedule: [
@@ -367,27 +462,53 @@ export const COURSES: Course[] = [
       'A computer with at least 8 GB RAM and internet access',
       'Basic computer skills — no coding experience needed',
     ],
-    curriculum: [
-      section('Programming fundamentals', [
-        lesson('How software and the web work', 14, true),
-        lesson('Variables, conditions and loops', 40, true),
-        lesson('Functions, arrays and objects', 50),
-        lesson('Git and GitHub basics', 30),
+    modules: [
+      module('Programming fundamentals', [
+        submodule('Core concepts', [
+          section('How software and the web work', 14, { preview: true, extras: ['slides'] }),
+          section('Variables, conditions and loops', 40, {
+            preview: true,
+            extras: ['worksheet'],
+            topics: [
+              topic(
+                'Static variables',
+                [
+                  ['What is a static variable?', 9],
+                  ['Static variables in practice', 12],
+                ],
+                [['Static variables notes', 'PDF']],
+              ),
+              topic('Dynamic variables', [['Dynamic variables explained', 11]], [['Dynamic variables notes', 'PDF']]),
+            ],
+          }),
+        ]),
+        submodule('Code and tools', [
+          section('Functions, arrays and objects', 50, { extras: ['worksheet'] }),
+          section('Git and GitHub basics', 30),
+        ]),
       ]),
-      section('Front end', [
-        lesson('HTML, CSS and responsive layout', 60),
-        lesson('TypeScript essentials', 45),
-        lesson('Angular components and routing', 60),
-        lesson('Signals, services and forms', 60),
+      module('Front end', [
+        submodule('Web pages', [
+          section('HTML, CSS and responsive layout', 60, { extras: ['worksheet'] }),
+          section('TypeScript essentials', 45, { extras: ['slides'] }),
+        ]),
+        submodule('Angular', [
+          section('Angular components and routing', 60),
+          section('Signals, services and forms', 60, { extras: ['worksheet'] }),
+        ]),
       ]),
-      section('Back end', [
-        lesson('Building APIs with ASP.NET Core', 75),
-        lesson('SQL Server and Entity Framework', 60),
-        lesson('Authentication overview', 40),
+      module('Back end', [
+        submodule('APIs and data', [
+          section('Building APIs with ASP.NET Core', 75, { extras: ['slides'] }),
+          section('SQL Server and Entity Framework', 60),
+          section('Authentication overview', 40),
+        ]),
       ]),
-      section('Capstone', [
-        lesson('Connecting front end and API', 50),
-        lesson('Capstone: deploy your project', 75),
+      module('Capstone', [
+        submodule('Ship your project', [
+          section('Connecting front end and API', 50),
+          section('Capstone: deploy your project', 75, { extras: ['worksheet'] }),
+        ]),
       ]),
     ],
     schedule: [

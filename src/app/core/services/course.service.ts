@@ -7,10 +7,18 @@ import {
   CategoryId,
   Course,
   CourseFilter,
+  CourseModule,
+  DocumentType,
+  MAX_SECTIONS_PER_SUBMODULE,
+  MAX_TOPIC_DEPTH,
+  MIN_SECTIONS_PER_SUBMODULE,
+  Section,
+  flattenSections,
   Instructor,
   PriceRange,
   Review,
 } from '../models/course.model';
+import { PermissionService } from './permission.service';
 
 /** Simulated network latency so loading states are visible with mock data. */
 const MOCK_LATENCY_MS = 350;
@@ -82,14 +90,70 @@ export function discountPercent(course: Pick<Course, 'price' | 'originalPrice'>)
   return course.originalPrice > 0 ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
 }
 
-export function lessonCount(course: Course): number {
-  return course.curriculum.reduce((n, s) => n + s.lessons.length, 0);
+/** Every section and topic of a course or one module, in curriculum order. */
+export function allSections(from: Pick<Course, 'modules'> | CourseModule): Section[] {
+  const modules = 'modules' in from ? from.modules : [from];
+  return modules.flatMap((m) => m.submodules.flatMap((s) => flattenSections(s.sections)));
+}
+
+export function sectionCount(course: Pick<Course, 'modules'>): number {
+  return allSections(course).length;
+}
+
+export function sectionMinutes(section: Section): number {
+  return section.videos.reduce((n, v) => n + v.minutes, 0);
+}
+
+/** Video minutes of a module, topics included. */
+export function moduleMinutes(module: CourseModule): number {
+  return allSections(module).reduce((n, sec) => n + sectionMinutes(sec), 0);
+}
+
+const DOCUMENT_EXTENSIONS: Record<DocumentType, string> = { PDF: '.pdf', DOCX: '.docx', PPTX: '.pptx' };
+
+/** Whether a document link ends in the extension of its type, ignoring any `?query` or `#hash`. */
+export function documentUrlMatchesType(url: string, type: DocumentType): boolean {
+  return url.split(/[?#]/)[0].toLowerCase().endsWith(DOCUMENT_EXTENSIONS[type]);
+}
+
+/** The first rule a curriculum breaks, as English text for a message, or null if it is valid. */
+export function curriculumError(modules: CourseModule[]): string | null {
+  for (const m of modules) {
+    if (!m.title.trim()) return 'Every module needs a title.';
+    for (const sub of m.submodules) {
+      if (!sub.title.trim()) return 'Every submodule needs a title.';
+      if (sub.sections.length < MIN_SECTIONS_PER_SUBMODULE || sub.sections.length > MAX_SECTIONS_PER_SUBMODULE) {
+        return 'Each submodule needs 2 or 3 sections.';
+      }
+      const error = sectionsError(sub.sections, 0);
+      if (error) return error;
+    }
+  }
+  return null;
+}
+
+/** Checks sections and, level by level, their topics. */
+function sectionsError(sections: Section[], depth: number): string | null {
+  if (sections.length && depth > MAX_TOPIC_DEPTH) return 'Topics can be nested at most 3 levels deep.';
+  for (const sec of sections) {
+    if (!sec.title.trim()) return depth ? 'Every topic needs a title.' : 'Every section needs a title.';
+    if (sec.documents.some((d) => !documentUrlMatchesType(d.url, d.type))) {
+      return 'A document link must end in .pdf, .docx or .pptx to match its type.';
+    }
+    if (sec.documents.some((d) => d.videoId && !sec.videos.some((v) => v.id === d.videoId))) {
+      return 'A document is attached to a video that is not in its section.';
+    }
+    const error = sectionsError(sec.topics, depth + 1);
+    if (error) return error;
+  }
+  return null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class CourseService {
   private readonly courseStore = new EntityStore(inject(COURSE_REPOSITORY));
   private readonly instructorStore = new EntityStore(inject(INSTRUCTOR_REPOSITORY));
+  private readonly permissions = inject(PermissionService);
 
   readonly categories: Category[] = CATEGORIES;
 
@@ -173,19 +237,29 @@ export class CourseService {
     return this.courses().some((c) => c.slug === slug && c.id !== exceptId);
   }
 
-  saveCourse(course: Course): Promise<Course> {
+  async saveCourse(course: Course): Promise<Course> {
+    if (this.byId(course.id)) {
+      this.permissions.assert('courses.edit', course.id);
+    } else {
+      this.permissions.assert('courses.create');
+    }
+    const error = curriculumError(course.modules);
+    if (error) throw new Error(error);
     return this.courseStore.save(course);
   }
 
-  removeCourse(id: number): Promise<void> {
+  async removeCourse(id: number): Promise<void> {
+    this.permissions.assert('courses.delete', id);
     return this.courseStore.remove(id);
   }
 
-  saveInstructor(instructor: Instructor): Promise<Instructor> {
+  async saveInstructor(instructor: Instructor): Promise<Instructor> {
+    this.permissions.assert(this.instructor(instructor.id) ? 'instructors.edit' : 'instructors.create');
     return this.instructorStore.save(instructor);
   }
 
-  removeInstructor(id: string): Promise<void> {
+  async removeInstructor(id: string): Promise<void> {
+    this.permissions.assert('instructors.delete');
     return this.instructorStore.remove(id);
   }
 

@@ -9,6 +9,7 @@ import { EnrollmentService } from '../../core/services/enrollment.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatusPill } from '../../shared/components/status-pill/status-pill';
 import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe';
+import { PermissionService, failureMessage } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-admin-enrollments',
@@ -49,10 +50,12 @@ import { TranslatePipe, LocalDatePipe } from '../../shared/pipes/translate.pipe'
               <td class="text-nowrap">{{ (r.enrollment.transactionId ?? 'Free') | t }}</td>
               <td><app-status-pill [status]="r.enrollment.status" /></td>
               <td class="actions">
-                @if (r.enrollment.status === 'active') {
-                  <button type="button" class="btn btn-sm btn-outline" (click)="revoke(r.enrollment, r.student, r.course)">{{ 'Revoke' | t }}</button>
-                } @else {
-                  <button type="button" class="btn btn-sm btn-outline" (click)="restore(r.enrollment)">{{ 'Restore' | t }}</button>
+                @if (permissions.can('enrollments.edit')) {
+                  @if (r.enrollment.status === 'active') {
+                    <button type="button" class="btn btn-sm btn-outline" (click)="revoke(r.enrollment, r.student, r.course)">{{ 'Revoke' | t }}</button>
+                  } @else {
+                    <button type="button" class="btn btn-sm btn-outline" (click)="restore(r.enrollment)">{{ 'Restore' | t }}</button>
+                  }
                 }
               </td>
             </tr>
@@ -71,6 +74,7 @@ export class AdminEnrollments {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);
+  protected readonly permissions = inject(PermissionService);
 
   protected readonly search = signal('');
   protected readonly status = signal<'all' | Enrollment['status']>('all');
@@ -114,8 +118,8 @@ export class AdminEnrollments {
     try {
       await this.enrollments.setStatus(enrollment.id, status);
       this.toast.success(status === 'active' ? 'Access restored.' : 'Access revoked.');
-    } catch {
-      this.toast.error('The change could not be saved. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The change could not be saved. Browser storage may be full or blocked.'));
     }
   }
 }

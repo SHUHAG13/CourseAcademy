@@ -1,0 +1,192 @@
+@if (course(); as c) {
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <a routerLink="/admin/courses" class="small fw-semibold"><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ 'All courses' | t }}</a>
+      <h1 class="h3 mb-0 mt-1">{{ 'Curriculum' | t }}: {{ c.title | t }}</h1>
+    </div>
+    <a [routerLink]="['/courses', c.slug]" class="btn btn-outline btn-sm">
+      <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {{ 'View page' | t }}
+    </a>
+  </div>
+
+  <p class="text-muted small">
+    {{ 'Course → Module → Submodule → Section. Each submodule has 2 or 3 sections. Each section has its videos, and documents (PDF, DOCX or PPTX) shown under the video they belong to.' | t }}
+  </p>
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    @for (mod of modules.controls; track mod; let i = $index) {
+      <section class="panel ca-card mb-3 module" [formGroup]="mod" [attr.aria-label]="'Module {0}' | t: [i + 1]">
+        <div class="row-line">
+          <span class="level">{{ 'Module {0}' | t: [i + 1] }}</span>
+          <input class="form-control" formControlName="title" [placeholder]="'Module title' | t"
+            [attr.aria-label]="'Module {0} title' | t: [i + 1]" [class.is-invalid]="invalid(mod.get('title'))" />
+          <span class="row-actions">
+            <button type="button" class="icon-btn" (click)="toggleCollapsed(mod.get('id')!.value)"
+              [attr.aria-expanded]="!collapsed().has(mod.get('id')!.value)"
+              [attr.aria-label]="(collapsed().has(mod.get('id')!.value) ? 'Show module {0}' : 'Hide module {0}') | t: [i + 1]">
+              <i class="bi" [class]="collapsed().has(mod.get('id')!.value) ? 'bi-chevron-down' : 'bi-chevron-up'" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="icon-btn" [disabled]="$first" (click)="move(modules, i, -1)" [attr.aria-label]="'Move module up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn" [disabled]="$last" (click)="move(modules, i, 1)" [attr.aria-label]="'Move module down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn danger" (click)="removeAt(modules, i)" [attr.aria-label]="'Delete module' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+          </span>
+        </div>
+
+        @if (!collapsed().has(mod.get('id')!.value)) {
+          <div class="children">
+            @for (sub of submodulesOf(mod).controls; track sub; let j = $index) {
+              <div class="section-row" [formGroup]="sub">
+                <div class="row-line">
+                  <span class="level">{{ 'Submodule {0}' | t: [j + 1] }}</span>
+                  <input class="form-control" formControlName="title" [placeholder]="'Submodule title' | t"
+                    [attr.aria-label]="'Submodule {0} title' | t: [j + 1]" [class.is-invalid]="invalid(sub.get('title'))" />
+                  <span class="row-actions">
+                    <button type="button" class="icon-btn" [disabled]="$first" (click)="move(submodulesOf(mod), j, -1)" [attr.aria-label]="'Move submodule up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+                    <button type="button" class="icon-btn" [disabled]="$last" (click)="move(submodulesOf(mod), j, 1)" [attr.aria-label]="'Move submodule down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+                    <button type="button" class="icon-btn danger" (click)="removeAt(submodulesOf(mod), j)" [attr.aria-label]="'Delete submodule' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                  </span>
+                </div>
+                @if (sectionsOf(sub).invalid && sectionsOf(sub).hasError('sectionCount')) {
+                  <div class="field-error mt-1">{{ 'A submodule needs 2 or 3 sections.' | t }}</div>
+                }
+
+                <div class="children">
+                  @for (sec of sectionsOf(sub).controls; track sec; let k = $index) {
+                    <ng-container *ngTemplateOutlet="sectionEditor; context: {
+                      $implicit: sec, array: sectionsOf(sub), index: k, depth: 0, first: $first, last: $last
+                    }" />
+                  }
+                  @if (sectionsOf(sub).length < maxSections) {
+                    <button type="button" class="btn btn-sm btn-outline" (click)="addSection(sub)">
+                      <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add section' | t }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            <button type="button" class="btn btn-sm btn-outline" (click)="addSubmodule(mod)">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add submodule' | t }}
+            </button>
+          </div>
+        }
+      </section>
+    } @empty {
+      <p class="text-muted">{{ 'No modules yet.' | t }}</p>
+    }
+
+    <button type="button" class="btn btn-outline mb-3" (click)="addModule()">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add module' | t }}
+    </button>
+
+    <div class="save-bar ca-card">
+      <span class="small text-muted">{{ '{0} modules · {1} sections' | t: [modules.length, sectionCount()] }}</span>
+      <div class="d-flex gap-2">
+        <a routerLink="/admin/courses" class="btn btn-outline">{{ 'Cancel' | t }}</a>
+        <button type="submit" class="btn btn-primary" [disabled]="saving() || form.pristine">{{ 'Save curriculum' | t }}</button>
+      </div>
+    </div>
+  </form>
+} @else {
+  <app-empty-state icon="bi-journal-x" title="Course not found" message="This course doesn't exist or may have been removed.">
+    <a routerLink="/admin/courses" class="btn btn-primary">{{ 'All courses' | t }}</a>
+  </app-empty-state>
+}
+
+<!-- Edits one section or topic, including its own topics, which use this same template. -->
+<ng-template #sectionEditor let-sec let-array="array" let-index="index" let-depth="depth" let-first="first" let-last="last">
+  <div class="section-box" [formGroup]="sec">
+    <div class="row-line">
+      <span class="level">{{ (depth ? 'Topic {0}' : 'Section {0}') | t: [index + 1] }}</span>
+      <input class="form-control form-control-sm" formControlName="title" [placeholder]="(depth ? 'Topic title' : 'Section title') | t"
+        [attr.aria-label]="'Section {0} title' | t: [index + 1]" [class.is-invalid]="invalid(sec.get('title'))" />
+      <span class="row-actions">
+        <button type="button" class="icon-btn" [disabled]="first" (click)="move(array, index, -1)" [attr.aria-label]="'Move section up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn" [disabled]="last" (click)="move(array, index, 1)" [attr.aria-label]="'Move section down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn danger" [disabled]="!depth && array.length <= minSections"
+          (click)="removeAt(array, index)" [attr.aria-label]="(depth ? 'Delete topic' : 'Delete section') | t"
+          [title]="(!depth && array.length <= minSections ? 'A submodule needs at least 2 sections.' : 'Delete') | t">
+          <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
+      </span>
+    </div>
+
+    <h3 class="list-title"><i class="bi bi-camera-video" aria-hidden="true"></i> {{ 'Videos' | t }}</h3>
+    @for (v of videosOf(sec).controls; track v; let n = $index) {
+      <div class="row-line item" [formGroup]="v">
+        <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Video title' | t"
+          [attr.aria-label]="'Video {0} title' | t: [n + 1]" [class.is-invalid]="invalid(v.get('title'))" />
+        <input class="form-control form-control-sm url" formControlName="url" type="url"
+          [placeholder]="'YouTube, Vimeo or .mp4 link' | t" [attr.aria-label]="'Video {0} link' | t: [n + 1]"
+          [class.is-invalid]="invalid(v.get('url'))" />
+        <input type="number" min="1" class="form-control form-control-sm minutes" formControlName="minutes"
+          [attr.aria-label]="'Video {0} minutes' | t: [n + 1]" [class.is-invalid]="invalid(v.get('minutes'))" />
+        <span class="unit">{{ 'min' | t }}</span>
+        <label class="preview-toggle">
+          <input type="checkbox" class="form-check-input" formControlName="preview" /> {{ 'Free preview' | t }}
+        </label>
+        <span class="row-actions">
+          <button type="button" class="icon-btn" [disabled]="first" (click)="move(videosOf(sec), n, -1)" [attr.aria-label]="'Move video up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+          <button type="button" class="icon-btn" [disabled]="last" (click)="move(videosOf(sec), n, 1)" [attr.aria-label]="'Move video down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+          <button type="button" class="icon-btn danger" (click)="removeVideo(sec, n)" [attr.aria-label]="'Delete video' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+        </span>
+      </div>
+    } @empty {
+      <p class="small text-muted mb-1">{{ 'No videos yet.' | t }}</p>
+    }
+    <button type="button" class="btn btn-sm btn-link px-0" (click)="addVideo(sec)">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add video' | t }}
+    </button>
+
+    <h3 class="list-title"><i class="bi bi-paperclip" aria-hidden="true"></i> {{ 'Documents' | t }}</h3>
+    @for (d of documentsOf(sec).controls; track d; let n = $index) {
+      <div class="row-line item" [formGroup]="d">
+        <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Document title' | t"
+          [attr.aria-label]="'Document {0} title' | t: [n + 1]" [class.is-invalid]="invalid(d.get('title'))" />
+        <select class="form-select form-select-sm type" formControlName="type" [attr.aria-label]="'Document {0} type' | t: [n + 1]">
+          @for (type of documentTypes; track type) {
+            <option [value]="type">{{ type }}</option>
+          }
+        </select>
+        <input class="form-control form-control-sm url" formControlName="url" type="url"
+          [placeholder]="'Link ending in .pdf, .docx or .pptx' | t" [attr.aria-label]="'Document {0} link' | t: [n + 1]"
+          [class.is-invalid]="invalid(d.get('url')) || (d.hasError('extension') && (d.touched || d.dirty))" />
+        <select class="form-select form-select-sm video" formControlName="videoId" [attr.aria-label]="'Document {0} is shown under' | t: [n + 1]">
+          <option value="">{{ 'Whole section' | t }}</option>
+          @for (v of videosOf(sec).controls; track v; let m = $index) {
+            <option [value]="v.get('id')!.value">{{ 'Under: {0}' | t: [v.get('title')!.value || ('Video {0}' | t: [m + 1])] }}</option>
+          }
+        </select>
+        <span class="row-actions">
+          <button type="button" class="icon-btn" [disabled]="first" (click)="move(documentsOf(sec), n, -1)" [attr.aria-label]="'Move document up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+          <button type="button" class="icon-btn" [disabled]="last" (click)="move(documentsOf(sec), n, 1)" [attr.aria-label]="'Move document down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+          <button type="button" class="icon-btn danger" (click)="removeAt(documentsOf(sec), n)" [attr.aria-label]="'Delete document' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+        </span>
+        @if (d.hasError('extension') && (d.touched || d.dirty)) {
+          <div class="field-error w-100">{{ 'The link must end in .pdf, .docx or .pptx to match the type.' | t }}</div>
+        }
+      </div>
+    } @empty {
+      <p class="small text-muted mb-1">{{ 'No documents yet.' | t }}</p>
+    }
+    <button type="button" class="btn btn-sm btn-link px-0" (click)="addDocument(sec)">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add document' | t }}
+    </button>
+    <h3 class="list-title"><i class="bi bi-diagram-2" aria-hidden="true"></i> {{ 'Topics' | t }}</h3>
+    @if (topicsOf(sec).length) {
+      <div class="children">
+        @for (topic of topicsOf(sec).controls; track topic; let n = $index) {
+          <ng-container *ngTemplateOutlet="sectionEditor; context: {
+            $implicit: topic, array: topicsOf(sec), index: n, depth: depth + 1, first: $first, last: $last
+          }" />
+        }
+      </div>
+    }
+    @if (depth < maxDepth) {
+      <button type="button" class="btn btn-sm btn-link px-0" (click)="addTopic(sec)">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ 'Add topic' | t }}
+      </button>
+    } @else {
+      <p class="small text-muted mb-0">{{ 'Topics can be nested at most 3 levels deep.' | t }}</p>
+    }
+  </div>
+</ng-template>

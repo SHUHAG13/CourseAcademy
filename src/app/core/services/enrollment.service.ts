@@ -3,11 +3,13 @@ import { ENROLLMENT_REPOSITORY } from '../data/repositories';
 import { EntityStore, uid } from '../data/repository';
 import { Enrollment, EnrollmentStatus } from '../models/enrollment.model';
 import { AuthService } from './auth.service';
+import { PermissionDeniedError, PermissionService } from './permission.service';
 
 @Injectable({ providedIn: 'root' })
 export class EnrollmentService {
   private readonly store = new EntityStore(inject(ENROLLMENT_REPOSITORY));
   private readonly auth = inject(AuthService);
+  private readonly permissions = inject(PermissionService);
 
   readonly ready = this.store.ready;
   readonly recovered = this.store.recovered;
@@ -27,7 +29,7 @@ export class EnrollmentService {
 
   /** Whether the signed-in user may open the course's learning area. */
   hasAccess(courseId: number): boolean {
-    return this.auth.isAdmin() || this.isEnrolled(courseId);
+    return this.permissions.can('courses.view', courseId) || this.isEnrolled(courseId);
   }
 
   countForCourse(courseId: number): number {
@@ -39,7 +41,12 @@ export class EnrollmentService {
   }
 
   /** Activates a course for a user. `transactionId` is absent for free courses. */
-  grant(userId: string, courseId: number, transactionId?: string): Promise<Enrollment> {
+  async grant(userId: string, courseId: number, transactionId?: string): Promise<Enrollment> {
+    // Users enroll themselves through checkout. A real API would only do this after verifying the payment.
+    const forSelf = userId === this.auth.user()?.id;
+    if (!forSelf && !this.permissions.can('enrollments.edit') && !this.permissions.can('transactions.edit')) {
+      throw new PermissionDeniedError();
+    }
     const existing = this.enrollments().find((e) => e.userId === userId && e.courseId === courseId);
     return this.store.save({
       id: existing?.id ?? uid('enrollment'),
@@ -52,16 +59,19 @@ export class EnrollmentService {
   }
 
   async revokeForTransaction(transactionId: string): Promise<void> {
+    this.permissions.assert('transactions.edit');
     const enrollment = this.enrollments().find((e) => e.transactionId === transactionId);
-    if (enrollment) await this.setStatus(enrollment.id, 'revoked');
+    if (enrollment) await this.store.save({ ...enrollment, status: 'revoked' });
   }
 
   async setStatus(id: string, status: EnrollmentStatus): Promise<void> {
+    this.permissions.assert('enrollments.edit');
     const enrollment = this.enrollments().find((e) => e.id === id);
     if (enrollment) await this.store.save({ ...enrollment, status });
   }
 
   async removeForCourse(courseId: number): Promise<void> {
+    this.permissions.assert('courses.delete', courseId);
     for (const e of this.enrollments().filter((x) => x.courseId === courseId)) {
       await this.store.remove(e.id);
     }

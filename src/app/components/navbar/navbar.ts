@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import { CONTACT } from '../../core/data/site.data';
 import { LanguageService } from '../../core/i18n/language.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Avatar } from '../../shared/components/avatar/avatar';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
@@ -34,6 +35,7 @@ const PREFIX: IsActiveMatchOptions = { paths: 'subset', queryParams: 'ignored', 
 })
 export class Navbar {
   protected readonly auth = inject(AuthService);
+  protected readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);

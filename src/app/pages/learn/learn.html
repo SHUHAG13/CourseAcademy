@@ -10,6 +10,11 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
           <app-format-badge [format]="c.format" />
           <span class="tag">{{ instructor()?.name | t }}</span>
+          @if (community.canRead(c.id)) {
+            <a [routerLink]="['/courses', c.slug]" fragment="community" class="btn btn-sm btn-outline-light">
+              <i class="bi bi-chat-dots" aria-hidden="true"></i> {{ 'Course community' | t }}
+            </a>
+          }
         </div>
       </div>
     </section>
@@ -18,20 +23,93 @@
       <div class="container">
         <div class="row g-4">
           <div class="col-lg-8">
+            @if (sections().length) {
+              <div class="progress-card ca-card mb-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2 small mb-2">
+                  <strong>{{ '{0}% complete' | t: [progress.percent(c)] }}</strong>
+                  <span class="text-muted">{{ '{0} of {1} sections' | t: [progress.completedCount(c), sections().length] }}</span>
+                </div>
+                <div class="bar" role="progressbar" [attr.aria-valuenow]="progress.percent(c)" aria-valuemin="0" aria-valuemax="100"
+                  [attr.aria-label]="'Course progress' | t">
+                  <span [style.width.%]="progress.percent(c)"></span>
+                </div>
+              </div>
+            }
+
             @if (c.format !== 'Live') {
               <div class="player ca-card mb-4">
-                <div class="screen">
-                  <i class="bi bi-play-circle" aria-hidden="true"></i>
-                  <p class="mb-0">{{ 'Demo player: lesson video would play here.' | t }}</p>
-                </div>
-                @if (lesson(); as l) {
+                @if (video(); as v) {
+                  <app-video-embed [url]="v.url" [title]="v.title" />
+                } @else {
+                  <div class="screen">
+                    <i class="bi bi-play-circle" aria-hidden="true"></i>
+                    <p class="mb-0">{{ 'Demo player: lesson video would play here.' | t }}</p>
+                  </div>
+                }
+                @if (section(); as s) {
                   <div class="now">
-                    <h2 class="h5 mb-1">{{ l.title | t }}</h2>
-                    <small class="text-muted">{{ '{0} min' | t: [l.minutes] }}</small>
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                      <div class="min-w-0">
+                        @if (trail().length) {
+                          <small class="trail">
+                            @for (part of trail(); track $index) {
+                              @if (!$first) { · }{{ part | t }}
+                            }
+                          </small>
+                        }
+                        <h2 class="h5 mb-1">{{ s.title | t }}</h2>
+                        <small class="text-muted">{{ '{0} min' | t: [minutes(s)] }}</small>
+                      </div>
+                      <button type="button" class="btn btn-sm" [class.btn-primary]="!isComplete(s.id)" [class.btn-outline]="isComplete(s.id)"
+                        [disabled]="saving()" (click)="toggleComplete(s)" [attr.aria-pressed]="isComplete(s.id)">
+                        <i class="bi" [class]="isComplete(s.id) ? 'bi-check-circle-fill' : 'bi-check-circle'" aria-hidden="true"></i>
+                        {{ (isComplete(s.id) ? 'Completed' : 'Mark as complete') | t }}
+                      </button>
+                    </div>
+
+                    @if (s.videos.length > 1) {
+                      <div class="videos mt-3" role="group" [attr.aria-label]="'Videos in this section' | t">
+                        @for (v of s.videos; track v.id; let i = $index) {
+                          <button type="button" class="btn btn-sm" [class.btn-primary]="video()?.id === v.id"
+                            [class.btn-outline]="video()?.id !== v.id" [attr.aria-pressed]="video()?.id === v.id" (click)="selectVideo(v.id)">
+                            <i class="bi bi-play-circle" aria-hidden="true"></i> {{ v.title | t }}
+                            <span class="text-muted">· {{ '{0} min' | t: [v.minutes] }}</span>
+                          </button>
+                        }
+                      </div>
+                    }
+
+                    @if (video(); as v) {
+                      @if (documentsFor(s, v.id); as docs) {
+                        @if (docs.length) {
+                          <h3 class="docs-title">{{ 'Documents for this video' | t }}</h3>
+                          <app-document-list [documents]="docs" />
+                        }
+                      }
+                    }
+                    @if (documentsFor(s); as docs) {
+                      @if (docs.length) {
+                        <h3 class="docs-title">{{ 'Section documents' | t }}</h3>
+                        <app-document-list [documents]="docs" />
+                      }
+                    }
+                    @if (s.topics.length) {
+                      <h3 class="docs-title">{{ 'Topics in this section' | t }}</h3>
+                      <div class="videos">
+                        @for (topic of s.topics; track topic.id) {
+                          <button type="button" class="btn btn-sm btn-outline" (click)="selectSection(topic.id)">
+                            <i class="bi" [class]="isComplete(topic.id) ? 'bi-check-circle-fill done' : 'bi-arrow-return-right'" aria-hidden="true"></i>
+                            {{ topic.title | t }}
+                          </button>
+                        }
+                      </div>
+                    }
                   </div>
                 }
               </div>
             }
+
+            <app-course-certificate class="d-block mb-4" [course]="c" />
 
             @if (c.schedule.length) {
               <section class="mb-4" aria-labelledby="learn-schedule">
@@ -65,27 +143,16 @@
           <div class="col-lg-4">
             <aside class="outline ca-card" aria-labelledby="learn-outline">
               <h2 id="learn-outline" class="h6">{{ (c.format === 'Live' ? 'Class topics' : 'Course content') | t }}</h2>
-              @for (sec of c.curriculum; track sec.id) {
-                <h3 class="sec-title">{{ sec.title | t }}</h3>
-                <ul>
-                  @for (l of sec.lessons; track l.id) {
-                    <li>
-                      @if (c.format === 'Live') {
-                        <span class="lesson static">
-                          <span class="flex-grow-1">{{ l.title | t }}</span>
-                          <small>{{ '{0} min' | t: [l.minutes] }}</small>
-                        </span>
-                      } @else {
-                        <button type="button" class="lesson" [class.active]="lesson()?.id === l.id"
-                          [attr.aria-current]="lesson()?.id === l.id ? 'true' : null" (click)="selectLesson(l.id)">
-                          <i class="bi" [class]="lesson()?.id === l.id ? 'bi-play-circle-fill' : 'bi-play-circle'" aria-hidden="true"></i>
-                          <span class="flex-grow-1">{{ l.title | t }}</span>
-                          <small>{{ '{0} min' | t: [l.minutes] }}</small>
-                        </button>
-                      }
-                    </li>
-                  }
-                </ul>
+              @for (mod of c.modules; track mod.id) {
+                <h3 class="sec-title">{{ mod.title | t }}</h3>
+                @for (sub of mod.submodules; track sub.id) {
+                  <h4 class="sub-title">{{ sub.title | t }}</h4>
+                  <ul>
+                    @for (s of sub.sections; track s.id) {
+                      <li><ng-container *ngTemplateOutlet="outlineItem; context: { $implicit: s, depth: 0, live: c.format === 'Live' }" /></li>
+                    }
+                  </ul>
+                }
               } @empty {
                 <p class="small text-muted mb-0">{{ 'The curriculum is being prepared.' | t }}</p>
               }
@@ -116,3 +183,32 @@
     </app-empty-state>
   </div>
 }
+
+<!-- One outline entry, then its topics one level deeper, using this same template. -->
+<ng-template #outlineItem let-s let-depth="depth" let-live="live">
+  @if (live) {
+    <span class="lesson static" [style.padding-left.rem]="0.5 + depth">
+      <span class="flex-grow-1">{{ s.title | t }}</span>
+      <small>{{ '{0} min' | t: [minutes(s)] }}</small>
+    </span>
+  } @else {
+    <button type="button" class="lesson" [class.topic]="depth > 0" [class.active]="section()?.id === s.id" [style.padding-left.rem]="0.5 + depth"
+      [attr.aria-current]="section()?.id === s.id ? 'true' : null" (click)="selectSection(s.id)">
+      @if (isComplete(s.id)) {
+        <i class="bi bi-check-circle-fill done" aria-hidden="true"></i>
+        <span class="visually-hidden">{{ 'Completed' | t }}:</span>
+      } @else {
+        <i class="bi" [class]="section()?.id === s.id ? 'bi-play-circle-fill' : depth > 0 ? 'bi-arrow-return-right' : 'bi-play-circle'" aria-hidden="true"></i>
+      }
+      <span class="flex-grow-1">{{ s.title | t }}</span>
+      <small>{{ '{0} min' | t: [minutes(s)] }}</small>
+    </button>
+  }
+  @if (s.topics.length) {
+    <ul>
+      @for (topic of s.topics; track topic.id) {
+        <li><ng-container *ngTemplateOutlet="outlineItem; context: { $implicit: topic, depth: depth + 1, live: live }" /></li>
+      }
+    </ul>
+  }
+</ng-template>

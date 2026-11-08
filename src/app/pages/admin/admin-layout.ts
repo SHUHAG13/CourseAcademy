@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { SCREENS } from '../../core/data/screens.data';
+import { PermissionService } from '../../core/services/permission.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
@@ -10,7 +12,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
       <nav class="side" [attr.aria-label]="'Admin' | t">
         <p class="side-title">{{ 'Admin dashboard' | t }}</p>
         <ul>
-          @for (link of links; track link.path) {
+          @for (link of links(); track link.path) {
             <li>
               <a [routerLink]="link.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!link.exact }">
                 <i class="bi" [class]="link.icon" aria-hidden="true"></i>{{ link.label | t }}
@@ -67,12 +69,18 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   `,
 })
 export class AdminLayout {
-  protected readonly links = [
-    { label: 'Overview', path: '/admin', icon: 'bi-speedometer2', exact: true },
-    { label: 'Courses', path: '/admin/courses', icon: 'bi-journal-text' },
-    { label: 'Instructors', path: '/admin/instructors', icon: 'bi-person-video3' },
-    { label: 'Users', path: '/admin/users', icon: 'bi-people' },
-    { label: 'Enrollments', path: '/admin/enrollments', icon: 'bi-card-checklist' },
-    { label: 'Transactions', path: '/admin/transactions', icon: 'bi-credit-card' },
-  ];
+  private readonly permissions = inject(PermissionService);
+
+  /** One link per admin screen the user can view. Screens in a section share one link. */
+  protected readonly links = computed(() => {
+    const links: { label: string; path: string; icon: string; exact?: boolean }[] = [];
+    for (const s of SCREENS.filter((x) => x.area === 'admin' && this.permissions.canView(x))) {
+      if (!s.section) {
+        links.push(s);
+      } else if (!links.some((l) => l.path === `/admin/${s.section}`)) {
+        links.push({ label: 'Security', path: `/admin/${s.section}`, icon: 'bi-shield-lock' });
+      }
+    }
+    return links;
+  });
 }
