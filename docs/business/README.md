@@ -1,6 +1,7 @@
 # Course Academy — Business Documentation
 
 > **How to use these docs**: read this README first, then open only the relevant `modules/<module>.md`.
+> `APPLICATION-OVERVIEW.md` = everything in one file (for sharing/reading end to end).
 > `data-model.md` = database design, `api-contract.md` = backend endpoints, `CHANGELOG.md` = history.
 > These docs describe what the Angular demo **actually does**. Doubts are listed under each module's "Open Questions".
 

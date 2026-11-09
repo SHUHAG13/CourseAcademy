@@ -70,6 +70,9 @@ permissions, calculations, or data — before finishing the task:
 4. Add an entry at the top of `CHANGELOG.md`:
    `YYYY-MM-DD | <module> | <what changed> | <rule IDs affected>`
 5. New module → create `modules/<module>.md` using the same 10 sections.
+6. Apply the same changes to `APPLICATION-OVERVIEW.md` (the combined whole-app document):
+   its Part A summary, the matching Part B module/data-model/API section, and Part C
+   (Open Questions, likely bugs). The separate files stay the source of truth.
 - Edit only the changed parts. Never rewrite whole files.
 - Pure styling/refactoring with no business impact → no doc update needed.
 - End every reply with: "Docs updated: <files>" or "Docs: no business change".
