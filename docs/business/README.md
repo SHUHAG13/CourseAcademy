@@ -32,7 +32,7 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 | Transaction | One payment attempt (pending/success/failed/cancelled/refunded) |
 | Fulfilment | Granting the enrollment once for a successful transaction |
 | Course grant | Per-course permissions for one user |
-| Screen | Admin/student page in the access matrix; each has view/create/edit/delete permissions |
+| Screen | Admin/student page in the access matrix. Access is given per whole screen (one tick = all its actions) |
 | Certification rule | Per-course: completion or central exam |
 | Central exam | Project or presentation link handed in and scored by an instructor |
 | Certificate code | Public id `CA-YYYY-XXXXXX` for verification |

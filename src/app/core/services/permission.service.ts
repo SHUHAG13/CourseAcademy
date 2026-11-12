@@ -1,7 +1,7 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { COURSE_GRANT_REPOSITORY, ROLE_REPOSITORY } from '../data/repositories';
 import { EntityStore, uid } from '../data/repository';
-import { SCREENS, Screen } from '../data/screens.data';
+import { SCREENS, Screen, expandScreens } from '../data/screens.data';
 import {
   ADMIN_ROLE_ID,
   ALL_PERMISSIONS,
@@ -109,7 +109,8 @@ export class PermissionService {
       throw new Error('A role with this name already exists.');
     }
     const existing = this.role(role.id);
-    const permissions = role.id === ADMIN_ROLE_ID ? ALL_PERMISSIONS : role.permissions.filter((p) => ASSIGNABLE.includes(p));
+    const permissions =
+      role.id === ADMIN_ROLE_ID ? ALL_PERMISSIONS : expandScreens(role.permissions).filter((p) => ASSIGNABLE.includes(p));
     return this.roleStore.save({ ...role, name, description: role.description.trim(), permissions, system: existing?.system ?? false });
   }
 
@@ -138,7 +139,8 @@ export class PermissionService {
   /** Gives a user their own screen access, which replaces their role's permissions. */
   async setUserAccess(userId: string, permissions: Permission[]): Promise<void> {
     const user = this.editableUser(userId);
-    await this.auth.updateUser({ ...user, access: ASSIGNABLE.filter((p) => permissions.includes(p)) });
+    const screens = expandScreens(permissions);
+    await this.auth.updateUser({ ...user, access: ASSIGNABLE.filter((p) => screens.includes(p)) });
   }
 
   /** Returns a user to their role's permissions. */

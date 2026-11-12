@@ -142,6 +142,18 @@ export function screen(id: string): Screen {
   return found;
 }
 
+/**
+ * Access is granted per whole screen: a screen counts as given when its View is
+ * present, and then all of its permissions are given.
+ */
+export function expandScreens(permissions: Permission[]): Permission[] {
+  const set = new Set(permissions);
+  for (const s of SCREENS) {
+    if (set.has(s.view)) screenPermissions(s).forEach((p) => set.add(p));
+  }
+  return [...set];
+}
+
 /** Every permission a screen uses: View first, then its actions. */
 export function screenPermissions(s: Screen): Permission[] {
   return [s.view, s.create, s.edit, s.delete, ...(s.extra ?? []).map((e) => e.permission)].filter(

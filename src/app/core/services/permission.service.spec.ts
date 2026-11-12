@@ -96,8 +96,14 @@ describe('PermissionService', () => {
       expect(TestBed.inject(Router).serializeUrl(run('dashboard') as UrlTree)).toBe('/admin/instructors');
     });
 
-    it('refuses actions that are not ticked, in the service', async () => {
-      await expect(courses.removeInstructor('tanvir-hasan')).rejects.toBeInstanceOf(PermissionDeniedError);
+    it('gives the whole screen when it is ticked', () => {
+      expect(permissions.can('instructors.create')).toBe(true);
+      expect(permissions.can('instructors.edit')).toBe(true);
+      expect(permissions.can('instructors.delete')).toBe(true);
+    });
+
+    it('refuses actions on screens that are not ticked, in the service', async () => {
+      await expect(courses.removeCourse(1)).rejects.toBeInstanceOf(PermissionDeniedError);
     });
 
     it('returns to the role defaults after a reset', async () => {

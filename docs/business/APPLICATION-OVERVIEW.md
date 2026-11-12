@@ -61,7 +61,7 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 | Transaction | One payment attempt (pending/success/failed/cancelled/refunded) |
 | Fulfilment | Granting the enrollment once for a successful transaction |
 | Course grant | Per-course permissions for one user |
-| Screen | Admin/student page in the access matrix; each has view/create/edit/delete permissions |
+| Screen | Admin/student page in the access matrix. Access is given per whole screen (one tick = all its actions) |
 | Certification rule | Per-course: completion or central exam |
 | Central exam | Project or presentation link handed in and scored by an instructor |
 | Certificate code | Public id `CA-YYYY-XXXXXX` for verification |
@@ -204,9 +204,9 @@ Decides who can open which screen and perform which action. Supports roles, a pe
 |---|---|---|
 | `/admin` (layout) | `AdminLayout` | Sidebar lists only admin screens the user can view; Roles + User access collapse into one "Security" link. Guard: `admin.access`. |
 | `/admin/security` | `SecurityLayout` | Redirects to the first security tab the user can view. Tabs: Roles, User access. |
-| `/admin/security/roles` | `AdminRoles` | List roles with screen count + member count. Create / edit (name, description, access matrix) / delete. |
+| `/admin/security/roles` | `AdminRoles` | List roles with screen count + member count. Create / edit (name, description, access matrix: one checkbox per screen) / delete. |
 | `/admin/security/access` | `AdminAccess` | List users (search name/email) with role dropdown and access label (Full access / Custom / Role defaults). Change a user's role. |
-| `/admin/security/access/:userId` | `UserAccess` | One user's access matrix (edit + save, or "reset to role defaults") and per-course grant checkboxes. |
+| `/admin/security/access/:userId` | `UserAccess` | One user's access matrix, one checkbox per screen (edit + save, or "reset to role defaults") and per-course grant checkboxes. |
 | `/admin/users` | `AdminUsers` | Read-only user list: name, email, role name, active course count; search. |
 
 ### 3. Entities & Fields
@@ -245,13 +245,14 @@ Decides who can open which screen and perform which action. Supports roles, a pe
 - **BR-ACL-09** Home URL after login = first admin screen (in sidebar order) the user can view (section screens → `/admin/security`); else `/dashboard` if `dashboard.view`; else `/`.
 - **BR-ACL-10** Users with role Admin always have full access; their access cannot be customised ("Admin users always have full access.").
 - **BR-ACL-11** "Reset to role defaults" removes `user.access`, returning the user to role permissions.
-- **BR-ACL-12** Access matrix: unticking a screen's View removes all its actions; ticking any action also ticks View.
+- **BR-ACL-12** Access is granted per whole screen: the access matrix has one checkbox per screen. Ticking gives every permission of that screen (view, create, edit, delete and extras, e.g. Overview includes "Reset demo data"); unticking removes them all. Flow: User → Role → Screens (or the user's own screen list, BR-ACL-11); Admin role always ALL.
 - **BR-ACL-13** Setting a course grant keeps only course permissions; an empty list deletes the grant.
 - **BR-ACL-14** Deleting a course deletes all grants on it (requires `courses.delete` on the course).
 - **BR-ACL-15** Guard failure shows "You don't have permission to open that page." and redirects to home URL (never loops).
 - **BR-ACL-16** Every service write re-checks permissions (`assert`), independent of UI hiding. Backend must do the same on every endpoint.
 - **BR-ACL-17** Changing a role requires `roles.edit`; changing user access / course grants requires `access.edit`.
 - **BR-ACL-18** Demo seed: each instructor account gets a grant (`courses.view`, `courses.edit`, `community.moderate`, `certificates.manage`) on every course whose `instructorId` matches the account's `instructorId`.
+- **BR-ACL-19** A screen counts as given when its View permission is present. On save (role or user access), every screen whose View is present is expanded to all its permissions, so older partial access (e.g. View without Delete) becomes the full screen.
 
 ### 5. Workflows & Status Transitions
 - **Create role**: Admin (roles.edit) → New role → name, description, matrix → Save → validated (BR-ACL-05).
