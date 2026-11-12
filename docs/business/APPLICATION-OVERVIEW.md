@@ -2,6 +2,7 @@
 
 > Combined documentation of the whole application, generated from the files in `docs/business/`.
 > The separate files remain the **source of truth**; this file is kept in sync with them (see CLAUDE.md).
+> Module "Entities & Fields" tables describe the **frontend demo** fields; **`data-model.md` is authoritative for database types, keys and lengths**, and `api-contract.md` for request/response DTOs.
 > Part A is for business readers, Part B for developers, Part C lists open questions and likely bugs.
 
 ## Table of Contents
@@ -99,17 +100,31 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 ## B0. Global rules
 - **Auth**: Route guards only control navigation; every service write re-checks permissions. **Backend must enforce all permission checks server-side.** Session: "remember me" = persistent, else browser-session only. Signed-out users hitting protected routes go to `/login?returnUrl=`.
 - **Permissions**: names `area.action` (28 values, see data-model). Effective = Admin→ALL, else user override ?? role permissions, plus course grants. `admin.access` is derived, never stored.
-- **Currency**: BDT only, integer amounts, shown as `৳1,234` (Bangla digits in bn). No tax, no coupons.
+- **Currency**: BDT only (frontend demo uses whole Taka; database uses `decimal(18,2)`), shown as `৳1,234` (Bangla digits in bn). No tax, no coupons.
 - **Language**: Bangla default, English switch. UI strings translated by English key; admin-entered content not translated.
 - **Dates**: stored as ISO 8601 UTC strings; displayed in viewer's locale/time zone. `LiveSession.startsAt` is local `YYYY-MM-DDTHH:mm` (no zone). `Course.updated` is `YYYY-MM`.
-- **IDs / codes**: browser-created ids `<prefix>-<base36 timestamp>-<6 random>`; Course id = numeric timestamp (never reused); Transaction id `DEMO-YYYYMMDD-XXXXXX`; Certificate code `CA-YYYY-XXXXXX` (alphabet without I, O, 0, 1); Progress id `userId:courseId`; CertificationRule id = courseId. Backend may use its own keys but must keep slug, transaction id and certificate code as unique public identifiers.
+- **IDs / codes (frontend demo)**: browser-created ids `<prefix>-<base36 timestamp>-<6 random>`; Course id = numeric timestamp (never reused); Transaction id `DEMO-YYYYMMDD-XXXXXX`; Certificate code `CA-YYYY-XXXXXX` (alphabet without I, O, 0, 1); Progress id `userId:courseId`; CertificationRule id = courseId. Backend: `int IDENTITY` PKs; slug, `TransactionNo` and certificate `Code` stay unique public identifiers.
 - **Snapshots**: Transactions copy user + course data; Certificates copy user, course and instructor names — later edits don't change them.
-- **Deletion**: hard deletes everywhere. "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certificates).
-- **Pagination**: none server-side. Client: catalogue "load more" 6 per page; admin community latest 20 comments; overview 5 recent payments; dashboard 5 upcoming classes.
+- **Deletion**: frontend demo hard-deletes; **backend soft-deletes every table** (`IsDeleted`). Business states also exist: "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certificates).
+- **Pagination**: API lists return `{items,total,page,pageSize}` (see api-contract). Frontend today: Client: catalogue "load more" 6 per page; admin community latest 20 comments; overview 5 recent payments; dashboard 5 upcoming classes.
 - **Sorting defaults**: newest first for admin lists/transactions/enrollments/certificates; catalogue by popularity.
 - **Text**: inputs trimmed before save; validation messages are English keys (translated in UI).
 - **Phone**: Bangladeshi mobile `^(?:\+?88)?01[3-9]\d{8}$`. **URL**: `^https?://[^\s.]+\.[^\s]{2,}$` (exam links require https).
 - **Demo-only (do not port)**: localStorage persistence, plain-text passwords, simulated gateway page, reset demo data, fake latency.
+
+### Technical decisions (backend)
+| Topic | Decision |
+|---|---|
+| Database | SQL Server + EF Core; PascalCase singular table names |
+| Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
+| Delete | Soft delete on all tables (`IsDeleted`, `DeletedAt`, `DeletedBy`); FKs `NO ACTION`; filtered unique indexes |
+| Audit | `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` on all tables |
+| Time | `datetime2` UTC; live session times entered in Asia/Dhaka |
+| Money | `decimal(18,2)` BDT |
+| Enums / permissions | Lookup tables (incl. `Screen` and `Permission`) |
+| Text lengths | Standard defaults, see data-model §3 |
+| Auth | JWT access token + refresh token (`RefreshToken` table) |
+| API | `/api/v1`, wrapper `{success, data, message, errors}`, lists `data = {items,total,page,pageSize}` |
 
 ## B1. Accounts & Authentication
 
@@ -1208,365 +1223,471 @@ See [Part C](#part-c--open-questions--likely-bugs).
 
 ## B12. Data Model
 
-Conventions:
-- Types are logical (`string`, `int`, `bigint`, `decimal`, `bool`, `datetime` = UTC). `(inferred)` = not explicit in code.
-- In the frontend, lists inside records (string[] / child arrays) are embedded; here they are normalised into child tables.
-- **Audit fields (inferred)**: every table gets `CreatedAt`, `CreatedBy` (FK User, nullable), `UpdatedAt`, `UpdatedBy`. Only fields the frontend already uses are listed explicitly below.
-- PK = primary key, FK = foreign key, UQ = unique.
+Physical design for SQL Server + EF Core, derived from the frontend demo. Business rules (BR-IDs) live in `modules/*.md`.
 
-### Enums
-| Enum | Values |
+### 1. Conventions
+| Topic | Rule |
 |---|---|
-| CategoryId | `video-editing`, `digital-marketing`, `sports-journalism`, `software-development` |
-| CourseFormat | `Pre-recorded`, `Live`, `Hybrid` |
-| Level | `Beginner`, `Intermediate`, `Advanced` |
-| CourseBadge | `Bestseller`, `New`, `Popular` |
-| DocumentType | `PDF`, `DOCX`, `PPTX` |
-| MaterialType | `PDF`, `Slides`, `Worksheet`, `Link` |
-| EnrollmentStatus | `active`, `revoked` |
-| PaymentMethodId | `bkash`, `nagad`, `rocket`, `card` |
-| PaymentStatus | `pending`, `success`, `failed`, `cancelled`, `refunded` |
-| Currency | `BDT` |
-| CertificationMode | `completion`, `exam` |
-| ExamType | `project`, `presentation` |
-| SubmissionStatus | `submitted`, `passed`, `failed` |
-| Permission | `admin.access`*, `reports.view`, `system.reset`, `courses.view`, `courses.create`, `courses.edit`, `courses.delete`, `instructors.view`, `instructors.create`, `instructors.edit`, `instructors.delete`, `users.view`, `enrollments.view`, `enrollments.edit`, `transactions.view`, `transactions.edit`, `transactions.delete`, `roles.view`, `roles.edit`, `access.view`, `access.edit`, `dashboard.view`, `learn.view`, `checkout.view`, `community.view`, `community.post`, `community.moderate`, `certificates.manage` (*derived, never stored) |
-| CoursePermission (grantable per course) | `courses.view`, `courses.edit`, `community.moderate`, `certificates.manage` |
-| OpportunityTeam | `Sports Media`, `Digital Platform`, `Software Projects` |
-| OpportunityType | `Part-time`, `Freelance`, `Internship` |
-| SportsTopic | `Cricket`, `Football`, `Analysis`, `Interview`, `Journalism` |
-| ContactTopic (inferred) | course slug, `payment`, `career`, `other` |
+| Engine | SQL Server, EF Core |
+| Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
+| Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
+| Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
+| Soft delete | Every table has `IsDeleted`, `DeletedAt`, `DeletedBy`. Rows are never physically deleted. EF global query filter `IsDeleted = 0`. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
+| Foreign keys | `ON DELETE NO ACTION` everywhere (soft delete means no physical cascades) |
+| Unique keys | Filtered unique indexes `WHERE IsDeleted = 0`, so a soft-deleted row doesn't block re-use |
+| Audit | Every table has `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` |
+| Date/time | `datetime2(3)`, always **UTC**. Live session start time is entered in Asia/Dhaka and converted to UTC on save; converted back for display |
+| Money | `decimal(18,2)`, currency BDT |
+| Booleans | `bit NOT NULL` with default |
+| Enums | Lookup tables (section 4) referenced by FK; application code uses the lookup's `Code` |
+| Text | `nvarchar` (Unicode, Bangla-safe). Lengths in section 3 |
+| Ordering | Child lists that have a display order have `SortOrder int NOT NULL` |
 
-### Identity & access
-#### User
-| Column | Type | PK/FK | Null | Unique | Notes |
+#### 1.1 Standard columns (on EVERY table — written as "+ std" below)
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| CreatedAt | datetime2(3) | NOT NULL | `sysutcdatetime()` | |
+| CreatedBy | int | NULL | — | FK User.Id (NULL = system/seed/self-registration) |
+| UpdatedAt | datetime2(3) | NULL | — | |
+| UpdatedBy | int | NULL | — | FK User.Id |
+| IsDeleted | bit | NOT NULL | 0 | |
+| DeletedAt | datetime2(3) | NULL | — | |
+| DeletedBy | int | NULL | — | FK User.Id |
+
+### 2. Tables overview
+| Area | Tables |
+|---|---|
+| Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, CertificationMode, ExamType, SubmissionStatus |
+| Identity & access | User, RefreshToken, Role, RolePermission, UserPermission, CourseGrant, CourseGrantPermission |
+| Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
+| Commerce & learning | Enrollment, PaymentTransaction, Progress, ProgressSection |
+| Certification | CertificationRule, ExamSubmission, Certificate |
+| Community | Post, Comment |
+
+### 3. Text length defaults (please review)
+| Kind | Length | Applies to |
+|---|---|---|
+| Person name | nvarchar(100) | User.Name, Instructor.Name, snapshot names |
+| Email | nvarchar(256) | User.Email, PaymentTransaction.UserEmail |
+| Phone | nvarchar(20) | User.Phone |
+| Title / label | nvarchar(200) | titles without a frontend limit (module, section, video, document, session, material, exam, role name, instructor title) |
+| URL | nvarchar(2048) | all URL/link/image columns |
+| Long text | nvarchar(max) | Course.Description, Instructor.Bio, ExamInstructions, outcome/requirement text |
+| Code | nvarchar(50) | lookup `Code`, icon classes, Language |
+| Slug | nvarchar(200) | Course.Slug |
+| **Frontend limits kept** | Course.Title 120, Course.Subtitle 200, Course.CoverLabel 30, Post.Title 120, Post.Body 2000, Comment.Body 1000, ExamSubmission.Notes 1000, ExamSubmission.Feedback 1000, Certificate.RevokedReason 200 | |
+
+### 4. Lookup tables
+All lookup tables share this shape (+ std):
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| Code | nvarchar(50) | NOT NULL | UQ | value used by code/API |
+| Name | nvarchar(100) | NOT NULL | | display name (English) |
+| SortOrder | int | NOT NULL | | |
+
+| Table | Extra columns | Seed `Code` values |
+|---|---|---|
+| CourseFormat | — | `Pre-recorded`, `Live`, `Hybrid` |
+| CourseLevel | — | `Beginner`, `Intermediate`, `Advanced` |
+| CourseBadge | — | `Bestseller`, `New`, `Popular` |
+| DocumentType | `FileExtension nvarchar(10) NOT NULL` | `PDF` (.pdf), `DOCX` (.docx), `PPTX` (.pptx) |
+| MaterialType | — | `PDF`, `Slides`, `Worksheet`, `Link` |
+| EnrollmentStatus | — | `active`, `revoked` |
+| PaymentStatus | — | `pending`, `success`, `failed`, `cancelled`, `refunded` |
+| Currency | — | `BDT` |
+| CertificationMode | — | `completion`, `exam` |
+| ExamType | — | `project`, `presentation` |
+| SubmissionStatus | — | `submitted`, `passed`, `failed` |
+| Category | `ShortName nvarchar(100) NOT NULL`, `Description nvarchar(500) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `ImageUrl nvarchar(2048) NOT NULL` | `video-editing`, `digital-marketing`, `sports-journalism`, `software-development` |
+| PaymentMethod | `Description nvarchar(200) NOT NULL`, `LogoUrl nvarchar(2048) NULL`, `Icon nvarchar(50) NOT NULL` | `bkash`, `nagad`, `rocket`, `card` |
+| Screen | `Area nvarchar(20) NOT NULL` CHECK IN ('admin','student'), `Path nvarchar(200) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `IsCourseScoped bit NOT NULL`, `Section nvarchar(50) NULL` | `overview`, `courses`, `instructors`, `users`, `enrollments`, `transactions`, `roles`, `access`, `community-moderation`, `certificates`, `dashboard`, `learn`, `checkout`, `community` |
+| Permission | `ScreenId int NOT NULL` FK Screen, `IsCourseGrantable bit NOT NULL` | see below |
+
+Permission seed (Code → Screen; ★ = course-grantable):
+| Screen | Permissions |
+|---|---|
+| overview | `reports.view`, `system.reset` |
+| courses | `courses.view`★, `courses.create`, `courses.edit`★, `courses.delete` |
+| instructors | `instructors.view`, `instructors.create`, `instructors.edit`, `instructors.delete` |
+| users | `users.view` |
+| enrollments | `enrollments.view`, `enrollments.edit` |
+| transactions | `transactions.view`, `transactions.edit`, `transactions.delete` |
+| roles | `roles.view`, `roles.edit` |
+| access | `access.view`, `access.edit` |
+| community-moderation | `community.moderate`★ |
+| certificates | `certificates.manage`★ |
+| dashboard | `dashboard.view` |
+| learn | `learn.view` |
+| checkout | `checkout.view` |
+| community | `community.view`, `community.post` |
+`admin.access` is **not stored** — it is computed (BR-ACL-02). Each screen's "view" permission is the first listed.
+
+### 5. Identity & access
+#### User (+ std)
+| Column | Type | Null | Default | Key / Constraint | Notes |
 |---|---|---|---|---|---|
-| Id | string | PK | no | | |
-| Name | string(100) (inferred len) | | no | | min 2 |
-| Email | string(256) | | no | UQ (case-insensitive) | stored lower-case |
-| Phone | string(20) | | yes | | BD pattern |
-| PasswordHash | string | | no | | demo stores plain `password` |
-| RoleId | string | FK Role | no | | default `user` |
-| HasCustomAccess | bool (inferred) | | no | | true when `access` override exists |
-| InstructorId | string | FK Instructor | yes | UQ (inferred) | account ↔ instructor profile |
-| CreatedAt | datetime | | no | | |
+| Id | int IDENTITY | NOT NULL | | PK | |
+| Name | nvarchar(100) | NOT NULL | | CHECK len ≥ 2 | |
+| Email | nvarchar(256) | NOT NULL | | UQ filtered | stored trimmed, lower-case |
+| Phone | nvarchar(20) | NULL | | | BD pattern (app-validated) |
+| PasswordHash | nvarchar(max) | NOT NULL | | | ASP.NET password hasher |
+| RoleId | int | NOT NULL | | FK Role | default role = Student |
+| HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserPermission rows replace role permissions (BR-ACL-01) |
+| InstructorId | int | NULL | | FK Instructor, UQ filtered (where not null) | |
 
-#### Role
-| Column | Type | PK/FK | Null | Unique | Notes |
+#### RefreshToken (+ std)
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| UserId | int | NOT NULL | FK User | |
+| TokenHash | nvarchar(256) | NOT NULL | UQ | hash only, never the raw token |
+| ExpiresAt | datetime2(3) | NOT NULL | | |
+| RevokedAt | datetime2(3) | NULL | | set on logout / rotation |
+| ReplacedByTokenId | int | NULL | FK RefreshToken | rotation chain |
+| IsPersistent | bit | NOT NULL | | "Remember me" (BR-AUTH-05) |
+
+#### Role (+ std)
+| Column | Type | Null | Default | Key | Notes |
 |---|---|---|---|---|---|
-| Id | string | PK | no | | system ids: `admin`, `instructor`, `user` |
-| Name | string | | no | UQ (case-insensitive) | |
-| Description | string | | yes | | |
-| IsSystem | bool | | no | | not deletable |
+| Id | int IDENTITY | NOT NULL | | PK | |
+| Code | nvarchar(50) | NOT NULL | | UQ filtered | system: `admin`, `instructor`, `user` |
+| Name | nvarchar(200) | NOT NULL | | UQ filtered (case-insensitive collation) | |
+| Description | nvarchar(500) | NULL | | | |
+| IsSystem | bit | NOT NULL | 0 | | cannot be deleted (BR-ACL-06) |
 
-#### RolePermission (join Role N–N Permission)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| RoleId | string | PK, FK Role | no | |
-| Permission | enum Permission | PK | no | `admin.access` not allowed |
-
-#### UserPermission (override; join User N–N Permission)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| UserId | string | PK, FK User | no | When any rows exist (or HasCustomAccess), they replace role permissions |
-| Permission | enum Permission | PK | no | |
-
-#### CourseGrant
-| Column | Type | PK/FK | Null | Unique | Notes |
-|---|---|---|---|---|---|
-| Id | string | PK | no | | |
-| UserId | string | FK User | no | UQ(UserId, CourseId) | |
-| CourseId | bigint | FK Course | no | | cascade delete with course |
-
-#### CourseGrantPermission
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| CourseGrantId | string | PK, FK CourseGrant | no | |
-| Permission | enum CoursePermission | PK | no | grant deleted when list empty |
-
-### Catalogue
-#### Category (static seed; could be a lookup table)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | enum CategoryId | PK | no | |
-| Name, ShortName, Description, Icon, Image | string | | no | |
-
-#### CategorySkill — CategoryId (FK), Skill string, SortOrder int.
-
-#### Instructor
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| Name | string | | no | min 2 |
-| Title | string | | no | |
-| Bio | text | | no | |
-| ExperienceYears | int | | no | ≥ 0 |
-| Students | int | | no | ≥ 0, manual |
-| Rating | decimal(2,1) | | no | not editable, 0 for new |
-
-#### InstructorExpertise — InstructorId (FK), Expertise string, SortOrder int.
-
-#### Course
-| Column | Type | PK/FK | Null | Unique | Notes |
-|---|---|---|---|---|---|
-| Id | bigint | PK | no | | timestamp-based in demo |
-| Slug | string(150) | | no | UQ | kebab-case |
-| Title | string(120) | | no | | 5–120 |
-| Subtitle | string(200) | | no | | |
-| Description | text | | no | | |
-| CategoryId | enum | FK Category | no | | |
-| Format | enum CourseFormat | | no | | |
-| IsPublished | bool | | no | | default false |
-| InstructorId | string | FK Instructor | no | | delete of instructor blocked while referenced |
-| Rating | decimal(2,1) | | no | | demo stat |
-| RatingCount | int | | no | | demo stat |
-| Students | int | | no | | demo stat |
-| DurationHours | int | | no | | ≥ 1 |
-| Level | enum Level | | no | | |
-| Language | string | | no | | default `Bangla` |
-| Price | int (BDT) | | no | | ≥ 0, ≤ OriginalPrice |
-| OriginalPrice | int (BDT) | | no | | ≥ 0 |
-| CoverLabel | string(30) | | no | | |
-| CoverIcon | string | | no | | |
-| Image | string | | yes | | URL or site path |
-| Badge | enum CourseBadge | | yes | | |
-| IsFeatured | bool | | no | | |
-| UpdatedMonth | char(7) `YYYY-MM` | | no | | `updated` |
-
-#### CourseOutcome / CourseRequirement — CourseId (FK), Text string, SortOrder int. (≥ 1 outcome)
-
-#### CourseModule
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| CourseId | bigint | FK Course | no | cascade |
-| Title | string | | no | |
-| SortOrder | int | | no | |
-
-#### Submodule — Id PK, ModuleId FK CourseModule (cascade), Title, SortOrder. Rule: 2–3 sections.
-
-#### Section (self-referencing for topics)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| SubmoduleId | string | FK Submodule | yes | set for top-level sections |
-| ParentSectionId | string | FK Section | yes | set for topics (depth ≤ 3) |
-| Title | string | | no | |
-| SortOrder | int | | no | |
-| Depth | tinyint (inferred) | | no | 0 = section, 1–3 = topic |
-| CHECK | exactly one of SubmoduleId / ParentSectionId is set | | | |
-
-#### SectionVideo
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| SectionId | string | FK Section | no | cascade |
-| Title | string | | no | |
-| Url | string | | no | YouTube/Vimeo/mp4/webm |
-| Minutes | int | | no | ≥ 1 |
-| IsPreview | bool | | no | |
-| SortOrder | int | | no | |
-
-#### SectionDocument
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| SectionId | string | FK Section | no | cascade |
-| VideoId | string | FK SectionVideo | yes | same section; set NULL on video delete |
-| Title | string | | no | |
-| Type | enum DocumentType | | no | |
-| Url | string | | no | extension must match Type |
-| SortOrder | int | | no | |
-
-#### LiveSession
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| CourseId | bigint | FK Course | no | cascade |
-| Title | string | | no | |
-| StartsAt | datetime (local, no zone) | | no | (inferred: store as Asia/Dhaka or UTC) |
-| DurationMinutes | int | | no | ≥ 1 |
-| MeetingUrl | string | | no | |
-| SortOrder | int | | no | |
-
-#### Material — Id PK, CourseId FK (cascade), Title, Type enum MaterialType, Url, SortOrder.
-
-#### Review (inferred, currently static demo pool) — Id, CourseId FK, UserId FK (inferred), Name, Rating int 1–5, Date, Text.
-
-### Commerce & learning
-#### Enrollment
-| Column | Type | PK/FK | Null | Unique | Notes |
-|---|---|---|---|---|---|
-| Id | string | PK | no | | |
-| UserId | string | FK User | no | UQ(UserId, CourseId) | |
-| CourseId | bigint | FK Course | no | | cascade delete with course |
-| Status | enum EnrollmentStatus | | no | | |
-| EnrolledAt | datetime | | no | | |
-| TransactionId | string | FK PaymentTransaction | yes | | null for free courses |
-
-#### PaymentTransaction
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string(32) | PK | no | public id |
-| Gateway | string | | no | `demo` now |
-| GatewayReference | string (inferred) | | yes | real gateway id |
-| UserId | string | FK User | no | |
-| UserName, UserEmail | string | | no | snapshot |
-| CourseId | bigint | (no FK enforced, inferred) | no | course may be deleted |
-| CourseSlug, CourseTitle | string | | no | snapshot |
-| Method | enum PaymentMethodId | | no | |
-| MaskedAccount | string | | no | |
-| OriginalAmount, DiscountAmount, Amount | int (BDT) | | no | |
-| Currency | enum Currency | | no | `BDT` |
-| Status | enum PaymentStatus | | no | |
-| FailureReason | string | | yes | |
-| FulfilledAt | datetime | | yes | access granted once |
-| CreatedAt, UpdatedAt | datetime | | no | |
-
-#### Progress
-| Column | Type | PK/FK | Null | Unique | Notes |
-|---|---|---|---|---|---|
-| Id | string | PK | no | | demo `userId:courseId`; or surrogate |
-| UserId | string | FK User | no | UQ(UserId, CourseId) | |
-| CourseId | bigint | FK Course | no | | |
-| UpdatedAt | datetime | | no | | |
-
-#### ProgressSection (join Progress N–N Section)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| ProgressId | string | PK, FK Progress | no | |
-| SectionId | string | PK (FK Section, set null/ignore on delete) | no | ids of removed sections are ignored in % |
-| CompletedAt | datetime (inferred) | | no | |
-
-#### CertificationRule (1–1 Course)
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| CourseId | bigint | PK, FK Course | no | |
-| Enabled | bool | | no | |
-| Mode | enum CertificationMode | | no | |
-| MinProgress | int | | no | 1–100 |
-| ExamType | enum ExamType | | no | |
-| ExamTitle | string | | no | |
-| ExamInstructions | text | | yes | |
-| MaxScore | int | | no | ≥ 1 |
-| PassingScore | int | | no | 1..MaxScore |
-| MaxAttempts | int | | no | 0 = unlimited |
-
-#### ExamSubmission
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| UserId | string | FK User | no | |
-| CourseId | bigint | FK Course | no | |
-| ExamType | enum ExamType | | no | snapshot |
-| Url | string | | no | https |
-| Notes | string(1000) | | yes | |
-| SubmittedAt | datetime | | no | |
-| Status | enum SubmissionStatus | | no | |
-| Score | decimal | | yes | |
-| Feedback | string(1000) | | yes | |
-| ReviewedBy | string | FK User | yes | |
-| ReviewedAt | datetime | | yes | |
-
-#### Certificate
-| Column | Type | PK/FK | Null | Unique | Notes |
-|---|---|---|---|---|---|
-| Id | string | PK | no | | |
-| Code | string(14) | | no | UQ | `CA-YYYY-XXXXXX` |
-| UserId | string | FK User | no | | |
-| CourseId | bigint | FK Course | no | | |
-| UserName, CourseTitle, InstructorName | string | | no | | snapshots |
-| Mode | enum CertificationMode | | no | | |
-| ExamType | enum ExamType | | yes | | |
-| ScorePercent | int | | yes | | |
-| IssuedAt | datetime | | no | | |
-| IsRevoked | bool | | no | | |
-| RevokedReason | string(200) | | yes | | |
-| Constraint | at most one non-revoked per (UserId, CourseId) — filtered unique index | | | | |
-
-### Community
-#### Post
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| CourseId | bigint | FK Course | no | cascade |
-| AuthorId | string | FK User | no | (keep posts if user deleted → "Former member") |
-| Title | string(120) | | no | |
-| Body | string(2000) | | no | |
-| CreatedAt | datetime | | no | |
-| EditedAt | datetime | | yes | |
-| IsPinned, IsLocked, IsHidden | bool | | no | |
-
-#### Comment
-| Column | Type | PK/FK | Null | Notes |
-|---|---|---|---|---|
-| Id | string | PK | no | |
-| PostId | string | FK Post | no | cascade |
-| CourseId | bigint | FK Course | no | denormalised |
-| ParentId | string | FK Comment | yes | 1 level only; cascade replies |
-| AuthorId | string | FK User | no | |
-| Body | string(1000) | | no | |
-| CreatedAt | datetime | | no | |
-| EditedAt | datetime | | yes | |
-| IsHidden | bool | | no | |
-
-### Site content (currently static / not stored)
-- **ContactMessage** (inferred): Id, Name, Email, Phone?, Topic, Message, CreatedAt.
-- **CareerApplication** (inferred): Id, Name, Email, Phone, OpportunityId/Role, PortfolioUrl?, Message(600)?, CreatedAt, Status (inferred).
-- **Opportunity**: Id int, Role, Team enum, Type enum, Description, Icon; OpportunitySkill(OpportunityId, Skill).
-- **SportsStory**: Id int, Topic enum, Title, Excerpt, Date, ReadMinutes, Image?, Icon.
-- **Testimonial**: Name, Course, Outcome, Rating, Text. **FaqItem**: Question, Answer.
-
-### Relationships
-| From | To | Type | Notes |
+#### RolePermission (+ std)
+| Column | Type | Null | Key |
 |---|---|---|---|
-| Role | User | 1–N | |
-| Role | Permission | N–N via RolePermission | |
-| User | Permission | N–N via UserPermission (override) | |
-| User | Course | N–N via CourseGrant (+ CourseGrantPermission) | |
+| Id | int IDENTITY | NOT NULL | PK |
+| RoleId | int | NOT NULL | FK Role; UQ (RoleId, PermissionId) filtered |
+| PermissionId | int | NOT NULL | FK Permission |
+Admin role: permissions are not checked from rows — always ALL (BR-ACL-01).
+
+#### UserPermission (+ std) — per-user screen override
+| Column | Type | Null | Key |
+|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK |
+| UserId | int | NOT NULL | FK User; UQ (UserId, PermissionId) filtered |
+| PermissionId | int | NOT NULL | FK Permission |
+Rows are always whole screens (BR-ACL-12, BR-ACL-19).
+
+#### CourseGrant (+ std)
+| Column | Type | Null | Key |
+|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK |
+| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered |
+| CourseId | int | NOT NULL | FK Course |
+
+#### CourseGrantPermission (+ std)
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| CourseGrantId | int | NOT NULL | FK CourseGrant; UQ (CourseGrantId, PermissionId) filtered | |
+| PermissionId | int | NOT NULL | FK Permission | must have `IsCourseGrantable = 1` (BR-ACL-13) |
+
+### 6. Catalogue
+#### CategorySkill (+ std)
+Id PK · CategoryId int NOT NULL FK Category · Skill nvarchar(100) NOT NULL · SortOrder int NOT NULL.
+
+#### Instructor (+ std)
+| Column | Type | Null | Default | Constraint |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK |
+| Name | nvarchar(100) | NOT NULL | | len ≥ 2 |
+| Title | nvarchar(200) | NOT NULL | | |
+| Bio | nvarchar(max) | NOT NULL | | |
+| ExperienceYears | int | NOT NULL | 0 | CHECK ≥ 0 |
+| Students | int | NOT NULL | 0 | CHECK ≥ 0 |
+| Rating | decimal(2,1) | NOT NULL | 0 | CHECK 0–5 |
+
+#### InstructorExpertise (+ std)
+Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT NULL · SortOrder int NOT NULL.
+
+#### Course (+ std)
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| Slug | nvarchar(200) | NOT NULL | | UQ filtered; CHECK pattern `^[a-z0-9]+(-[a-z0-9]+)*$` (app) | public URL key |
+| Title | nvarchar(120) | NOT NULL | | len 5–120 | |
+| Subtitle | nvarchar(200) | NOT NULL | | | |
+| Description | nvarchar(max) | NOT NULL | | | |
+| CategoryId | int | NOT NULL | | FK Category | |
+| CourseFormatId | int | NOT NULL | | FK CourseFormat | |
+| CourseLevelId | int | NOT NULL | | FK CourseLevel | |
+| CourseBadgeId | int | NULL | | FK CourseBadge | |
+| InstructorId | int | NOT NULL | | FK Instructor | |
+| IsPublished | bit | NOT NULL | 0 | | |
+| IsFeatured | bit | NOT NULL | 0 | | |
+| Language | nvarchar(50) | NOT NULL | `Bangla` | | |
+| DurationHours | int | NOT NULL | 1 | CHECK ≥ 1 | |
+| OriginalPrice | decimal(18,2) | NOT NULL | 0 | CHECK ≥ 0 | |
+| Price | decimal(18,2) | NOT NULL | 0 | CHECK ≥ 0 AND Price ≤ OriginalPrice | 0 = free |
+| CoverLabel | nvarchar(30) | NOT NULL | | | |
+| CoverIcon | nvarchar(50) | NOT NULL | `bi-journal-text` | | |
+| ImageUrl | nvarchar(2048) | NULL | | | |
+| Rating | decimal(2,1) | NOT NULL | 0 | CHECK 0–5 | demo stat |
+| RatingCount | int | NOT NULL | 0 | CHECK ≥ 0 | demo stat |
+| Students | int | NOT NULL | 0 | CHECK ≥ 0 | demo stat |
+| ContentUpdatedMonth | char(7) | NOT NULL | | `YYYY-MM` | set on each save (BR-CMS-11) |
+
+#### CourseOutcome / CourseRequirement (+ std, same shape)
+Id PK · CourseId int NOT NULL FK Course · Text nvarchar(max) NOT NULL · SortOrder int NOT NULL. (≥ 1 CourseOutcome per course — app rule.)
+
+#### CourseModule (+ std)
+Id PK · CourseId int NOT NULL FK Course · Title nvarchar(200) NOT NULL · SortOrder int NOT NULL.
+
+#### Submodule (+ std)
+Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT NULL · SortOrder int NOT NULL. App rule: 2–3 non-deleted top-level Sections.
+
+#### Section (+ std) — sections and nested topics
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| CourseId | int | NOT NULL | FK Course | denormalised for progress queries |
+| SubmoduleId | int | NULL | FK Submodule | set for top-level sections |
+| ParentSectionId | int | NULL | FK Section | set for topics |
+| Depth | tinyint | NOT NULL | CHECK 0–3 | 0 = section, 1–3 = topic |
+| Title | nvarchar(200) | NOT NULL | | |
+| SortOrder | int | NOT NULL | | |
+| CHECK | | | exactly one of SubmoduleId / ParentSectionId is not null; Depth = 0 ⇔ SubmoduleId not null | |
+
+#### SectionVideo (+ std)
+| Column | Type | Null | Default | Constraint |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK |
+| SectionId | int | NOT NULL | | FK Section |
+| Title | nvarchar(200) | NOT NULL | | |
+| Url | nvarchar(2048) | NOT NULL | | |
+| Minutes | int | NOT NULL | 10 | CHECK ≥ 1 |
+| IsPreview | bit | NOT NULL | 0 | |
+| SortOrder | int | NOT NULL | | |
+
+#### SectionDocument (+ std)
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| SectionId | int | NOT NULL | FK Section | |
+| SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when video deleted (BR-CMS-09) |
+| DocumentTypeId | int | NOT NULL | FK DocumentType | |
+| Title | nvarchar(200) | NOT NULL | | |
+| Url | nvarchar(2048) | NOT NULL | ends with type's FileExtension (app) | |
+| SortOrder | int | NOT NULL | | |
+
+#### LiveSession (+ std)
+| Column | Type | Null | Default | Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| CourseId | int | NOT NULL | | FK Course | |
+| Title | nvarchar(200) | NOT NULL | | | |
+| StartsAtUtc | datetime2(3) | NOT NULL | | | entered as Asia/Dhaka |
+| DurationMinutes | int | NOT NULL | 60 | CHECK ≥ 1 | |
+| MeetingUrl | nvarchar(2048) | NOT NULL | | | |
+| SortOrder | int | NOT NULL | | | |
+
+#### Material (+ std)
+Id PK · CourseId int NOT NULL FK Course · MaterialTypeId int NOT NULL FK MaterialType · Title nvarchar(200) NOT NULL · Url nvarchar(2048) NOT NULL · SortOrder int NOT NULL.
+
+### 7. Commerce & learning
+#### Enrollment (+ std)
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered | one per user+course (BR-ENR-01) |
+| CourseId | int | NOT NULL | FK Course | |
+| EnrollmentStatusId | int | NOT NULL | FK EnrollmentStatus | |
+| EnrolledAt | datetime2(3) | NOT NULL | | |
+| PaymentTransactionId | int | NULL | FK PaymentTransaction | NULL for free courses |
+
+#### PaymentTransaction (+ std)
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| TransactionNo | nvarchar(32) | NOT NULL | | UQ filtered | public id (today `DEMO-YYYYMMDD-XXXXXX`) |
+| Gateway | nvarchar(50) | NOT NULL | | | `demo` today |
+| UserId | int | NOT NULL | | FK User | |
+| UserName | nvarchar(100) | NOT NULL | | | snapshot |
+| UserEmail | nvarchar(256) | NOT NULL | | | snapshot |
+| CourseId | int | NOT NULL | | FK Course | course row is only soft-deleted, so FK holds |
+| CourseSlug | nvarchar(200) | NOT NULL | | | snapshot |
+| CourseTitle | nvarchar(120) | NOT NULL | | | snapshot |
+| PaymentMethodId | int | NOT NULL | | FK PaymentMethod | |
+| MaskedAccount | nvarchar(50) | NOT NULL | | | never full card/wallet |
+| OriginalAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | |
+| DiscountAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | = Original − Amount |
+| Amount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | charged; computed by server (BR-PAY-05) |
+| CurrencyId | int | NOT NULL | | FK Currency | BDT |
+| PaymentStatusId | int | NOT NULL | | FK PaymentStatus | |
+| FailureReason | nvarchar(200) | NULL | | | |
+| FulfilledAt | datetime2(3) | NULL | | | access granted once (BR-PAY-08) |
+
+#### Progress (+ std)
+Id PK · UserId int NOT NULL FK User · CourseId int NOT NULL FK Course · UQ (UserId, CourseId) filtered. (`UpdatedAt` from std = last change.)
+
+#### ProgressSection (+ std)
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| ProgressId | int | NOT NULL | FK Progress; UQ (ProgressId, SectionId) filtered | |
+| SectionId | int | NOT NULL | FK Section | deleted sections don't count (BR-LRN-05) |
+Undo completion (BR-LRN-03) = soft-delete the row. `CreatedAt` = completed at.
+
+### 8. Certification
+#### CertificationRule (+ std) — 0..1 per course
+| Column | Type | Null | Default | Key / Constraint |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK |
+| CourseId | int | NOT NULL | | FK Course; UQ filtered |
+| IsEnabled | bit | NOT NULL | 1 | |
+| CertificationModeId | int | NOT NULL | completion | FK CertificationMode |
+| MinProgress | int | NOT NULL | 100 | CHECK 1–100 |
+| ExamTypeId | int | NOT NULL | project | FK ExamType |
+| ExamTitle | nvarchar(200) | NOT NULL | `Final project` | |
+| ExamInstructions | nvarchar(max) | NULL | | |
+| MaxScore | int | NOT NULL | 100 | CHECK ≥ 1 |
+| PassingScore | int | NOT NULL | 60 | CHECK 1 ≤ PassingScore ≤ MaxScore |
+| MaxAttempts | int | NOT NULL | 0 | CHECK ≥ 0 (0 = unlimited) |
+No row → API returns the default rule (BR-CERT-01).
+
+#### ExamSubmission (+ std)
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| UserId | int | NOT NULL | FK User | |
+| CourseId | int | NOT NULL | FK Course | |
+| ExamTypeId | int | NOT NULL | FK ExamType | snapshot at submit |
+| Url | nvarchar(2048) | NOT NULL | starts with `https://` (app) | |
+| Notes | nvarchar(1000) | NULL | | |
+| SubmittedAt | datetime2(3) | NOT NULL | | |
+| SubmissionStatusId | int | NOT NULL | FK SubmissionStatus | |
+| Score | decimal(9,2) | NULL | CHECK ≥ 0 | see Open Questions (integer?) |
+| Feedback | nvarchar(1000) | NULL | | |
+| ReviewedByUserId | int | NULL | FK User | |
+| ReviewedAt | datetime2(3) | NULL | | |
+
+#### Certificate (+ std)
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| Code | char(14) | NOT NULL | UQ filtered | `CA-YYYY-XXXXXX` |
+| UserId | int | NOT NULL | FK User | |
+| CourseId | int | NOT NULL | FK Course | |
+| UserName | nvarchar(100) | NOT NULL | | snapshot |
+| CourseTitle | nvarchar(120) | NOT NULL | | snapshot |
+| InstructorName | nvarchar(100) | NOT NULL | | snapshot ('' allowed) |
+| CertificationModeId | int | NOT NULL | FK CertificationMode | |
+| ExamTypeId | int | NULL | FK ExamType | exam only |
+| ScorePercent | int | NULL | CHECK 0–100 | exam only |
+| IssuedAt | datetime2(3) | NOT NULL | | |
+| IsRevoked | bit | NOT NULL | default 0 | |
+| RevokedReason | nvarchar(200) | NULL | | public |
+| UQ | | | (UserId, CourseId) filtered `WHERE IsRevoked = 0 AND IsDeleted = 0` | ≤ 1 valid (BR-CERT-03) |
+
+### 9. Community
+#### Post (+ std)
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK |
+| CourseId | int | NOT NULL | | FK Course |
+| AuthorUserId | int | NOT NULL | | FK User |
+| Title | nvarchar(120) | NOT NULL | | |
+| Body | nvarchar(2000) | NOT NULL | | |
+| EditedAt | datetime2(3) | NULL | | |
+| IsPinned | bit | NOT NULL | 0 | |
+| IsLocked | bit | NOT NULL | 0 | |
+| IsHidden | bit | NOT NULL | 0 | |
+
+#### Comment (+ std)
+| Column | Type | Null | Default | Key / Constraint |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK |
+| PostId | int | NOT NULL | | FK Post |
+| CourseId | int | NOT NULL | | FK Course (denormalised) |
+| ParentCommentId | int | NULL | | FK Comment — must be a top-level comment (1 level, BR-COM-07) |
+| AuthorUserId | int | NOT NULL | | FK User |
+| Body | nvarchar(1000) | NOT NULL | | |
+| EditedAt | datetime2(3) | NULL | | |
+| IsHidden | bit | NOT NULL | 0 | |
+
+### 10. Not designed yet (see Open Questions)
+Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial, FaqItem — currently static/simulated in the frontend; table design waits for the business decision.
+
+### 11. Relationships
+| Parent | Child | Type | FK column |
+|---|---|---|---|
+| Role | User | 1–N | User.RoleId |
+| Role / Permission | RolePermission | N–N | RoleId, PermissionId |
+| User / Permission | UserPermission | N–N | UserId, PermissionId |
+| User / Course | CourseGrant | N–N | UserId, CourseId |
+| CourseGrant / Permission | CourseGrantPermission | N–N | CourseGrantId, PermissionId |
+| Screen | Permission | 1–N | Permission.ScreenId |
+| User | RefreshToken | 1–N | UserId |
 | Instructor | User | 1–0..1 | User.InstructorId |
-| Category | Course | 1–N | |
-| Instructor | Course | 1–N | |
-| Course | CourseModule → Submodule → Section → Section(topics) | 1–N chain | |
-| Section | SectionVideo, SectionDocument | 1–N | Document → Video 0..1 |
-| Course | LiveSession, Material, CourseOutcome, CourseRequirement | 1–N | |
-| User | Course | N–N via Enrollment | |
-| PaymentTransaction | Enrollment | 1–0..1 | |
-| User | PaymentTransaction | 1–N | |
-| User + Course | Progress | 1–1 per pair; Progress N–N Section | |
-| Course | CertificationRule | 1–0..1 | default used when missing |
-| User + Course | ExamSubmission | 1–N | |
-| User + Course | Certificate | 1–N (≤ 1 valid) | |
-| Course | Post → Comment → Comment(reply) | 1–N chain | |
+| Category, CourseFormat, CourseLevel, CourseBadge, Instructor | Course | 1–N | |
+| Course | CourseModule → Submodule → Section → Section (topics) | 1–N chain | |
+| Section | SectionVideo, SectionDocument | 1–N | |
+| SectionVideo | SectionDocument | 0..1–N | SectionVideoId |
+| Course | LiveSession, Material, CourseOutcome, CourseRequirement, CertificationRule (0..1) | 1–N | |
+| User / Course | Enrollment | N–N | |
+| PaymentTransaction | Enrollment | 1–0..1 | PaymentTransactionId |
+| User, Course, PaymentMethod, PaymentStatus | PaymentTransaction | 1–N | |
+| User / Course | Progress | 1 per pair | |
+| Progress / Section | ProgressSection | N–N | |
+| User / Course | ExamSubmission, Certificate | 1–N | |
+| Course | Post → Comment → Comment (reply) | 1–N chain | |
 
-### Suggested indexes
-- User(Email) unique; User(RoleId); User(InstructorId).
-- Course(Slug) unique; Course(IsPublished, CategoryId); Course(InstructorId); Course(IsFeatured).
-- CourseGrant(UserId, CourseId) unique.
-- Enrollment(UserId, CourseId) unique; Enrollment(CourseId, Status); Enrollment(TransactionId).
-- PaymentTransaction(UserId, CreatedAt desc); (Status); (CourseId); (CreatedAt); (Method).
-- Progress(UserId, CourseId) unique.
-- ExamSubmission(CourseId, Status, SubmittedAt desc); (UserId, CourseId).
-- Certificate(Code) unique; Certificate(UserId, CourseId) filtered unique where IsRevoked = 0.
-- Post(CourseId, IsPinned desc, CreatedAt desc); Comment(PostId, CreatedAt); Comment(ParentId).
-- Section(SubmoduleId, SortOrder); Section(ParentSectionId, SortOrder).
+### 12. Indexes (all non-unique unless stated; all filtered `WHERE IsDeleted = 0` where useful)
+| Table | Index |
+|---|---|
+| User | UQ Email; RoleId; UQ InstructorId (not null) |
+| RefreshToken | UQ TokenHash; (UserId, ExpiresAt) |
+| Role | UQ Code; UQ Name |
+| RolePermission / UserPermission | UQ (RoleId, PermissionId) / UQ (UserId, PermissionId) |
+| CourseGrant | UQ (UserId, CourseId); CourseId |
+| Course | UQ Slug; (IsPublished, CategoryId); InstructorId; IsFeatured |
+| Section | (SubmoduleId, SortOrder); (ParentSectionId, SortOrder); CourseId |
+| SectionVideo / SectionDocument | (SectionId, SortOrder) |
+| LiveSession | (CourseId, StartsAtUtc) |
+| Enrollment | UQ (UserId, CourseId); (CourseId, EnrollmentStatusId); PaymentTransactionId |
+| PaymentTransaction | UQ TransactionNo; (UserId, CreatedAt DESC); PaymentStatusId; CourseId; CreatedAt; PaymentMethodId |
+| Progress | UQ (UserId, CourseId) |
+| ProgressSection | UQ (ProgressId, SectionId) |
+| CertificationRule | UQ CourseId |
+| ExamSubmission | (CourseId, SubmissionStatusId, SubmittedAt DESC); (UserId, CourseId) |
+| Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0 |
+| Post | (CourseId, IsPinned DESC, CreatedAt DESC) |
+| Comment | (PostId, CreatedAt); ParentCommentId |
 
-### ER diagram
+### 13. Open questions (database)
+- Access / refresh token lifetimes and refresh-token rotation policy.
+- `ExamSubmission.Score`: integer or decimal? (rule fields are integers.)
+- `Course.ContentUpdatedMonth` could be derived from `UpdatedAt`. Keep the column or derive?
+- Should `Course.Language` become a lookup table?
+- Lookup `Name` is English only. Need a Bangla name column?
+- Case-insensitive uniqueness of Email/Role name relies on the database collation (default SQL Server collation is case-insensitive). Confirm collation.
+- Business open questions that may add tables: Review, enrollment history, ContactMessage, CareerApplication, AuditLog.
+
+### 14. ER diagram
 ```mermaid
 erDiagram
   ROLE ||--o{ USER : has
   ROLE ||--o{ ROLE_PERMISSION : grants
+  PERMISSION ||--o{ ROLE_PERMISSION : in
+  SCREEN ||--o{ PERMISSION : groups
   USER ||--o{ USER_PERMISSION : overrides
+  PERMISSION ||--o{ USER_PERMISSION : in
+  USER ||--o{ REFRESH_TOKEN : holds
   USER ||--o{ COURSE_GRANT : receives
   COURSE ||--o{ COURSE_GRANT : scopes
   COURSE_GRANT ||--o{ COURSE_GRANT_PERMISSION : lists
-  INSTRUCTOR |o--o| USER : "account"
+  PERMISSION ||--o{ COURSE_GRANT_PERMISSION : in
+  INSTRUCTOR |o--o| USER : account
   CATEGORY ||--o{ COURSE : groups
   INSTRUCTOR ||--o{ COURSE : teaches
   COURSE ||--o{ COURSE_MODULE : contains
   COURSE_MODULE ||--o{ SUBMODULE : contains
   SUBMODULE ||--o{ SECTION : "2-3"
-  SECTION ||--o{ SECTION : "topics (<=3 deep)"
+  SECTION ||--o{ SECTION : "topics (depth<=3)"
   SECTION ||--o{ SECTION_VIDEO : has
   SECTION ||--o{ SECTION_DOCUMENT : has
   SECTION_VIDEO |o--o{ SECTION_DOCUMENT : attaches
@@ -1578,6 +1699,7 @@ erDiagram
   COURSE ||--o{ ENROLLMENT : has
   PAYMENT_TRANSACTION |o--o| ENROLLMENT : grants
   USER ||--o{ PAYMENT_TRANSACTION : pays
+  PAYMENT_METHOD ||--o{ PAYMENT_TRANSACTION : via
   USER ||--o{ PROGRESS : tracks
   COURSE ||--o{ PROGRESS : for
   PROGRESS ||--o{ PROGRESS_SECTION : completes
@@ -1596,139 +1718,229 @@ erDiagram
 
 ## B13. API Contract
 
-Conventions:
-- Base path `/api`. JSON. Auth via bearer token or cookie (TBD). `🔒 perm` = required permission; `(course)` = global or course grant.
-- `/api/me/*` = signed-in user's own data. `/api/admin/*` = staff screens.
-- List endpoints accept `page` (1-based), `pageSize` (default 20), `sort`; response `{ items, total, page, pageSize }`. (Frontend has no server pagination yet — inferred.)
-- Errors: `400` validation `{ errors: { field: [message] } }`, `401` not signed in, `403` permission denied ("You do not have permission to do this."), `404`, `409` conflict (duplicate slug/email/role name, invalid transition).
-- Every write re-checks permissions server-side (BR-ACL-16).
+Exact contract for the backend. Business rules (BR-IDs) are in `modules/*.md`; tables in `data-model.md`.
 
-### Accounts & Auth
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| POST | `/api/auth/register` | `{name, email, password, phone?}` | `{user, token}` | `Register` | BR-AUTH-02,03,04,08 |
-| POST | `/api/auth/login` | `{email, password, remember}` | `{user, token}` | `Login` | BR-AUTH-01,05 |
-| POST | `/api/auth/logout` | — | 204 | `Navbar` | BR-AUTH-10 |
-| GET | `/api/auth/me` | — | `{user, role, permissions[], courseGrants[], homeUrl}` | guards, `PermissionService` | BR-ACL-01,02,09 |
-| POST | `/api/auth/forgot-password` | `{email}` | 204 | `Login` (planned) | BR-AUTH-12 |
+### 1. Conventions
+| Topic | Rule |
+|---|---|
+| Base URL | `/api/v1` |
+| Format | JSON, camelCase property names, UTF-8 |
+| Auth | JWT access token in `Authorization: Bearer <token>`; refresh token to renew (section 3) |
+| Public ids in URLs | course `slug`, payment `transactionNo`, certificate `code`; admin/internal endpoints use numeric `id` |
+| Dates | ISO 8601 UTC strings, e.g. `2026-11-12T08:30:00.000Z` |
+| Money | number with 2 decimals (decimal(18,2)), currency `BDT` |
+| Enums | sent as lookup `code` strings (e.g. `"pending"`, `"Pre-recorded"`) |
+| Soft delete | `DELETE` endpoints soft-delete; deleted rows never appear in responses |
+| Permissions | 🔒 `perm` = required permission; `(course)` = global OR course grant on that course. Every write re-checks on the server (BR-ACL-16) |
+| Text | inputs trimmed by the server before validation and save |
 
-### Access Control
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/users?search=` 🔒 users.view / access.view | — | `[{id,name,email,roleId,roleName,hasCustomAccess,activeCourses}]` | `AdminUsers`, `AdminAccess` | — |
-| GET | `/api/users/{id}/access` 🔒 access.view | — | `{user, permissions[], isCustom, courseGrants[]}` | `UserAccess` | BR-ACL-01 |
-| PUT | `/api/users/{id}/role` 🔒 roles.edit | `{roleId}` | user | `AdminAccess` | BR-ACL-08,17 |
-| PUT | `/api/users/{id}/access` 🔒 access.edit | `{permissions[]}` | user | `UserAccess` | BR-ACL-08,10 |
-| DELETE | `/api/users/{id}/access` 🔒 access.edit | — | user | `UserAccess` | BR-ACL-11 |
-| PUT | `/api/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{permissions[]}` (empty = delete) | grant \| 204 | `UserAccess` | BR-ACL-13 |
-| GET | `/api/roles` 🔒 roles.view | — | `[{id,name,description,permissions[],system,memberCount}]` | `AdminRoles`, `AdminAccess` | — |
-| POST | `/api/roles` 🔒 roles.edit | `{name, description, permissions[]}` | role | `AdminRoles` | BR-ACL-05 |
-| PUT | `/api/roles/{id}` 🔒 roles.edit | same | role | `AdminRoles` | BR-ACL-05 |
-| DELETE | `/api/roles/{id}` 🔒 roles.edit | — | 204 | `AdminRoles` | BR-ACL-06,07 |
-| GET | `/api/permissions` | — | permission groups + screens | `AccessMatrix` (or keep static) | — |
+### 2. Response wrapper
+Every response (success and error) uses:
+```json
+{ "success": true, "data": { }, "message": null, "errors": [] }
+```
+| Field | Type | Notes |
+|---|---|---|
+| success | bool | false on any error |
+| data | object \| array \| null | payload; null on error |
+| message | string \| null | human-readable summary (English key; UI translates) |
+| errors | `ErrorItem[]` | validation / business errors; empty on success |
 
-### Course Catalog (public)
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/courses` | `?search=&category=&price=all\|under-2500\|2500-4500\|over-4500&levels=&formats=&sort=popular\|rating\|newest\|price-asc\|price-desc&featured=&page=&pageSize=6` | course cards + `total` + facet counts (category, level, format) | `CourseList`, `Courses` (home), `Sports` | BR-CAT-01,03–10 |
-| GET | `/api/courses/{slug}` | — | course detail (curriculum with preview URLs only, sessions w/o meeting links unless access, materials w/o URL unless access, instructor, `hasAccess`, `isEnrolled`) | `CourseDetail` | BR-CAT-02,13–16,18 |
-| GET | `/api/courses/{id}/related?limit=4` | — | course cards | `CourseDetail` | BR-CAT-11 |
-| GET | `/api/courses/{id}/reviews` | — | `{reviews[], breakdown[5]}` | `CourseDetail` | BR-CAT-12 |
-| GET | `/api/categories` | — | categories + published counts | `Categories`, `CourseList`, `Navbar` | — |
+`ErrorItem` = `{ field: string | null, message: string }` (field = camelCase property name, null for non-field errors).
 
-### Course Management
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/admin/courses?search=&format=` 🔒 courses.view (course) | — | courses user can view + counts (sections, sessions, materials, activeEnrollments, allEnrollments) | `AdminCourses` | BR-CMS-16 |
-| GET | `/api/admin/courses/{id}` 🔒 courses.edit (course) | — | full course | `CourseForm`, `CurriculumEditor` | BR-CMS-01 |
-| GET | `/api/admin/courses/slug-available?slug=&exceptId=` | — | `{available}` | `CourseForm` | BR-CMS-02 |
-| POST | `/api/admin/courses` 🔒 courses.create | course details + schedule[] + materials[] | course | `CourseForm` | BR-CMS-01–05,11,17 |
-| PUT | `/api/admin/courses/{id}` 🔒 courses.edit (course) | same | course | `CourseForm` | BR-CMS-03–05,11 |
-| PATCH | `/api/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{published}` | course | `AdminCourses` | BR-CMS-04,05,12 |
-| PUT | `/api/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `{modules[]}` (nested tree) | course | `CurriculumEditor` | BR-CMS-06–10,18 |
-| DELETE | `/api/admin/courses/{id}` 🔒 courses.delete (course) | — | 204 (cascades enrollments, community, grants) | `AdminCourses` | BR-CMS-13 |
-| GET | `/api/instructors` 🔒 instructors.view (list also used by course form) | — | instructors + assignedCourseCount | `AdminInstructors`, `CourseForm` | — |
-| POST | `/api/instructors` 🔒 instructors.create | `{name,title,bio,expertise[],experienceYears,students}` | instructor | `AdminInstructors` | BR-CMS-15 |
-| PUT | `/api/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
-| DELETE | `/api/instructors/{id}` 🔒 instructors.delete | — | 204 / 409 if assigned | `AdminInstructors` | BR-CMS-14 |
+**List responses** — `data` is a page:
+```json
+{ "items": [ ], "total": 42, "page": 1, "pageSize": 20 }
+```
+List query params (all list endpoints): `page` (int ≥ 1, default 1), `pageSize` (int 1–100, default 20), plus the filters listed per endpoint.
 
-### Checkout & Payments
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/checkout/{slug}` 🔒 checkout.view | — | `{course summary, price, originalPrice, discountPercent, alreadyEnrolled, methods[]}` | `Checkout` | BR-PAY-01,02 |
-| POST | `/api/courses/{id}/enroll-free` 🔒 checkout.view | — | enrollment | `Checkout` | BR-PAY-03 |
-| POST | `/api/payments` 🔒 checkout.view | `{courseId, method}` (server computes amount) | `{transactionId, redirectUrl}` | `Checkout` | BR-PAY-04,05 |
-| POST | `/api/payments/callback/{gateway}` (gateway IPN, signed) | gateway payload | 200 | gateway | BR-PAY-06–08 |
-| GET | `/api/payments/{id}` | — | transaction (buyer or transactions.view) | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18 |
-| GET | `/api/me/payments` | — | own transactions newest first | `Dashboard` | BR-LRN-14 |
-| GET | `/api/admin/transactions` 🔒 transactions.view | `?search=&status=&method=&courseId=&from=YYYY-MM-DD&to=YYYY-MM-DD&page=&pageSize=` | `{items, total, totals:{collected, refunded, successful, unsuccessful}, courseOptions[]}` | `AdminTransactions` | BR-PAY-13,14 |
-| PATCH | `/api/admin/transactions/{id}/status` 🔒 transactions.edit | `{status}` | transaction (+ side effects) | `AdminTransactions` | BR-PAY-10,11 |
-| DELETE | `/api/admin/transactions/{id}` 🔒 transactions.delete | — | 204 / 409 if success | `AdminTransactions` | BR-PAY-12 |
-| POST | `/api/demo/payments/{id}/simulate` (dev only) | `{outcome: success\|failed\|cancelled}` | transaction | `DemoGateway` | BR-PAY-06,07 |
+**HTTP status codes**
+| Code | When | message example |
+|---|---|---|
+| 200 | OK | |
+| 201 | Created | |
+| 400 | Validation failed (errors filled) | "Please fix the highlighted fields." |
+| 401 | Not signed in / token expired | "Please log in to continue." |
+| 403 | Permission denied | "You do not have permission to do this." |
+| 404 | Not found (or not visible to caller) | |
+| 409 | Business conflict (duplicate email/slug/role name, invalid status change, already reviewed, etc.) | rule's message |
 
-### Enrollments
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/me/enrollments` | — | `[{enrollment, course card, progressPercent}]` | `Dashboard` | BR-ENR-10, BR-LRN-12 |
-| GET | `/api/admin/enrollments` 🔒 enrollments.view | `?search=&status=all\|active\|revoked&page=&pageSize=` | rows `{enrollment, studentName, email, courseTitle}` newest first | `AdminEnrollments` | BR-ENR-09 |
-| PATCH | `/api/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{status}` | enrollment | `AdminEnrollments` | BR-ENR-05 |
+### 3. Shared DTOs
+```text
+UserSummaryDto      { id:int, name:string, email:string }
+PermissionCode      string  (e.g. "courses.edit")
+CourseGrantDto      { courseId:int, courseTitle:string, permissions:PermissionCode[] }
+MeDto               { id, name, email, phone:string|null, roleCode:string, roleName:string, instructorId:int|null,
+                      permissions:PermissionCode[], courseGrants:CourseGrantDto[], hasAdminPanel:bool, homeUrl:string }
+CategoryDto         { code, name, shortName, description, icon, imageUrl, skills:string[], publishedCourseCount:int }
+InstructorDto       { id, name, title, bio, expertise:string[], experienceYears:int, students:int, rating:number,
+                      publishedCourseCount:int }
+CourseCardDto       { id, slug, title, subtitle, categoryCode, formatCode, levelCode, badgeCode:string|null,
+                      price:number, originalPrice:number, discountPercent:int, rating:number, ratingCount:int,
+                      students:int, durationHours:int, coverLabel, coverIcon, imageUrl:string|null,
+                      instructorName:string, sectionCount:int, contentUpdatedMonth:"YYYY-MM" }
+VideoDto            { id, title, minutes:int, isPreview:bool, url:string|null }   // url null when caller has no access and !isPreview
+DocumentDto         { id, title, typeCode, videoId:int|null, url:string|null, isLocked:bool }
+SectionDto          { id, title, depth:int, minutes:int, videos:VideoDto[], documents:DocumentDto[], topics:SectionDto[] }
+SubmoduleDto        { id, title, sections:SectionDto[] }
+ModuleDto           { id, title, minutes:int, sectionCount:int, submodules:SubmoduleDto[] }
+LiveSessionDto      { id, title, startsAt:datetime, durationMinutes:int, meetingUrl:string|null, isPast:bool }
+MaterialDto         { id, title, typeCode, url:string|null, isLocked:bool }
+TransactionDto      { id, transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle,
+                      methodCode, maskedAccount, originalAmount, discountAmount, amount, currency:"BDT",
+                      statusCode, failureReason:string|null, fulfilledAt:datetime|null, createdAt, updatedAt,
+                      allowedActions:string[] }          // admin only: next statuses (BR-PAY-10)
+CertificateDto      { id, code, userId, courseId, userName, courseTitle, instructorName, modeCode,
+                      examTypeCode:string|null, scorePercent:int|null, issuedAt, isRevoked:bool, revokedReason:string|null }
+RuleDto             { courseId, isEnabled:bool, modeCode, minProgress:int, examTypeCode, examTitle, examInstructions,
+                      maxScore:int, passingScore:int, maxAttempts:int }
+SubmissionDto       { id, userId, userName, courseId, courseTitle, examTypeCode, examTitle, url, notes, submittedAt,
+                      statusCode, score:number|null, feedback:string|null, reviewedBy:UserSummaryDto|null, reviewedAt }
+PostDto             { id, courseId, title, body, author:{id:int|null, name:string, badge:"admin"|"instructor"|"student"},
+                      createdAt, editedAt, isPinned, isLocked, isHidden, commentCount:int, canEdit:bool, canDelete:bool }
+CommentDto          { id, postId, parentId:int|null, body, author:{...as PostDto}, createdAt, editedAt, isHidden,
+                      canEdit:bool, canDelete:bool, replies:CommentDto[] }
+```
+Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
 
-### Learning & Progress
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
+### 4. Auth
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/api/learn/{slug}` 🔒 learn.view + access | — | full curriculum (all URLs), sessions with links, materials with URLs | `Learn` | BR-LRN-01, BR-ENR-03 |
-| GET | `/api/me/courses/{courseId}/progress` | — | `{completedSectionIds[], completedCount, total, percent}` | `Learn`, `Dashboard` | BR-LRN-04,05 |
-| PUT | `/api/me/courses/{courseId}/progress/sections/{sectionId}` 🔒 learn.view + access | `{completed: bool}` | progress + `certificateIssued?` | `Learn` | BR-LRN-02,03,07 |
-| GET | `/api/me/upcoming-sessions?limit=5` | — | `[{session, course}]` | `Dashboard` | BR-LRN-11 |
+| POST | `/auth/register` | `{ name (2–100), email (≤256), password (≥8, letter+digit), phone? (BD pattern), acceptTerms:true }` | `{ accessToken, accessTokenExpiresAt, refreshToken, me:MeDto }` (201) | `Register` | BR-AUTH-02,03,04,08 |
+| POST | `/auth/login` | `{ email, password, remember:bool }` | same as register | `Login` | BR-AUTH-01,05 |
+| POST | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, accessTokenExpiresAt, refreshToken }` | interceptor | BR-AUTH-05 |
+| POST | `/auth/logout` | `{ refreshToken }` | null | `Navbar` | BR-AUTH-10 |
+| GET | `/auth/me` 🔒 signed in | — | `MeDto` | guards, `PermissionService` | BR-ACL-01,02,09 |
 
-### Certification
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
+### 5. Access control
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/api/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | — | rule (default if none) | `CertificationSettings` | BR-CERT-01 |
-| PUT | `/api/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | rule fields | rule | `CertificationSettings` | BR-CERT-02 |
-| GET | `/api/me/courses/{id}/certification` | — | `{rule, progress, progressMet, submissions[], attemptsLeft, canSubmit, certificate?}` | `CourseCertificate` | BR-CERT-06,07,16 |
-| POST | `/api/me/courses/{id}/certificate` | — | certificate \| 204 | `CourseCertificate` (claim) | BR-CERT-03,04 |
-| POST | `/api/me/courses/{id}/exam-submissions` 🔒 learn.view + enrolled | `{url, notes}` | submission | `CourseCertificate` | BR-CERT-06,08 |
-| GET | `/api/me/certificates` | — | own certificates newest first | `Dashboard` | — |
-| GET | `/api/admin/exam-submissions` 🔒 certificates.manage (course) | `?status=submitted\|passed\|failed\|all&courseId=&page=` | submissions + student name + course title + rule exam title | `AdminCertificates` | — |
-| POST | `/api/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{score, feedback}` | submission + certificate? | `AdminCertificates` | BR-CERT-09,10 |
-| GET | `/api/admin/certificates` 🔒 certificates.manage (course) | `?search=&page=` | certificates newest first | `AdminCertificates` | — |
-| POST | `/api/admin/certificates/{id}/revoke` 🔒 certificates.manage (course) | `{reason}` | certificate | `AdminCertificates` | BR-CERT-11 |
-| POST | `/api/admin/certificates/{id}/restore` 🔒 certificates.manage (course) | — | certificate / 409 | `AdminCertificates` | BR-CERT-11 |
-| GET | `/api/certificates/verify/{code}` (public) | — | `{valid, revoked, revokedReason, userName, courseTitle, mode, examType, scorePercent, instructorName, issuedAt, code}` / 404 | `Verify` | BR-CERT-13 |
-| GET | `/api/certificates/{code}/pdf` (optional) | — | PDF | `Dashboard`, `CourseCertificate`, `AdminCertificates` | BR-CERT-15 |
+| GET | `/screens` 🔒 roles.view or access.view | — | `[{ code, label, area, path, icon, isCourseScoped, section, permissions:PermissionCode[] }]` | `AccessMatrix` | BR-ACL-12 |
+| GET | `/users` 🔒 users.view or access.view | `search?, page, pageSize` | page of `{ id, name, email, roleCode, roleName, accessType:"full"\|"custom"\|"role", activeCourseCount }` | `AdminUsers`, `AdminAccess` | — |
+| GET | `/users/{id}/access` 🔒 access.view | — | `{ user:UserSummaryDto, roleCode, isAdmin:bool, isCustom:bool, permissions:PermissionCode[], courseGrants:CourseGrantDto[], canEdit:bool, lockReason:string\|null }` | `UserAccess` | BR-ACL-01,08,10 |
+| PUT | `/users/{id}/role` 🔒 roles.edit | `{ roleCode }` | `{ id, roleCode, roleName }` | `AdminAccess` | BR-ACL-08,17 |
+| PUT | `/users/{id}/access` 🔒 access.edit | `{ screens: string[] }` (screen codes) | user access (as GET) | `UserAccess` | BR-ACL-08,10,12,19 |
+| DELETE | `/users/{id}/access` 🔒 access.edit | — | user access | `UserAccess` | BR-ACL-11 |
+| PUT | `/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{ permissions: PermissionCode[] }` (course-grantable only; empty = remove) | `CourseGrantDto` \| null | `UserAccess` | BR-ACL-13 |
+| GET | `/roles` 🔒 roles.view | — | `[{ id, code, name, description, isSystem, screens:string[], screenCount:int, memberCount:int }]` | `AdminRoles` | — |
+| POST | `/roles` 🔒 roles.edit | `{ name (≤200, unique), description? (≤500), screens:string[] }` | role (201) | `AdminRoles` | BR-ACL-05,12,19 |
+| PUT | `/roles/{id}` 🔒 roles.edit | same | role | `AdminRoles` | BR-ACL-05 |
+| DELETE | `/roles/{id}` 🔒 roles.edit | — | null (409 if system or has users) | `AdminRoles` | BR-ACL-06,07 |
 
-### Community
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
+### 6. Catalogue (public)
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/api/courses/{id}/community` | — | `{canRead, canPost, canModerate, publicCount}` | `CourseCommunity`, `Learn` | BR-COM-01–03,14 |
-| GET | `/api/courses/{id}/posts?page=` | — | posts (pinned first, newest) with author name, role badge, commentCount | `CourseCommunity` | BR-COM-05,12,13 |
-| POST | `/api/courses/{id}/posts` | `{title, body}` | post | `CourseCommunity` | BR-COM-03,11 |
-| PUT | `/api/posts/{id}` | `{title, body}` | post | `CourseCommunity` | BR-COM-08 |
-| DELETE | `/api/posts/{id}` | — | 204 | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
-| PATCH | `/api/posts/{id}/flags` (moderator) | `{pinned?, locked?, hidden?}` | post | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
-| GET | `/api/posts/{id}/comments` | — | top-level comments oldest first, each with replies | `CourseCommunity` | BR-COM-06,07 |
-| POST | `/api/posts/{id}/comments` | `{body, parentId?}` | comment | `CourseCommunity` | BR-COM-04,07,11 |
-| PUT | `/api/comments/{id}` | `{body}` | comment | `CourseCommunity` | BR-COM-08 |
-| DELETE | `/api/comments/{id}` | — | 204 | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
-| PATCH | `/api/comments/{id}/hidden` (moderator) | `{hidden}` | comment | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
-| GET | `/api/admin/community/posts` 🔒 community.moderate (course) | `?courseId=&status=all\|visible\|hidden\|pinned\|locked&search=` | posts | `AdminCommunity` | BR-COM-16 |
-| GET | `/api/admin/community/comments` 🔒 community.moderate (course) | `?courseId=&status=&search=&limit=20` | comments + post title + course | `AdminCommunity` | BR-COM-16 |
+| GET | `/categories` | — | `CategoryDto[]` | `Categories`, `CourseList`, `Navbar` | — |
+| GET | `/courses` | `search?, category?, price? (all\|under-2500\|2500-4500\|over-4500), levels? (csv), formats? (csv), featured? (bool), sort? (popular\|rating\|newest\|price-asc\|price-desc), page, pageSize (default 6)` | page of `CourseCardDto` + `facets:{ categories:{code,count}[], levels:{code,count}[], formats:{code,count}[] }` | `CourseList`, `Courses`, `Sports` | BR-CAT-01,03–10 |
+| GET | `/courses/{slug}` | — | `CourseCardDto` + `{ description, language, outcomes:string[], requirements:string[], instructor:InstructorDto, modules:ModuleDto[], schedule:LiveSessionDto[], materials:MaterialDto[], hasAccess:bool, isEnrolled:bool, isPublished:bool }` | `CourseDetail` | BR-CAT-02,13–20 |
+| GET | `/courses/{slug}/related` | `limit? (default 4)` | `CourseCardDto[]` | `CourseDetail` | BR-CAT-11 |
+| GET | `/courses/{slug}/reviews` | — | `{ reviews:{name,rating,date,text}[], breakdown:int[5] }` | `CourseDetail` | BR-CAT-12 (demo data, see Open Questions) |
 
-### Admin Overview
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
-|---|---|---|---|---|---|
-| GET | `/api/admin/overview` 🔒 reports.view | — | `{courseCount, publishedCount, studentCount, activeEnrollments, collected, recentTransactions[5]}` | `AdminOverview` | BR-ADM-01–05 |
-| POST | `/api/demo/reset` 🔒 system.reset (dev only) | — | 204 | `AdminOverview` | BR-ADM-06 |
+### 7. Course management (admin)
+`CourseUpsertDto` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description, categoryCode, formatCode, levelCode, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (≥0, ≤ originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (≤2048, http(s) or /path), badgeCode?, isFeatured, isPublished, outcomes:string[] (≥1), requirements:string[], schedule:{ id?:int, title, startsAt (Asia/Dhaka local "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?:int, title, typeCode, url }[] }` — array order = SortOrder; rows without `id` are created, missing rows are soft-deleted.
 
-### Site Content
-| Method | Endpoint | Request | Response | Used by (component) | Rule refs |
+`CurriculumDto` = `{ modules: { id?, title, submodules: { id?, title, sections: SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos: { id?, tempKey?, title, url, minutes (≥1), isPreview }[], documents: { id?, title, typeCode, url, videoId?:int, videoTempKey?:string }[], topics: SectionInput[] (depth ≤ 3) }`. `tempKey` lets a new document point to a new video in the same save.
+
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| POST | `/api/contact-messages` | `{name, email, phone?, topic, message}` | 201 | `Contact` | BR-SITE-01,03 |
-| POST | `/api/career-applications` | `{name, email, phone, role, portfolio?, message?}` | 201 | `Career` | BR-SITE-02,04 |
-| GET | `/api/career/opportunities?team=` | — | opportunities | `Career`, `CareerTeaser` | — |
-| GET | `/api/sports/stories?topic=` | — | stories | `Sports`, `SportsTeaser` | BR-SITE-09 |
-| GET | `/api/testimonials`, `/api/faqs` | — | lists | `Testimonials`, `Faq` | — |
+| GET | `/admin/courses` 🔒 courses.view (course) | `search?, format?, page, pageSize` | page of `{ id, slug, title, instructorName, formatCode, price, originalPrice, discountPercent, sectionCount, sessionCount, materialCount, activeEnrollmentCount, isPublished, canEdit, canDelete, canManageCertificates }` | `AdminCourses` | BR-CMS-16 |
+| GET | `/admin/courses/{id}` 🔒 courses.edit (course) | — | `CourseUpsertDto` + `{ id, sectionCount, modules:ModuleDto[] }` | `CourseForm`, `CurriculumEditor` | BR-CMS-01 |
+| GET | `/admin/courses/slug-available` 🔒 courses.create or courses.edit | `slug, exceptId?` | `{ available:bool }` | `CourseForm` | BR-CMS-02 |
+| POST | `/admin/courses` 🔒 courses.create | `CourseUpsertDto` | `{ id, slug }` (201) | `CourseForm` | BR-CMS-01–05,11,17 |
+| PUT | `/admin/courses/{id}` 🔒 courses.edit (course) | `CourseUpsertDto` | `{ id, slug }` | `CourseForm` | BR-CMS-03–05,11,17 |
+| PATCH | `/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{ isPublished:bool }` | `{ id, isPublished }` | `AdminCourses` | BR-CMS-12 |
+| PUT | `/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `CurriculumDto` | `{ modules:ModuleDto[], sectionCount }` | `CurriculumEditor` | BR-CMS-06–10,18 |
+| DELETE | `/admin/courses/{id}` 🔒 courses.delete (course) | — | null (soft-deletes course + enrollments + posts/comments + grants) | `AdminCourses` | BR-CMS-13 |
+| GET | `/admin/instructors` 🔒 instructors.view | — | `InstructorDto[]` + `assignedCourseCount` | `AdminInstructors` | — |
+| GET | `/instructors/options` 🔒 courses.create or courses.edit | — | `{ id, name }[]` | `CourseForm` | — |
+| POST | `/admin/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio, expertise:string[], experienceYears (≥0), students (≥0) }` | `InstructorDto` (201) | `AdminInstructors` | BR-CMS-15 |
+| PUT | `/admin/instructors/{id}` 🔒 instructors.edit | same | `InstructorDto` | `AdminInstructors` | BR-CMS-15 |
+| DELETE | `/admin/instructors/{id}` 🔒 instructors.delete | — | null (409 if assigned to any course) | `AdminInstructors` | BR-CMS-14 |
+
+### 8. Checkout & payments
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/payment-methods` | — | `{ code, name, description, logoUrl, icon }[]` | `Checkout`, `PaymentMethods` | — |
+| GET | `/checkout/{slug}` 🔒 checkout.view | — | `{ course:CourseCardDto, instructorName, originalPrice, discountAmount, amount, discountPercent, isFree:bool, alreadyEnrolled:bool }` | `Checkout` | BR-PAY-01,02 |
+| POST | `/checkout/{slug}/enroll-free` 🔒 checkout.view | — | `{ enrollmentId, courseSlug }` (201; 409 if price > 0 or already enrolled) | `Checkout` | BR-PAY-03 |
+| POST | `/payments` 🔒 checkout.view | `{ courseSlug, methodCode }` (amount computed by server) | `{ transactionNo, redirectUrl }` (201) | `Checkout` | BR-PAY-04,05 |
+| POST | `/payments/callback/{gateway}` (gateway → server, signature-verified, no JWT) | gateway payload | gateway-specific | real gateway | BR-PAY-06–08 |
+| GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (without `allowedActions`) + `{ canOpenCourse:bool }` | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18 |
+| GET | `/me/payments` | `page, pageSize` | page of `TransactionDto` (newest first) | `Dashboard` | BR-LRN-14 |
+| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | page of `TransactionDto` + `totals:{ collected, refunded, successful:int, unsuccessful:int }` + `courseOptions:{ id, title }[]` | `AdminTransactions` | BR-PAY-13,14 |
+| PATCH | `/admin/transactions/{id}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if transition not allowed) | `AdminTransactions` | BR-PAY-10,11 |
+| DELETE | `/admin/transactions/{id}` 🔒 transactions.delete | — | null (409 if status = success) | `AdminTransactions` | BR-PAY-12 |
+| POST | `/dev/payments/{transactionNo}/simulate` (development only) | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` | `DemoGateway` | BR-PAY-06,07 |
+
+`from`/`to` are the admin's local days; server converts Asia/Dhaka day bounds to UTC (BR-PAY-13).
+
+### 9. Enrollments
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/me/enrollments` | — | `{ enrollmentId, statusCode, enrolledAt, course:CourseCardDto, progressPercent:int, completedCount:int, sessionCount:int }[]` (courses that still exist) | `Dashboard` | BR-ENR-10, BR-LRN-12 |
+| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `{ id, statusCode, enrolledAt, userId, studentName, email, courseId, courseTitle, transactionNo:string\|null }` (newest first) | `AdminEnrollments` | BR-ENR-09 |
+| PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `{ id, statusCode }` | `AdminEnrollments` | BR-ENR-05 |
+
+### 10. Learning & progress
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/learn/{slug}` 🔒 learn.view + course access | — | `{ course:CourseCardDto, instructor:InstructorDto, modules:ModuleDto[] (all urls), schedule:LiveSessionDto[] (with meetingUrl), materials:MaterialDto[] (with url), canReadCommunity:bool }` | `Learn` | BR-LRN-01, BR-ENR-03 |
+| GET | `/me/courses/{courseId}/progress` | — | `{ completedSectionIds:int[], completedCount, totalSections, percent }` | `Learn` | BR-LRN-04,05 |
+| PUT | `/me/courses/{courseId}/progress/sections/{sectionId}` 🔒 learn.view + course access | `{ completed:bool }` | `{ completedCount, totalSections, percent, certificateIssued:CertificateDto\|null }` | `Learn` | BR-LRN-02,03,06,07 |
+| GET | `/me/upcoming-sessions` | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` | BR-LRN-11 |
+
+### 11. Certification
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | — | `RuleDto` (default if none) | `CertificationSettings` | BR-CERT-01 |
+| PUT | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | `RuleDto` without courseId | `RuleDto` | `CertificationSettings` | BR-CERT-02 |
+| GET | `/me/courses/{courseId}/certification` | — | `{ rule:RuleDto, progress:int, progressMet:bool, submissions:SubmissionDto[], attemptsLeft:int\|null, canSubmit:bool, certificate:CertificateDto\|null }` | `CourseCertificate` | BR-CERT-06,07,16 |
+| POST | `/me/courses/{courseId}/certificate` | — | `CertificateDto` \| null | `CourseCertificate` | BR-CERT-03,04 |
+| POST | `/me/courses/{courseId}/exam-submissions` 🔒 learn.view + active enrollment | `{ url (https, ≤2048), notes? (≤1000) }` | `SubmissionDto` (201) | `CourseCertificate` | BR-CERT-06,08 |
+| GET | `/me/certificates` | — | `CertificateDto[]` (newest first) | `Dashboard` | — |
+| GET | `/admin/exam-submissions` 🔒 certificates.manage (course) | `status? (submitted\|passed\|failed; default submitted), courseId?, page, pageSize` | page of `SubmissionDto` | `AdminCertificates` | — |
+| POST | `/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{ score (0–maxScore), feedback? (≤1000) }` | `{ submission:SubmissionDto, certificate:CertificateDto\|null }` (409 if not `submitted`) | `AdminCertificates` | BR-CERT-09,10 |
+| GET | `/admin/certificates` 🔒 certificates.manage (course) | `search?, page, pageSize` | page of `CertificateDto` | `AdminCertificates` | — |
+| POST | `/admin/certificates/{id}/revoke` 🔒 certificates.manage (course) | `{ reason? (≤200) }` | `CertificateDto` | `AdminCertificates` | BR-CERT-11 |
+| POST | `/admin/certificates/{id}/restore` 🔒 certificates.manage (course) | — | `CertificateDto` (409 if another valid one exists) | `AdminCertificates` | BR-CERT-11 |
+| GET | `/certificates/verify/{code}` (public) | — | `{ code, isRevoked, revokedReason, userName, courseTitle, modeCode, examTypeCode, scorePercent, instructorName, issuedAt }` (404 if unknown) | `Verify` | BR-CERT-13 |
+
+### 12. Community
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/courses/{slug}/community` | — | `{ canRead, canPost, canModerate, publicPostCount:int }` | `CourseCommunity`, `Learn` | BR-COM-01–03,14 |
+| GET | `/courses/{slug}/posts` 🔒 can read | `page, pageSize` | page of `PostDto` (pinned first, then newest; hidden only for moderators) | `CourseCommunity` | BR-COM-05 |
+| POST | `/courses/{slug}/posts` 🔒 can post | `{ title (1–120), body (1–2000) }` | `PostDto` (201) | `CourseCommunity` | BR-COM-03,11 |
+| PUT | `/posts/{id}` 🔒 author | `{ title, body }` | `PostDto` | `CourseCommunity` | BR-COM-08 |
+| DELETE | `/posts/{id}` 🔒 author or moderator | — | null (soft-deletes its comments) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
+| PATCH | `/posts/{id}/flags` 🔒 moderator | `{ isPinned?, isLocked?, isHidden? }` | `PostDto` | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
+| GET | `/posts/{id}/comments` 🔒 can read | — | `CommentDto[]` (top-level oldest first, with replies) | `CourseCommunity` | BR-COM-06,07 |
+| POST | `/posts/{id}/comments` 🔒 can comment | `{ body (1–1000), parentId? }` | `CommentDto` (201; 409 "This discussion is locked.") | `CourseCommunity` | BR-COM-04,07,11 |
+| PUT | `/comments/{id}` 🔒 author | `{ body }` | `CommentDto` | `CourseCommunity` | BR-COM-08 |
+| DELETE | `/comments/{id}` 🔒 author or moderator | — | null (soft-deletes replies) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
+| PATCH | `/comments/{id}/hidden` 🔒 moderator | `{ isHidden:bool }` | `CommentDto` | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
+| GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `PostDto` + `courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
+| GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `CommentDto` + `postTitle, courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
+
+### 13. Admin overview
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/admin/overview` 🔒 reports.view | — | `{ courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions:TransactionDto[5] }` | `AdminOverview` | BR-ADM-01–05 |
+| POST | `/dev/reset` 🔒 system.reset (development only) | — | null | `AdminOverview` | BR-ADM-06 |
+
+### 14. Site content
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| — | Contact / career forms | — | — | `Contact`, `Career` | Not designed: storage is an Open Question (BR-SITE-01,02) |
+
+Static content (stories, opportunities, FAQ, testimonials, contact info) stays in the frontend for now.
+
+### 15. Open questions (API)
+- Access/refresh token lifetimes and refresh-token rotation (also in data-model).
+- Is `ErrorItem { field, message }` the shape you want, or should it carry an error `code` too?
+- Should validation messages be returned in English only (frontend translates) or in the request language (`Accept-Language`)?
+- Contact/career form endpoints wait for the storage decision.
+- Reviews endpoint returns demo data until the Review table is decided.
 
 ---
 
@@ -1838,6 +2050,9 @@ Conventions:
 - Career phone is required, contact phone optional — intended?
 - Is admin-entered course content multilingual (bn + en fields)?
 
+
+## C1b. Database & API open questions
+See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-api): token lifetimes/rotation, exam score type, ContentUpdatedMonth, Language lookup, Bangla lookup names, collation, error item shape, message language.
 
 ## C2. Likely bugs & inconsistencies (found in the frontend code)
 1. **Live courses can never be completed** — the learning page hides "Mark as complete" for Live format. Demo course 2 (Live, exam rule needing 100%) can never award a certificate. (BR-LRN-08, BR-CERT-06)
