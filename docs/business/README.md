@@ -42,8 +42,8 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 ## Module map
 | Module | File | Routes | Status | Summary |
 |---|---|---|---|---|
-| Accounts & Auth | [accounts-auth.md](modules/accounts-auth.md) | `/login`, `/register` | Partial | Register/login/logout; no reset/profile |
-| Access Control | [access-control.md](modules/access-control.md) | `/admin/security/*`, `/admin/users` | Done | Roles, permissions, user overrides, course grants |
+| Accounts & Auth | [accounts-auth.md](modules/accounts-auth.md) | `/login`, `/register` | Partial | Register/login/logout via API (JWT + refresh tokens); no reset/profile |
+| Access Control | [access-control.md](modules/access-control.md) | `/admin/security/*`, `/admin/users` | Done (API) | Roles, screen access, user overrides, course grants — served by the API |
 | Course Catalog | [course-catalog.md](modules/course-catalog.md) | `/`, `/courses`, `/courses/:slug` | Done (reviews fake) | Browse, filter, detail, previews |
 | Course Management | [course-management.md](modules/course-management.md) | `/admin/courses/**`, `/admin/instructors` | Done | Course CRUD, curriculum, sessions, materials, instructors |
 | Checkout & Payments | [checkout-payments.md](modules/checkout-payments.md) | `/payment`, `/checkout/**`, `/admin/transactions` | Partial (demo gateway) | Purchase flow, transactions, refunds |
@@ -74,11 +74,12 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 |---|---|
 | Database | SQL Server + EF Core; PascalCase singular table names |
 | Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
-| Delete | Soft delete on all tables (`IsDeleted`, `DeletedAt`, `DeletedBy`); FKs `NO ACTION`; filtered unique indexes |
-| Audit | `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` on all tables |
+| Delete | Soft delete (`IsDeleted`) except join/token tables, which are hard-deleted; FKs `NO ACTION`; filtered unique indexes |
+| Audit | `CreatedAt`, `UpdatedAt` on all tables |
 | Time | `datetime2` UTC; live session times entered in Asia/Dhaka |
 | Money | `decimal(18,2)` BDT |
 | Enums / permissions | Lookup tables (incl. `Screen` and `Permission`) |
 | Text lengths | Standard defaults, see data-model §3 |
 | Auth | JWT access token + refresh token (`RefreshToken` table) |
+| Backend code | `CourseAcademy.Backend` repo (sibling folder): one ASP.NET Core 10 Web API project, Controller → Service → Repository, EF Core code-first |
 | API | `/api/v1`, wrapper `{success, data, message, errors}`, lists `data = {items,total,page,pageSize}` |

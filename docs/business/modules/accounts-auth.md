@@ -41,6 +41,10 @@ Lets visitors create an account and sign in so they can buy courses, learn, and 
 - **BR-AUTH-11** Session changes in another tab are picked up (logging out in one tab logs out the others).
 - **BR-AUTH-12** Password reset is not implemented (toast only).
 - **BR-AUTH-13** A user whose id no longer exists in the user list is treated as signed out.
+- **BR-AUTH-14** (API) Access tokens last 15 minutes. Refresh tokens last 30 days with "Remember me", otherwise 24 hours, and work only once: each refresh returns a new pair. Reusing a used refresh token ends every session of that user.
+- **BR-AUTH-15** (API) Sign-up, sign-in and refresh are limited to 20 attempts per minute per client address; more → "Too many attempts. Please wait a minute and try again."
+- **BR-AUTH-16** (API) Sign-up password rule is enforced by the server: 8–100 characters with at least one letter and one digit. Sign-in only requires a non-empty password.
+- **BR-AUTH-17** (API) When the session can't be renewed, the user is signed out, sees "Your session has expired. Please log in again." and is sent to `/login?returnUrl=<current page>`.
 
 ## 5. Workflows & Status Transitions
 **Register**: Guest fills form → client validation → server checks unique email → user created (role Student) → session started → redirect.
@@ -61,22 +65,21 @@ No status field on User (no active/blocked state exists).
 - Password strength = number of satisfied criteria (BR-AUTH-07).
 
 ## 8. Data Source
-| Current | Future endpoint |
+| Current | Endpoint |
 |---|---|
-| `AuthService.login()` (localStorage `ca-users`, 600 ms fake delay) | `POST /api/auth/login` |
-| `AuthService.register()` (700 ms fake delay) | `POST /api/auth/register` |
-| `AuthService.logout()` | `POST /api/auth/logout` |
-| Session key `ca-demo-session` (local/session storage) | `GET /api/auth/me` + token/cookie |
-| `AuthService.users` | `GET /api/users` (see access-control) |
+| `AuthService.login()` | **Done (API mode):** `POST /api/v1/auth/login` · demo mode: localStorage `ca-users` |
+| `AuthService.register()` | **Done (API mode):** `POST /api/v1/auth/register` |
+| `AuthService.logout()` | **Done (API mode):** `POST /api/v1/auth/logout` |
+| Session | **Done (API mode):** tokens in `ca-auth` (localStorage with "Remember me", else sessionStorage); `GET /api/v1/auth/me` on start; `POST /api/v1/auth/refresh` by `authInterceptor` · demo mode: `ca-demo-session` |
+| `AuthService.users` | **Done (API mode):** `GET /api/v1/users` (see access-control) |
 | Forgot password (toast) | `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` (planned) |
 
 ## 9. Open Questions / Assumptions
-- Login form requires password min 6, register requires min 8 + letter + digit. Which is the real rule? (Login rule is probably just a soft check.)
+- Login form requires password min 6, register requires min 8 + letter + digit. The API enforces the register rule and accepts any non-empty password at sign-in (BR-AUTH-16). Should the login form's min-6 check stay?
 - Should users be able to edit their own profile (name, phone, password)? No screen exists.
 - Should accounts have a status (active / blocked / deleted)? No user delete or block exists.
 - Email verification and phone OTP are not present. Required?
 - Is `phone` unique? Not enforced.
-- Token type (JWT vs cookie) and session lifetime not defined.
 - `Terms` acceptance is not stored. Should we store `TermsAcceptedAt`? (inferred need)
 
 ## 10. Source Files

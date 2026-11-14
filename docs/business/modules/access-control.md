@@ -56,6 +56,7 @@ Decides who can open which screen and perform which action. Supports roles, a pe
 - **BR-ACL-16** Every service write re-checks permissions (`assert`), independent of UI hiding. Backend must do the same on every endpoint.
 - **BR-ACL-17** Changing a role requires `roles.edit`; changing user access / course grants requires `access.edit`.
 - **BR-ACL-18** Demo seed: each instructor account gets a grant (`courses.view`, `courses.edit`, `community.moderate`, `certificates.manage`) on every course whose `instructorId` matches the account's `instructorId`.
+- **BR-ACL-20** (API) Every endpoint re-checks permissions on the server from the database, so a role or access change applies on the user's next request; the token carries only the user id.
 - **BR-ACL-19** A screen counts as given when its View permission is present. On save (role or user access), every screen whose View is present is expanded to all its permissions, so older partial access (e.g. View without Delete) becomes the full screen.
 
 ## 5. Workflows & Status Transitions
@@ -88,17 +89,18 @@ Default role permissions:
 - Users list "active courses" = enrollments of the user with status `active`.
 
 ## 8. Data Source
-| Current | Future endpoint |
+All rows below are **done in API mode** (backend Step 2); demo mode keeps the browser-storage keys shown.
+| Current | Endpoint |
 |---|---|
-| `PermissionService.roles` (`ca-roles`) | `GET /api/roles` |
-| `saveRole` | `POST /api/roles`, `PUT /api/roles/{id}` |
-| `removeRole` | `DELETE /api/roles/{id}` |
-| `setUserRole` | `PUT /api/users/{id}/role` |
-| `setUserAccess` / `resetUserAccess` | `PUT /api/users/{id}/access`, `DELETE /api/users/{id}/access` |
-| `grants` (`ca-course-grants`) | `GET /api/users/{id}/course-grants` |
-| `setCourseGrant` | `PUT /api/users/{id}/course-grants/{courseId}` (empty → delete) |
-| `AuthService.users` | `GET /api/users?search=` |
-| client `permissionsOf` | `GET /api/auth/me` returns effective permissions + grants |
+| `PermissionService.roles` (demo: `ca-roles`) | `GET /api/v1/roles` |
+| `saveRole` | `POST /api/v1/roles`, `PUT /api/v1/roles/{code}` (sends screen codes) |
+| `removeRole` | `DELETE /api/v1/roles/{code}` |
+| `setUserRole` | `PUT /api/v1/users/{id}/role` |
+| `setUserAccess` / `resetUserAccess` | `PUT /api/v1/users/{id}/access` (screen codes), `DELETE /api/v1/users/{id}/access` |
+| `grants` (demo: `ca-course-grants`) | from `GET /api/v1/users` (`courseGrants` of each user) |
+| `setCourseGrant` | `PUT /api/v1/users/{id}/course-grants/{courseId}` (empty → delete) |
+| `AuthService.users` | `GET /api/v1/users` (all pages) |
+| signed-in user's permissions | `GET /api/v1/auth/me` (permissions, course grants, hasAdminPanel, homeUrl) |
 
 ## 9. Open Questions / Assumptions
 - Instructor and Student roles have identical global permissions; the only difference is course grants. Is that intended?

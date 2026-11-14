@@ -71,8 +71,8 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 ## A4. Modules at a glance
 | # | Module | Status | What it does (plain language) |
 |---|---|---|---|
-| 1 | Accounts & Auth | Partial | People sign up and log in. Sign-up always creates a Student. No password reset or profile editing yet. |
-| 2 | Access Control | Done | Admin decides who can open which screen and do what, using roles, a personal override per user, and per-course rights for instructors. |
+| 1 | Accounts & Auth | Partial | People sign up and log in through the server (secure tokens). Sign-up always creates a Student. No password reset or profile editing yet. |
+| 2 | Access Control | Done (server) | Admin decides which screens each user can open, using roles, a personal screen list per user, and per-course rights for instructors. The server checks every action. |
 | 3 | Course Catalog | Done (reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. |
 | 4 | Course Management | Done | Admin/instructor creates and edits courses, builds the curriculum, schedules live classes, adds materials, publishes, and manages instructor profiles. |
 | 5 | Checkout & Payments | Partial (demo gateway) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
@@ -117,8 +117,8 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 |---|---|
 | Database | SQL Server + EF Core; PascalCase singular table names |
 | Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
-| Delete | Soft delete on all tables (`IsDeleted`, `DeletedAt`, `DeletedBy`); FKs `NO ACTION`; filtered unique indexes |
-| Audit | `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` on all tables |
+| Delete | Soft delete (`IsDeleted`) except join/token tables, which are hard-deleted; FKs `NO ACTION`; filtered unique indexes |
+| Audit | `CreatedAt`, `UpdatedAt` on all tables |
 | Time | `datetime2` UTC; live session times entered in Asia/Dhaka |
 | Money | `decimal(18,2)` BDT |
 | Enums / permissions | Lookup tables (incl. `Screen` and `Permission`) |
@@ -169,6 +169,10 @@ Lets visitors create an account and sign in so they can buy courses, learn, and 
 - **BR-AUTH-11** Session changes in another tab are picked up (logging out in one tab logs out the others).
 - **BR-AUTH-12** Password reset is not implemented (toast only).
 - **BR-AUTH-13** A user whose id no longer exists in the user list is treated as signed out.
+- **BR-AUTH-14** (API) Access tokens last 15 minutes. Refresh tokens last 30 days with "Remember me", otherwise 24 hours, and work only once: each refresh returns a new pair. Reusing a used refresh token ends every session of that user.
+- **BR-AUTH-15** (API) Sign-up, sign-in and refresh are limited to 20 attempts per minute per client address; more → "Too many attempts. Please wait a minute and try again."
+- **BR-AUTH-16** (API) Sign-up password rule is enforced by the server: 8–100 characters with at least one letter and one digit. Sign-in only requires a non-empty password.
+- **BR-AUTH-17** (API) When the session can't be renewed, the user is signed out, sees "Your session has expired. Please log in again." and is sent to `/login?returnUrl=<current page>`.
 
 ### 5. Workflows & Status Transitions
 **Register**: Guest fills form → client validation → server checks unique email → user created (role Student) → session started → redirect.
@@ -189,13 +193,13 @@ No status field on User (no active/blocked state exists).
 - Password strength = number of satisfied criteria (BR-AUTH-07).
 
 ### 8. Data Source
-| Current | Future endpoint |
+| Current | Endpoint |
 |---|---|
-| `AuthService.login()` (localStorage `ca-users`, 600 ms fake delay) | `POST /api/auth/login` |
-| `AuthService.register()` (700 ms fake delay) | `POST /api/auth/register` |
-| `AuthService.logout()` | `POST /api/auth/logout` |
-| Session key `ca-demo-session` (local/session storage) | `GET /api/auth/me` + token/cookie |
-| `AuthService.users` | `GET /api/users` (see access-control) |
+| `AuthService.login()` | **Done (API mode):** `POST /api/v1/auth/login` · demo mode: localStorage `ca-users` |
+| `AuthService.register()` | **Done (API mode):** `POST /api/v1/auth/register` |
+| `AuthService.logout()` | **Done (API mode):** `POST /api/v1/auth/logout` |
+| Session | **Done (API mode):** tokens in `ca-auth` (localStorage with "Remember me", else sessionStorage); `GET /api/v1/auth/me` on start; `POST /api/v1/auth/refresh` by `authInterceptor` · demo mode: `ca-demo-session` |
+| `AuthService.users` | **Done (API mode):** `GET /api/v1/users` (see access-control) |
 | Forgot password (toast) | `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` (planned) |
 
 ### 9. Open Questions / Assumptions
@@ -267,6 +271,7 @@ Decides who can open which screen and perform which action. Supports roles, a pe
 - **BR-ACL-16** Every service write re-checks permissions (`assert`), independent of UI hiding. Backend must do the same on every endpoint.
 - **BR-ACL-17** Changing a role requires `roles.edit`; changing user access / course grants requires `access.edit`.
 - **BR-ACL-18** Demo seed: each instructor account gets a grant (`courses.view`, `courses.edit`, `community.moderate`, `certificates.manage`) on every course whose `instructorId` matches the account's `instructorId`.
+- **BR-ACL-20** (API) Every endpoint re-checks permissions on the server from the database, so a role or access change applies on the user's next request; the token carries only the user id.
 - **BR-ACL-19** A screen counts as given when its View permission is present. On save (role or user access), every screen whose View is present is expanded to all its permissions, so older partial access (e.g. View without Delete) becomes the full screen.
 
 ### 5. Workflows & Status Transitions
@@ -299,17 +304,18 @@ Default role permissions:
 - Users list "active courses" = enrollments of the user with status `active`.
 
 ### 8. Data Source
-| Current | Future endpoint |
+All rows below are **done in API mode** (backend Step 2); demo mode keeps the browser-storage keys shown.
+| Current | Endpoint |
 |---|---|
-| `PermissionService.roles` (`ca-roles`) | `GET /api/roles` |
-| `saveRole` | `POST /api/roles`, `PUT /api/roles/{id}` |
-| `removeRole` | `DELETE /api/roles/{id}` |
-| `setUserRole` | `PUT /api/users/{id}/role` |
-| `setUserAccess` / `resetUserAccess` | `PUT /api/users/{id}/access`, `DELETE /api/users/{id}/access` |
-| `grants` (`ca-course-grants`) | `GET /api/users/{id}/course-grants` |
-| `setCourseGrant` | `PUT /api/users/{id}/course-grants/{courseId}` (empty → delete) |
-| `AuthService.users` | `GET /api/users?search=` |
-| client `permissionsOf` | `GET /api/auth/me` returns effective permissions + grants |
+| `PermissionService.roles` (demo: `ca-roles`) | `GET /api/v1/roles` |
+| `saveRole` | `POST /api/v1/roles`, `PUT /api/v1/roles/{code}` (sends screen codes) |
+| `removeRole` | `DELETE /api/v1/roles/{code}` |
+| `setUserRole` | `PUT /api/v1/users/{id}/role` |
+| `setUserAccess` / `resetUserAccess` | `PUT /api/v1/users/{id}/access` (screen codes), `DELETE /api/v1/users/{id}/access` |
+| `grants` (demo: `ca-course-grants`) | from `GET /api/v1/users` (`courseGrants` of each user) |
+| `setCourseGrant` | `PUT /api/v1/users/{id}/course-grants/{courseId}` (empty → delete) |
+| `AuthService.users` | `GET /api/v1/users` (all pages) |
+| signed-in user's permissions | `GET /api/v1/auth/me` (permissions, course grants, hasAdminPanel, homeUrl) |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
@@ -1222,7 +1228,6 @@ See [Part C](#part-c--open-questions--likely-bugs).
 - `src/app/core/i18n/language.service.ts`, `bn.translations.ts`, `bn-content.translations.ts`
 
 ## B12. Data Model
-
 Physical design for SQL Server + EF Core, derived from the frontend demo. Business rules (BR-IDs) live in `modules/*.md`.
 
 ### 1. Conventions
@@ -1232,10 +1237,10 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
-| Soft delete | Every table has `IsDeleted`, `DeletedAt`, `DeletedBy`. Rows are never physically deleted. EF global query filter `IsDeleted = 0`. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
+| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission, ProgressSection and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
 | Foreign keys | `ON DELETE NO ACTION` everywhere (soft delete means no physical cascades) |
 | Unique keys | Filtered unique indexes `WHERE IsDeleted = 0`, so a soft-deleted row doesn't block re-use |
-| Audit | Every table has `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` |
+| Audit | Every table has `CreatedAt` and `UpdatedAt` (UTC, set automatically on save). No `CreatedBy`/`UpdatedBy`; columns that record a person exist only where a business rule needs them (e.g. `ReviewedByUserId`) |
 | Date/time | `datetime2(3)`, always **UTC**. Live session start time is entered in Asia/Dhaka and converted to UTC on save; converted back for display |
 | Money | `decimal(18,2)`, currency BDT |
 | Booleans | `bit NOT NULL` with default |
@@ -1246,19 +1251,15 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 #### 1.1 Standard columns (on EVERY table — written as "+ std" below)
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| CreatedAt | datetime2(3) | NOT NULL | `sysutcdatetime()` | |
-| CreatedBy | int | NULL | — | FK User.Id (NULL = system/seed/self-registration) |
-| UpdatedAt | datetime2(3) | NULL | — | |
-| UpdatedBy | int | NULL | — | FK User.Id |
-| IsDeleted | bit | NOT NULL | 0 | |
-| DeletedAt | datetime2(3) | NULL | — | |
-| DeletedBy | int | NULL | — | FK User.Id |
+| CreatedAt | datetime2(3) | NOT NULL | `sysutcdatetime()` | set on insert |
+| UpdatedAt | datetime2(3) | NULL | — | set on every update and soft delete |
+| IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ### 2. Tables overview
 | Area | Tables |
 |---|---|
 | Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, CertificationMode, ExamType, SubmissionStatus |
-| Identity & access | User, RefreshToken, Role, RolePermission, UserPermission, CourseGrant, CourseGrantPermission |
+| Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
 | Commerce & learning | Enrollment, PaymentTransaction, Progress, ProgressSection |
 | Certification | CertificationRule, ExamSubmission, Certificate |
@@ -1302,7 +1303,7 @@ All lookup tables share this shape (+ std):
 | Category | `ShortName nvarchar(100) NOT NULL`, `Description nvarchar(500) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `ImageUrl nvarchar(2048) NOT NULL` | `video-editing`, `digital-marketing`, `sports-journalism`, `software-development` |
 | PaymentMethod | `Description nvarchar(200) NOT NULL`, `LogoUrl nvarchar(2048) NULL`, `Icon nvarchar(50) NOT NULL` | `bkash`, `nagad`, `rocket`, `card` |
 | Screen | `Area nvarchar(20) NOT NULL` CHECK IN ('admin','student'), `Path nvarchar(200) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `IsCourseScoped bit NOT NULL`, `Section nvarchar(50) NULL` | `overview`, `courses`, `instructors`, `users`, `enrollments`, `transactions`, `roles`, `access`, `community-moderation`, `certificates`, `dashboard`, `learn`, `checkout`, `community` |
-| Permission | `ScreenId int NOT NULL` FK Screen, `IsCourseGrantable bit NOT NULL` | see below |
+| Permission | `ScreenId int NOT NULL` FK Screen, `Action nvarchar(20) NOT NULL` (view/create/edit/delete/extra), `IsCourseGrantable bit NOT NULL` | see below |
 
 Permission seed (Code → Screen; ★ = course-grantable):
 | Screen | Permissions |
@@ -1323,67 +1324,68 @@ Permission seed (Code → Screen; ★ = course-grantable):
 | community | `community.view`, `community.post` |
 `admin.access` is **not stored** — it is computed (BR-ACL-02). Each screen's "view" permission is the first listed.
 
-### 5. Identity & access
+### 5. Identity & access (built in backend Step 2)
 #### User (+ std)
 | Column | Type | Null | Default | Key / Constraint | Notes |
 |---|---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK | |
-| Name | nvarchar(100) | NOT NULL | | CHECK len ≥ 2 | |
+| Name | nvarchar(100) | NOT NULL | | app: 2–100 chars | |
 | Email | nvarchar(256) | NOT NULL | | UQ filtered | stored trimmed, lower-case |
 | Phone | nvarchar(20) | NULL | | | BD pattern (app-validated) |
-| PasswordHash | nvarchar(max) | NOT NULL | | | ASP.NET password hasher |
-| RoleId | int | NOT NULL | | FK Role | default role = Student |
-| HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserPermission rows replace role permissions (BR-ACL-01) |
-| InstructorId | int | NULL | | FK Instructor, UQ filtered (where not null) | |
+| PasswordHash | nvarchar(500) | NOT NULL | | | ASP.NET Core `PasswordHasher` (PBKDF2) |
+| RoleId | int | NOT NULL | | FK Role | public sign-up = Student |
+| HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserScreen rows replace the role's screens (BR-ACL-01) |
+| InstructorId | int | NULL | | FK Instructor, UQ filtered | **added in Step 3** with the Instructor table |
 
-#### RefreshToken (+ std)
+#### RefreshToken (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| UserId | int | NOT NULL | FK User | |
-| TokenHash | nvarchar(256) | NOT NULL | UQ | hash only, never the raw token |
-| ExpiresAt | datetime2(3) | NOT NULL | | |
-| RevokedAt | datetime2(3) | NULL | | set on logout / rotation |
+| UserId | int | NOT NULL | FK User; index (UserId, ExpiresAt) | |
+| TokenHash | nvarchar(64) | NOT NULL | UQ | SHA-256 hex of the token; the raw token is never stored |
+| ExpiresAt | datetime2(3) | NOT NULL | | 30 days ("Remember me") or 24 hours |
+| RevokedAt | datetime2(3) | NULL | | set on logout / rotation; concurrency token |
 | ReplacedByTokenId | int | NULL | FK RefreshToken | rotation chain |
-| IsPersistent | bit | NOT NULL | | "Remember me" (BR-AUTH-05) |
+| IsPersistent | bit | NOT NULL | | "Remember me" (BR-AUTH-05); copied to the replacement |
+Expired tokens of a user are removed at their next sign-in.
 
 #### Role (+ std)
 | Column | Type | Null | Default | Key | Notes |
 |---|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | | PK | |
-| Code | nvarchar(50) | NOT NULL | | UQ filtered | system: `admin`, `instructor`, `user` |
-| Name | nvarchar(200) | NOT NULL | | UQ filtered (case-insensitive collation) | |
+| Id | int IDENTITY | NOT NULL | | PK | seed: 1 admin, 2 instructor, 3 user |
+| Code | nvarchar(50) | NOT NULL | | UQ filtered | system: `admin`, `instructor`, `user`; new roles `role-<hex>`. Used in the API URLs |
+| Name | nvarchar(200) | NOT NULL | | UQ filtered (case-insensitive) | |
 | Description | nvarchar(500) | NULL | | | |
 | IsSystem | bit | NOT NULL | 0 | | cannot be deleted (BR-ACL-06) |
 
-#### RolePermission (+ std)
+#### RoleScreen (+ std, hard delete) — screens of a role
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| RoleId | int | NOT NULL | FK Role; UQ (RoleId, PermissionId) filtered |
-| PermissionId | int | NOT NULL | FK Permission |
-Admin role: permissions are not checked from rows — always ALL (BR-ACL-01).
+| RoleId | int | NOT NULL | FK Role; UQ (RoleId, ScreenId) |
+| ScreenId | int | NOT NULL | FK Screen |
+A screen gives all of its permissions (BR-ACL-12). The admin role has no rows: it always has every screen (BR-ACL-01). Seed: instructor and student roles get `dashboard`, `learn`, `checkout`, `community`.
 
-#### UserPermission (+ std) — per-user screen override
+#### UserScreen (+ std, hard delete) — a user's own screen list
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| UserId | int | NOT NULL | FK User; UQ (UserId, PermissionId) filtered |
-| PermissionId | int | NOT NULL | FK Permission |
-Rows are always whole screens (BR-ACL-12, BR-ACL-19).
+| UserId | int | NOT NULL | FK User; UQ (UserId, ScreenId) |
+| ScreenId | int | NOT NULL | FK Screen |
+Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 
-#### CourseGrant (+ std)
+#### CourseGrant (+ std, hard delete)
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered |
-| CourseId | int | NOT NULL | FK Course |
+| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) |
+| CourseId | int | NOT NULL | index; **FK Course added in Step 3** with the Course table |
 
-#### CourseGrantPermission (+ std)
+#### CourseGrantPermission (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| CourseGrantId | int | NOT NULL | FK CourseGrant; UQ (CourseGrantId, PermissionId) filtered | |
+| CourseGrantId | int | NOT NULL | FK CourseGrant; UQ (CourseGrantId, PermissionId) | |
 | PermissionId | int | NOT NULL | FK Permission | must have `IsCourseGrantable = 1` (BR-ACL-13) |
 
 ### 6. Catalogue
@@ -1616,8 +1618,8 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | Parent | Child | Type | FK column |
 |---|---|---|---|
 | Role | User | 1–N | User.RoleId |
-| Role / Permission | RolePermission | N–N | RoleId, PermissionId |
-| User / Permission | UserPermission | N–N | UserId, PermissionId |
+| Role / Screen | RoleScreen | N–N | RoleId, ScreenId |
+| User / Screen | UserScreen | N–N | UserId, ScreenId |
 | User / Course | CourseGrant | N–N | UserId, CourseId |
 | CourseGrant / Permission | CourseGrantPermission | N–N | CourseGrantId, PermissionId |
 | Screen | Permission | 1–N | Permission.ScreenId |
@@ -1642,7 +1644,7 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | User | UQ Email; RoleId; UQ InstructorId (not null) |
 | RefreshToken | UQ TokenHash; (UserId, ExpiresAt) |
 | Role | UQ Code; UQ Name |
-| RolePermission / UserPermission | UQ (RoleId, PermissionId) / UQ (UserId, PermissionId) |
+| RoleScreen / UserScreen | UQ (RoleId, ScreenId) / UQ (UserId, ScreenId) |
 | CourseGrant | UQ (UserId, CourseId); CourseId |
 | Course | UQ Slug; (IsPublished, CategoryId); InstructorId; IsFeatured |
 | Section | (SubmoduleId, SortOrder); (ParentSectionId, SortOrder); CourseId |
@@ -1659,7 +1661,6 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | Comment | (PostId, CreatedAt); ParentCommentId |
 
 ### 13. Open questions (database)
-- Access / refresh token lifetimes and refresh-token rotation policy.
 - `ExamSubmission.Score`: integer or decimal? (rule fields are integers.)
 - `Course.ContentUpdatedMonth` could be derived from `UpdatedAt`. Keep the column or derive?
 - Should `Course.Language` become a lookup table?
@@ -1671,11 +1672,11 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 ```mermaid
 erDiagram
   ROLE ||--o{ USER : has
-  ROLE ||--o{ ROLE_PERMISSION : grants
-  PERMISSION ||--o{ ROLE_PERMISSION : in
+  ROLE ||--o{ ROLE_SCREEN : grants
+  SCREEN ||--o{ ROLE_SCREEN : in
   SCREEN ||--o{ PERMISSION : groups
-  USER ||--o{ USER_PERMISSION : overrides
-  PERMISSION ||--o{ USER_PERMISSION : in
+  USER ||--o{ USER_SCREEN : overrides
+  SCREEN ||--o{ USER_SCREEN : in
   USER ||--o{ REFRESH_TOKEN : holds
   USER ||--o{ COURSE_GRANT : receives
   COURSE ||--o{ COURSE_GRANT : scopes
@@ -1717,7 +1718,6 @@ erDiagram
 ```
 
 ## B13. API Contract
-
 Exact contract for the backend. Business rules (BR-IDs) are in `modules/*.md`; tables in `data-model.md`.
 
 ### 1. Conventions
@@ -1763,15 +1763,16 @@ List query params (all list endpoints): `page` (int ≥ 1, default 1), `pageSize
 | 401 | Not signed in / token expired | "Please log in to continue." |
 | 403 | Permission denied | "You do not have permission to do this." |
 | 404 | Not found (or not visible to caller) | |
+| 429 | Too many sign-in attempts | "Too many attempts. Please wait a minute and try again." |
 | 409 | Business conflict (duplicate email/slug/role name, invalid status change, already reviewed, etc.) | rule's message |
 
 ### 3. Shared DTOs
 ```text
 UserSummaryDto      { id:int, name:string, email:string }
 PermissionCode      string  (e.g. "courses.edit")
-CourseGrantDto      { courseId:int, courseTitle:string, permissions:PermissionCode[] }
-MeDto               { id, name, email, phone:string|null, roleCode:string, roleName:string, instructorId:int|null,
-                      permissions:PermissionCode[], courseGrants:CourseGrantDto[], hasAdminPanel:bool, homeUrl:string }
+CourseGrantDto      { courseId:int, permissions:PermissionCode[] }
+MeDto               { id:int, name, email, phone:string|null, roleCode:string, roleName:string,
+                      permissions:PermissionCode[], courseGrants:CourseGrantDto[], hasAdminPanel:bool, homeUrl:string, createdAt }
 CategoryDto         { code, name, shortName, description, icon, imageUrl, skills:string[], publishedCourseCount:int }
 InstructorDto       { id, name, title, bio, expertise:string[], experienceYears:int, students:int, rating:number,
                       publishedCourseCount:int }
@@ -1803,29 +1804,43 @@ CommentDto          { id, postId, parentId:int|null, body, author:{...as PostDto
 ```
 Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
 
-### 4. Auth
+### 3a. Lookups
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | `{ name (2–100), email (≤256), password (≥8, letter+digit), phone? (BD pattern), acceptTerms:true }` | `{ accessToken, accessTokenExpiresAt, refreshToken, me:MeDto }` (201) | `Register` | BR-AUTH-02,03,04,08 |
-| POST | `/auth/login` | `{ email, password, remember:bool }` | same as register | `Login` | BR-AUTH-01,05 |
-| POST | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, accessTokenExpiresAt, refreshToken }` | interceptor | BR-AUTH-05 |
-| POST | `/auth/logout` | `{ refreshToken }` | null | `Navbar` | BR-AUTH-10 |
-| GET | `/auth/me` 🔒 signed in | — | `MeDto` | guards, `PermissionService` | BR-ACL-01,02,09 |
+| GET | `/lookups` (public) | — | `{ categories:CategoryDto[], courseFormats, courseLevels, courseBadges, documentTypes:{code,name,fileExtension}[], materialTypes, enrollmentStatuses, paymentStatuses, paymentMethods:{code,name,description,logoUrl,icon}[], currencies }` (each plain list = `{code,name}[]`, in display order) | forms and filters | — |
+| GET | `/health` (no `/api/v1` prefix) | — | `{ status, checks:{ database } }` | monitoring | — |
 
-### 5. Access control
+### 4. Auth (built in backend Step 2)
+Tokens: access token (JWT, HS256, 15 min, claims `sub` = user id and `jti` only; permissions are read from the database on every request). Refresh token: 64 random bytes, stored as a SHA-256 hash, single use (rotation). Lifetime 30 days with "Remember me", otherwise 24 hours. Reusing an already-used refresh token revokes every session of that user. `register`, `login` and `refresh` are rate-limited per client address (20 per minute → `429`).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/screens` 🔒 roles.view or access.view | — | `[{ code, label, area, path, icon, isCourseScoped, section, permissions:PermissionCode[] }]` | `AccessMatrix` | BR-ACL-12 |
-| GET | `/users` 🔒 users.view or access.view | `search?, page, pageSize` | page of `{ id, name, email, roleCode, roleName, accessType:"full"\|"custom"\|"role", activeCourseCount }` | `AdminUsers`, `AdminAccess` | — |
-| GET | `/users/{id}/access` 🔒 access.view | — | `{ user:UserSummaryDto, roleCode, isAdmin:bool, isCustom:bool, permissions:PermissionCode[], courseGrants:CourseGrantDto[], canEdit:bool, lockReason:string\|null }` | `UserAccess` | BR-ACL-01,08,10 |
-| PUT | `/users/{id}/role` 🔒 roles.edit | `{ roleCode }` | `{ id, roleCode, roleName }` | `AdminAccess` | BR-ACL-08,17 |
-| PUT | `/users/{id}/access` 🔒 access.edit | `{ screens: string[] }` (screen codes) | user access (as GET) | `UserAccess` | BR-ACL-08,10,12,19 |
-| DELETE | `/users/{id}/access` 🔒 access.edit | — | user access | `UserAccess` | BR-ACL-11 |
-| PUT | `/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{ permissions: PermissionCode[] }` (course-grantable only; empty = remove) | `CourseGrantDto` \| null | `UserAccess` | BR-ACL-13 |
-| GET | `/roles` 🔒 roles.view | — | `[{ id, code, name, description, isSystem, screens:string[], screenCount:int, memberCount:int }]` | `AdminRoles` | — |
-| POST | `/roles` 🔒 roles.edit | `{ name (≤200, unique), description? (≤500), screens:string[] }` | role (201) | `AdminRoles` | BR-ACL-05,12,19 |
-| PUT | `/roles/{id}` 🔒 roles.edit | same | role | `AdminRoles` | BR-ACL-05 |
-| DELETE | `/roles/{id}` 🔒 roles.edit | — | null (409 if system or has users) | `AdminRoles` | BR-ACL-06,07 |
+| POST | `/auth/register` | `{ name (2–100), email (≤256), password (8–100, letter+digit), phone? (BD pattern), acceptTerms:true }` | `AuthResultDto` = `{ accessToken, accessTokenExpiresAt, refreshToken, me:MeDto }` (201; 409 duplicate email) | `Register` | BR-AUTH-02,03,04,08 |
+| POST | `/auth/login` | `{ email, password, remember:bool }` | `AuthResultDto` (401 "Incorrect email or password." for unknown email or wrong password) | `Login` | BR-AUTH-01,05 |
+| POST | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, accessTokenExpiresAt, refreshToken }` (401 "Your session has expired. Please log in again.") | `authInterceptor` | BR-AUTH-05 |
+| POST | `/auth/logout` | `{ refreshToken? }` | null (always 200; works with an expired access token) | `Navbar` | BR-AUTH-10 |
+| GET | `/auth/me` 🔒 signed in | — | `MeDto` | app start, guards | BR-ACL-01,02,09 |
+
+### 5. Access control (built in backend Step 2)
+Access is stored per **screen** (codes = frontend screen ids). A screen gives all of its permissions (BR-ACL-12). Roles are addressed by `code`.
+
+`RoleDto` = `{ code, name, description, isSystem, screens:string[], permissions:PermissionCode[], memberCount }` (admin role: every screen).
+`UserListItemDto` = `{ id, name, email, phone, roleCode, roleName, accessType:"full"|"custom"|"role", customScreens:string[]|null, courseGrants:CourseGrantDto[], createdAt }`.
+`UserAccessDto` = `{ user:UserSummaryDto, roleCode, accessType, screens:string[], permissions:PermissionCode[], courseGrants:CourseGrantDto[], canEdit:bool, lockReason:string|null }`.
+
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/screens` 🔒 roles.view or access.view | — | `[{ code, label, area, path, icon, isCourseScoped, section, permissions:PermissionCode[] }]` | (reference) | BR-ACL-12 |
+| GET | `/users` 🔒 users.view or access.view | `search?, page, pageSize` | page of `UserListItemDto` (oldest first) | `AdminUsers`, `AdminAccess`, `UserAccess` | — |
+| GET | `/users/{id}/access` 🔒 access.view | — | `UserAccessDto` | (reference) | BR-ACL-01,08,10 |
+| PUT | `/users/{id}/role` 🔒 roles.edit | `{ roleCode }` | `UserAccessDto` (409 own role) | `AdminAccess` | BR-ACL-08,17 |
+| PUT | `/users/{id}/access` 🔒 access.edit | `{ screens:string[] }` | `UserAccessDto` (409 own access / admin user; 400 unknown screen) | `UserAccess` | BR-ACL-08,10,12,19 |
+| DELETE | `/users/{id}/access` 🔒 access.edit | — | `UserAccessDto` | `UserAccess` | BR-ACL-11 |
+| PUT | `/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{ permissions:PermissionCode[] }` (course-grantable only; empty = remove) | `UserAccessDto` (400 non-grantable permission) | `UserAccess` | BR-ACL-13 |
+| GET | `/roles` 🔒 roles.view, access.view or users.view | — | `RoleDto[]` | `AdminRoles`, `AdminAccess`, `AdminUsers` | — |
+| POST | `/roles` 🔒 roles.edit | `{ name (≤200, unique), description? (≤500), screens:string[] }` | `RoleDto` (201; 409 duplicate name) | `AdminRoles` | BR-ACL-05,12 |
+| PUT | `/roles/{code}` 🔒 roles.edit | same | `RoleDto` (admin role: screens ignored) | `AdminRoles` | BR-ACL-05 |
+| DELETE | `/roles/{code}` 🔒 roles.edit | — | null (409 built-in role or role in use) | `AdminRoles` | BR-ACL-06,07 |
 
 ### 6. Catalogue (public)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -1936,7 +1951,6 @@ Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
 Static content (stories, opportunities, FAQ, testimonials, contact info) stays in the frontend for now.
 
 ### 15. Open questions (API)
-- Access/refresh token lifetimes and refresh-token rotation (also in data-model).
 - Is `ErrorItem { field, message }` the shape you want, or should it carry an error `code` too?
 - Should validation messages be returned in English only (frontend translates) or in the request language (`Accept-Language`)?
 - Contact/career form endpoints wait for the storage decision.
@@ -1949,12 +1963,11 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 ## C1. Open questions by module
 
 ### Accounts & Authentication
-- Login form requires password min 6, register requires min 8 + letter + digit. Which is the real rule? (Login rule is probably just a soft check.)
+- Login form requires password min 6, register requires min 8 + letter + digit. The API enforces the register rule and accepts any non-empty password at sign-in (BR-AUTH-16). Should the login form's min-6 check stay?
 - Should users be able to edit their own profile (name, phone, password)? No screen exists.
 - Should accounts have a status (active / blocked / deleted)? No user delete or block exists.
 - Email verification and phone OTP are not present. Required?
 - Is `phone` unique? Not enforced.
-- Token type (JWT vs cookie) and session lifetime not defined.
 - `Terms` acceptance is not stored. Should we store `TermsAcceptedAt`? (inferred need)
 
 

@@ -1,6 +1,6 @@
 # Course Academy
 
-Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rocket/card), learning area, course communities, certificates, and an admin panel with role/permission management. Currently a **frontend-only Angular demo**; data lives in browser localStorage. A .NET (ASP.NET Core) backend is planned.
+Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rocket/card), learning area, course communities, certificates, and an admin panel with role/permission management. Angular frontend with browser-storage demo data; the ASP.NET Core 10 backend is being built step by step in the sibling folder `../CourseAcademy.Backend` (see its README).
 
 ## Stack
 - Angular 22 (standalone components, signals, lazy routes), TypeScript 6
@@ -15,6 +15,9 @@ Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rock
 - `src/app/core/services` — business logic + permission checks
 - `src/app/core/payments` — payment service, gateway abstraction, demo gateway
 - `src/app/core/data` — repositories (localStorage), seed/demo data, screens config
+- `src/app/core/api` — `ApiService` (HttpClient wrapper: unwraps `{success,data,message,errors}`, throws `ApiError`), API models
+- `src/environments` — `apiBaseUrl` and `useApi`. Development has `useApi: true` (needs the API running); production build still `false`. In API mode sign-in, users, roles and access use the API; other features still use browser-storage demo data, except certificates and community, which show "Coming soon". Services read the mode from the `API_MODE` token.
+- `src/app/core/api/interceptors.ts` — `authInterceptor` (adds token, single shared refresh on 401) and `apiErrorInterceptor` (turns failures into `ApiError`)
 - `src/app/core/guards`, `core/i18n`
 - `src/app/pages` — routed pages (incl. `pages/admin`)
 - `src/app/components` — home/marketing sections
@@ -24,7 +27,8 @@ Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rock
 ## Commands
 - `npm start` — dev server (`ng serve`)
 - `npm run build` — production build
-- `npm test` — unit tests (Vitest)
+- `npm test` — unit tests (Vitest). Uses the `test` build configuration (production `environment.ts`, so demo mode); specs for API mode provide `API_MODE`/`API_BASE_URL` themselves.
+- `npm start` with `useApi: true` needs the API running: `dotnet run --project CourseAcademy.Api --launch-profile http` in `../CourseAcademy.Backend`.
 
 ## Task Workflow (MANDATORY)
 

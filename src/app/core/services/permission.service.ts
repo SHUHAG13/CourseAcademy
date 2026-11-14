@@ -1,4 +1,8 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ApiError } from '../api/api-error';
+import { API_MODE } from '../api/api-mode';
+import { ApiService } from '../api/api.service';
+import { RoleDto } from '../api/auth.models';
 import { COURSE_GRANT_REPOSITORY, ROLE_REPOSITORY } from '../data/repositories';
 import { EntityStore, uid } from '../data/repository';
 import { SCREENS, Screen, expandScreens } from '../data/screens.data';
@@ -11,7 +15,7 @@ import {
   Role,
 } from '../models/permission.model';
 import { AppUser } from '../models/user.model';
-import { AuthService } from './auth.service';
+import { AuthService, toGrant } from './auth.service';
 
 /** Thrown by services when the signed-in user may not make a change. The message is English text for a toast. */
 export class PermissionDeniedError extends Error {
@@ -21,9 +25,9 @@ export class PermissionDeniedError extends Error {
   }
 }
 
-/** The toast text for a failed change: the permission message if that was the cause, otherwise `fallback`. */
+/** The toast text for a failed change: the permission or API message if that was the cause, otherwise `fallback`. */
 export function failureMessage(error: unknown, fallback: string): string {
-  return error instanceof PermissionDeniedError ? error.message : fallback;
+  return error instanceof PermissionDeniedError || error instanceof ApiError ? error.message : fallback;
 }
 
 /** Permissions that can be ticked in the access matrix. `admin.access` is worked out from them instead. */
@@ -35,26 +39,56 @@ const ADMIN_SCREENS = SCREENS.filter((s) => s.area === 'admin');
  * Role- and screen-based access control. A user has their own screen access if
  * an admin set it, otherwise their role's permissions, plus any course grants.
  * Services call `assert()` before every change, so permissions hold even if a
- * page forgets to hide a button. In this demo the data still lives in the
- * browser: a real backend must repeat these checks.
+ * page forgets to hide a button.
+ * - API mode: the signed-in user's permissions come from the API, which checks every change again.
+ * - Demo mode: everything lives in browser storage.
  */
 @Injectable({ providedIn: 'root' })
 export class PermissionService {
   private readonly auth = inject(AuthService);
+  private readonly apiMode = inject(API_MODE);
+  private readonly api = inject(ApiService);
   private readonly roleStore = new EntityStore(inject(ROLE_REPOSITORY));
   private readonly grantStore = new EntityStore(inject(COURSE_GRANT_REPOSITORY));
+  private readonly apiRoles = signal<Role[]>([]);
 
-  readonly ready = Promise.all([this.roleStore.ready, this.grantStore.ready]);
-  readonly recovered = computed(() => this.roleStore.recovered() || this.grantStore.recovered());
-  readonly roles = this.roleStore.items;
-  readonly grants = this.grantStore.items;
+  readonly ready: Promise<unknown> = this.apiMode ? this.auth.ready : Promise.all([this.roleStore.ready, this.grantStore.ready]);
+  readonly recovered = computed(() => !this.apiMode && (this.roleStore.recovered() || this.grantStore.recovered()));
+  readonly roles = computed(() => (this.apiMode ? this.apiRoles() : this.roleStore.items()));
+  /** Course grants of every user this page knows about. */
+  readonly grants = computed(() => (this.apiMode ? this.auth.listedGrants() : this.grantStore.items()));
 
-  private readonly myGrants = computed(() => this.grants().filter((g) => g.userId === this.auth.user()?.id));
+  private readonly myGrants = computed(() => {
+    if (this.apiMode) {
+      const me = this.auth.currentSession();
+      return me ? me.courseGrants.map((g) => toGrant(String(me.id), g.courseId, g.permissions)) : [];
+    }
+    return this.grants().filter((g) => g.userId === this.auth.user()?.id);
+  });
   private readonly granted = computed(() => {
+    if (this.apiMode) {
+      const me = this.auth.currentSession();
+      const set = new Set<Permission>(me?.permissions ?? []);
+      if (me?.hasAdminPanel) set.add('admin.access');
+      return set;
+    }
     const set = new Set(this.permissionsOf(this.auth.user()));
     if (ADMIN_SCREENS.some((s) => set.has(s.view)) || this.myGrants().length) set.add('admin.access');
     return set;
   });
+
+  constructor() {
+    if (this.apiMode) {
+      // Roles are needed by the admin screens of whoever signs in next.
+      effect(() => {
+        const id = this.auth.currentSession()?.id;
+        untracked(() => {
+          if (id === undefined) this.apiRoles.set([]);
+          else void this.loadRoles().catch(() => undefined);
+        });
+      });
+    }
+  }
 
   /** Where this user's account pages live: the first screen they can open. */
   readonly homeUrl = computed(() => {
@@ -109,6 +143,14 @@ export class PermissionService {
       throw new Error('A role with this name already exists.');
     }
     const existing = this.role(role.id);
+    if (this.apiMode) {
+      const body = { name, description: role.description.trim(), screens: screenCodes(role.permissions) };
+      const saved = existing
+        ? await this.api.put<RoleDto>(`roles/${encodeURIComponent(role.id)}`, body)
+        : await this.api.post<RoleDto>('roles', body);
+      await this.loadRoles();
+      return fromRoleDto(saved);
+    }
     const permissions =
       role.id === ADMIN_ROLE_ID ? ALL_PERMISSIONS : expandScreens(role.permissions).filter((p) => ASSIGNABLE.includes(p));
     return this.roleStore.save({ ...role, name, description: role.description.trim(), permissions, system: existing?.system ?? false });
@@ -124,6 +166,11 @@ export class PermissionService {
     if (this.auth.users().some((u) => u.role === id)) {
       throw new Error('Move the users with this role to another role first.');
     }
+    if (this.apiMode) {
+      await this.api.delete(`roles/${encodeURIComponent(id)}`);
+      await this.loadRoles();
+      return;
+    }
     await this.roleStore.remove(id);
   }
 
@@ -133,6 +180,11 @@ export class PermissionService {
     if (!user) throw new Error('User not found.');
     if (!this.role(roleId)) throw new Error('Role not found.');
     if (userId === this.auth.user()?.id) throw new Error("You can't change your own role.");
+    if (this.apiMode) {
+      await this.api.put(`users/${userId}/role`, { roleCode: roleId });
+      await this.reloadAdminData();
+      return;
+    }
     await this.auth.updateUser({ ...user, role: roleId });
   }
 
@@ -140,12 +192,23 @@ export class PermissionService {
   async setUserAccess(userId: string, permissions: Permission[]): Promise<void> {
     const user = this.editableUser(userId);
     const screens = expandScreens(permissions);
+    if (this.apiMode) {
+      await this.api.put(`users/${userId}/access`, { screens: screenCodes(screens) });
+      await this.reloadAdminData();
+      return;
+    }
     await this.auth.updateUser({ ...user, access: ASSIGNABLE.filter((p) => screens.includes(p)) });
   }
 
   /** Returns a user to their role's permissions. */
   async resetUserAccess(userId: string): Promise<void> {
-    await this.auth.updateUser({ ...this.editableUser(userId), access: undefined });
+    const user = this.editableUser(userId);
+    if (this.apiMode) {
+      await this.api.delete(`users/${userId}/access`);
+      await this.reloadAdminData();
+      return;
+    }
+    await this.auth.updateUser({ ...user, access: undefined });
   }
 
   /** Sets a user's permissions on one course. An empty list removes the grant. */
@@ -153,6 +216,11 @@ export class PermissionService {
     this.assert('access.edit');
     const existing = this.grants().find((g) => g.userId === userId && g.courseId === courseId);
     const allowed = permissions.filter((p) => COURSE_PERMISSIONS.includes(p));
+    if (this.apiMode) {
+      await this.api.put(`users/${userId}/course-grants/${courseId}`, { permissions: allowed });
+      await this.reloadAdminData();
+      return;
+    }
     if (!allowed.length) {
       if (existing) await this.grantStore.remove(existing.id);
       return;
@@ -160,16 +228,34 @@ export class PermissionService {
     await this.grantStore.save({ id: existing?.id ?? uid('grant'), userId, courseId, permissions: allowed });
   }
 
-  /** Clean-up when a course is deleted. */
+  /** Clean-up when a course is deleted. In API mode the server removes the grants with the course. */
   async removeGrantsForCourse(courseId: number): Promise<void> {
     this.assert('courses.delete', courseId);
+    if (this.apiMode) return;
     for (const g of this.grants().filter((x) => x.courseId === courseId)) {
       await this.grantStore.remove(g.id);
     }
   }
 
   async reset(): Promise<void> {
+    // Roles and grants in API mode live on the server; demo reset does not touch them.
+    if (this.apiMode) return;
     await Promise.all([this.roleStore.reset(), this.grantStore.reset()]);
+  }
+
+  /** API mode: loads the roles when the signed-in user may see them. */
+  async loadRoles(): Promise<void> {
+    const me = this.auth.currentSession();
+    const allowed: Permission[] = ['roles.view', 'access.view', 'users.view'];
+    if (!this.apiMode || !me || !allowed.some((p) => me.permissions.includes(p))) {
+      this.apiRoles.set([]);
+      return;
+    }
+    this.apiRoles.set((await this.api.get<RoleDto[]>('roles')).map(fromRoleDto));
+  }
+
+  private async reloadAdminData(): Promise<void> {
+    await Promise.all([this.auth.loadUsers(), this.loadRoles()]);
   }
 
   /** Admins always keep full access and nobody edits their own, so nobody can lock everyone out. */
@@ -181,4 +267,13 @@ export class PermissionService {
     if (user.role === ADMIN_ROLE_ID) throw new Error('Admin users always have full access.');
     return user;
   }
+}
+
+/** Codes of the screens whose View permission is in the list; the API stores access per screen. */
+function screenCodes(permissions: readonly Permission[]): string[] {
+  return SCREENS.filter((s) => permissions.includes(s.view)).map((s) => s.id);
+}
+
+function fromRoleDto(r: RoleDto): Role {
+  return { id: r.code, name: r.name, description: r.description, permissions: r.permissions, system: r.isSystem };
 }

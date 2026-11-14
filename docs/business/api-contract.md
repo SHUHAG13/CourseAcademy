@@ -45,15 +45,16 @@ List query params (all list endpoints): `page` (int ≥ 1, default 1), `pageSize
 | 401 | Not signed in / token expired | "Please log in to continue." |
 | 403 | Permission denied | "You do not have permission to do this." |
 | 404 | Not found (or not visible to caller) | |
+| 429 | Too many sign-in attempts | "Too many attempts. Please wait a minute and try again." |
 | 409 | Business conflict (duplicate email/slug/role name, invalid status change, already reviewed, etc.) | rule's message |
 
 ## 3. Shared DTOs
 ```text
 UserSummaryDto      { id:int, name:string, email:string }
 PermissionCode      string  (e.g. "courses.edit")
-CourseGrantDto      { courseId:int, courseTitle:string, permissions:PermissionCode[] }
-MeDto               { id, name, email, phone:string|null, roleCode:string, roleName:string, instructorId:int|null,
-                      permissions:PermissionCode[], courseGrants:CourseGrantDto[], hasAdminPanel:bool, homeUrl:string }
+CourseGrantDto      { courseId:int, permissions:PermissionCode[] }
+MeDto               { id:int, name, email, phone:string|null, roleCode:string, roleName:string,
+                      permissions:PermissionCode[], courseGrants:CourseGrantDto[], hasAdminPanel:bool, homeUrl:string, createdAt }
 CategoryDto         { code, name, shortName, description, icon, imageUrl, skills:string[], publishedCourseCount:int }
 InstructorDto       { id, name, title, bio, expertise:string[], experienceYears:int, students:int, rating:number,
                       publishedCourseCount:int }
@@ -85,29 +86,43 @@ CommentDto          { id, postId, parentId:int|null, body, author:{...as PostDto
 ```
 Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
 
-## 4. Auth
+## 3a. Lookups
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | `{ name (2–100), email (≤256), password (≥8, letter+digit), phone? (BD pattern), acceptTerms:true }` | `{ accessToken, accessTokenExpiresAt, refreshToken, me:MeDto }` (201) | `Register` | BR-AUTH-02,03,04,08 |
-| POST | `/auth/login` | `{ email, password, remember:bool }` | same as register | `Login` | BR-AUTH-01,05 |
-| POST | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, accessTokenExpiresAt, refreshToken }` | interceptor | BR-AUTH-05 |
-| POST | `/auth/logout` | `{ refreshToken }` | null | `Navbar` | BR-AUTH-10 |
-| GET | `/auth/me` 🔒 signed in | — | `MeDto` | guards, `PermissionService` | BR-ACL-01,02,09 |
+| GET | `/lookups` (public) | — | `{ categories:CategoryDto[], courseFormats, courseLevels, courseBadges, documentTypes:{code,name,fileExtension}[], materialTypes, enrollmentStatuses, paymentStatuses, paymentMethods:{code,name,description,logoUrl,icon}[], currencies }` (each plain list = `{code,name}[]`, in display order) | forms and filters | — |
+| GET | `/health` (no `/api/v1` prefix) | — | `{ status, checks:{ database } }` | monitoring | — |
 
-## 5. Access control
+## 4. Auth (built in backend Step 2)
+Tokens: access token (JWT, HS256, 15 min, claims `sub` = user id and `jti` only; permissions are read from the database on every request). Refresh token: 64 random bytes, stored as a SHA-256 hash, single use (rotation). Lifetime 30 days with "Remember me", otherwise 24 hours. Reusing an already-used refresh token revokes every session of that user. `register`, `login` and `refresh` are rate-limited per client address (20 per minute → `429`).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/screens` 🔒 roles.view or access.view | — | `[{ code, label, area, path, icon, isCourseScoped, section, permissions:PermissionCode[] }]` | `AccessMatrix` | BR-ACL-12 |
-| GET | `/users` 🔒 users.view or access.view | `search?, page, pageSize` | page of `{ id, name, email, roleCode, roleName, accessType:"full"\|"custom"\|"role", activeCourseCount }` | `AdminUsers`, `AdminAccess` | — |
-| GET | `/users/{id}/access` 🔒 access.view | — | `{ user:UserSummaryDto, roleCode, isAdmin:bool, isCustom:bool, permissions:PermissionCode[], courseGrants:CourseGrantDto[], canEdit:bool, lockReason:string\|null }` | `UserAccess` | BR-ACL-01,08,10 |
-| PUT | `/users/{id}/role` 🔒 roles.edit | `{ roleCode }` | `{ id, roleCode, roleName }` | `AdminAccess` | BR-ACL-08,17 |
-| PUT | `/users/{id}/access` 🔒 access.edit | `{ screens: string[] }` (screen codes) | user access (as GET) | `UserAccess` | BR-ACL-08,10,12,19 |
-| DELETE | `/users/{id}/access` 🔒 access.edit | — | user access | `UserAccess` | BR-ACL-11 |
-| PUT | `/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{ permissions: PermissionCode[] }` (course-grantable only; empty = remove) | `CourseGrantDto` \| null | `UserAccess` | BR-ACL-13 |
-| GET | `/roles` 🔒 roles.view | — | `[{ id, code, name, description, isSystem, screens:string[], screenCount:int, memberCount:int }]` | `AdminRoles` | — |
-| POST | `/roles` 🔒 roles.edit | `{ name (≤200, unique), description? (≤500), screens:string[] }` | role (201) | `AdminRoles` | BR-ACL-05,12,19 |
-| PUT | `/roles/{id}` 🔒 roles.edit | same | role | `AdminRoles` | BR-ACL-05 |
-| DELETE | `/roles/{id}` 🔒 roles.edit | — | null (409 if system or has users) | `AdminRoles` | BR-ACL-06,07 |
+| POST | `/auth/register` | `{ name (2–100), email (≤256), password (8–100, letter+digit), phone? (BD pattern), acceptTerms:true }` | `AuthResultDto` = `{ accessToken, accessTokenExpiresAt, refreshToken, me:MeDto }` (201; 409 duplicate email) | `Register` | BR-AUTH-02,03,04,08 |
+| POST | `/auth/login` | `{ email, password, remember:bool }` | `AuthResultDto` (401 "Incorrect email or password." for unknown email or wrong password) | `Login` | BR-AUTH-01,05 |
+| POST | `/auth/refresh` | `{ refreshToken }` | `{ accessToken, accessTokenExpiresAt, refreshToken }` (401 "Your session has expired. Please log in again.") | `authInterceptor` | BR-AUTH-05 |
+| POST | `/auth/logout` | `{ refreshToken? }` | null (always 200; works with an expired access token) | `Navbar` | BR-AUTH-10 |
+| GET | `/auth/me` 🔒 signed in | — | `MeDto` | app start, guards | BR-ACL-01,02,09 |
+
+## 5. Access control (built in backend Step 2)
+Access is stored per **screen** (codes = frontend screen ids). A screen gives all of its permissions (BR-ACL-12). Roles are addressed by `code`.
+
+`RoleDto` = `{ code, name, description, isSystem, screens:string[], permissions:PermissionCode[], memberCount }` (admin role: every screen).
+`UserListItemDto` = `{ id, name, email, phone, roleCode, roleName, accessType:"full"|"custom"|"role", customScreens:string[]|null, courseGrants:CourseGrantDto[], createdAt }`.
+`UserAccessDto` = `{ user:UserSummaryDto, roleCode, accessType, screens:string[], permissions:PermissionCode[], courseGrants:CourseGrantDto[], canEdit:bool, lockReason:string|null }`.
+
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| GET | `/screens` 🔒 roles.view or access.view | — | `[{ code, label, area, path, icon, isCourseScoped, section, permissions:PermissionCode[] }]` | (reference) | BR-ACL-12 |
+| GET | `/users` 🔒 users.view or access.view | `search?, page, pageSize` | page of `UserListItemDto` (oldest first) | `AdminUsers`, `AdminAccess`, `UserAccess` | — |
+| GET | `/users/{id}/access` 🔒 access.view | — | `UserAccessDto` | (reference) | BR-ACL-01,08,10 |
+| PUT | `/users/{id}/role` 🔒 roles.edit | `{ roleCode }` | `UserAccessDto` (409 own role) | `AdminAccess` | BR-ACL-08,17 |
+| PUT | `/users/{id}/access` 🔒 access.edit | `{ screens:string[] }` | `UserAccessDto` (409 own access / admin user; 400 unknown screen) | `UserAccess` | BR-ACL-08,10,12,19 |
+| DELETE | `/users/{id}/access` 🔒 access.edit | — | `UserAccessDto` | `UserAccess` | BR-ACL-11 |
+| PUT | `/users/{id}/course-grants/{courseId}` 🔒 access.edit | `{ permissions:PermissionCode[] }` (course-grantable only; empty = remove) | `UserAccessDto` (400 non-grantable permission) | `UserAccess` | BR-ACL-13 |
+| GET | `/roles` 🔒 roles.view, access.view or users.view | — | `RoleDto[]` | `AdminRoles`, `AdminAccess`, `AdminUsers` | — |
+| POST | `/roles` 🔒 roles.edit | `{ name (≤200, unique), description? (≤500), screens:string[] }` | `RoleDto` (201; 409 duplicate name) | `AdminRoles` | BR-ACL-05,12 |
+| PUT | `/roles/{code}` 🔒 roles.edit | same | `RoleDto` (admin role: screens ignored) | `AdminRoles` | BR-ACL-05 |
+| DELETE | `/roles/{code}` 🔒 roles.edit | — | null (409 built-in role or role in use) | `AdminRoles` | BR-ACL-06,07 |
 
 ## 6. Catalogue (public)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -218,7 +233,6 @@ Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
 Static content (stories, opportunities, FAQ, testimonials, contact info) stays in the frontend for now.
 
 ## 15. Open questions (API)
-- Access/refresh token lifetimes and refresh-token rotation (also in data-model).
 - Is `ErrorItem { field, message }` the shape you want, or should it carry an error `code` too?
 - Should validation messages be returned in English only (frontend translates) or in the request language (`Accept-Language`)?
 - Contact/career form endpoints wait for the storage decision.

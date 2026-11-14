@@ -1216,6 +1216,19 @@ const BN_INTERFACE: Record<string, string> = {
   'Topic {0}': 'টপিক {0}',
   'Topic title': 'টপিকের নাম',
   'Delete topic': 'টপিক মুছুন',
+  // API connection
+  'Your session has expired. Please log in again.': 'আপনার সেশনের মেয়াদ শেষ হয়েছে। আবার লগ ইন করুন।',
+  'Please log in to continue.': 'চালিয়ে যেতে লগ ইন করুন।',
+  'Too many attempts. Please wait a minute and try again.': 'অনেকবার চেষ্টা করা হয়েছে। এক মিনিট অপেক্ষা করে আবার চেষ্টা করুন।',
+  'An unexpected error occurred. Please try again later.': 'একটি অপ্রত্যাশিত সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।',
+  'Cannot reach the server. Check your internet connection and try again.':
+    'সার্ভারে পৌঁছানো যাচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।',
+  'Enter a valid email address.': 'একটি সঠিক ইমেইল ঠিকানা দিন।',
+  'Please accept the terms to continue.': 'চালিয়ে যেতে শর্তাবলিতে সম্মতি দিন।',
+  'Use at least 8 characters with a letter and a number.': 'অন্তত ৮ অক্ষর ব্যবহার করুন, যেখানে অক্ষর ও সংখ্যা দুটোই থাকবে।',
+  'Coming soon': 'শীঘ্রই আসছে',
+  'This part is being moved to the new server and will be available again soon.':
+    'এই অংশটি নতুন সার্ভারে নেওয়া হচ্ছে, শীঘ্রই আবার পাওয়া যাবে।',
   'Topics in this section': 'এই সেকশনের টপিক',
 };
 

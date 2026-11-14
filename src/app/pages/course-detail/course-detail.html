@@ -286,7 +286,14 @@
         </section>
         }
 
-        <app-course-community [course]="c" />
+        @if (apiMode) {
+          <section class="block" id="community" aria-labelledby="community-title">
+            <h2 id="community-title" class="block-title mb-3">{{ 'Course community' | t }}</h2>
+            <app-coming-soon />
+          </section>
+        } @else {
+          <app-course-community [course]="c" />
+        }
       </div>
     </div>
   </div>

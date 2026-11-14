@@ -9,10 +9,10 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
-| Soft delete | Every table has `IsDeleted`, `DeletedAt`, `DeletedBy`. Rows are never physically deleted. EF global query filter `IsDeleted = 0`. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
+| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission, ProgressSection and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
 | Foreign keys | `ON DELETE NO ACTION` everywhere (soft delete means no physical cascades) |
 | Unique keys | Filtered unique indexes `WHERE IsDeleted = 0`, so a soft-deleted row doesn't block re-use |
-| Audit | Every table has `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` |
+| Audit | Every table has `CreatedAt` and `UpdatedAt` (UTC, set automatically on save). No `CreatedBy`/`UpdatedBy`; columns that record a person exist only where a business rule needs them (e.g. `ReviewedByUserId`) |
 | Date/time | `datetime2(3)`, always **UTC**. Live session start time is entered in Asia/Dhaka and converted to UTC on save; converted back for display |
 | Money | `decimal(18,2)`, currency BDT |
 | Booleans | `bit NOT NULL` with default |
@@ -23,19 +23,15 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 ### 1.1 Standard columns (on EVERY table — written as "+ std" below)
 | Column | Type | Null | Default | Notes |
 |---|---|---|---|---|
-| CreatedAt | datetime2(3) | NOT NULL | `sysutcdatetime()` | |
-| CreatedBy | int | NULL | — | FK User.Id (NULL = system/seed/self-registration) |
-| UpdatedAt | datetime2(3) | NULL | — | |
-| UpdatedBy | int | NULL | — | FK User.Id |
-| IsDeleted | bit | NOT NULL | 0 | |
-| DeletedAt | datetime2(3) | NULL | — | |
-| DeletedBy | int | NULL | — | FK User.Id |
+| CreatedAt | datetime2(3) | NOT NULL | `sysutcdatetime()` | set on insert |
+| UpdatedAt | datetime2(3) | NULL | — | set on every update and soft delete |
+| IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ## 2. Tables overview
 | Area | Tables |
 |---|---|
 | Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, CertificationMode, ExamType, SubmissionStatus |
-| Identity & access | User, RefreshToken, Role, RolePermission, UserPermission, CourseGrant, CourseGrantPermission |
+| Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
 | Commerce & learning | Enrollment, PaymentTransaction, Progress, ProgressSection |
 | Certification | CertificationRule, ExamSubmission, Certificate |
@@ -79,7 +75,7 @@ All lookup tables share this shape (+ std):
 | Category | `ShortName nvarchar(100) NOT NULL`, `Description nvarchar(500) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `ImageUrl nvarchar(2048) NOT NULL` | `video-editing`, `digital-marketing`, `sports-journalism`, `software-development` |
 | PaymentMethod | `Description nvarchar(200) NOT NULL`, `LogoUrl nvarchar(2048) NULL`, `Icon nvarchar(50) NOT NULL` | `bkash`, `nagad`, `rocket`, `card` |
 | Screen | `Area nvarchar(20) NOT NULL` CHECK IN ('admin','student'), `Path nvarchar(200) NOT NULL`, `Icon nvarchar(50) NOT NULL`, `IsCourseScoped bit NOT NULL`, `Section nvarchar(50) NULL` | `overview`, `courses`, `instructors`, `users`, `enrollments`, `transactions`, `roles`, `access`, `community-moderation`, `certificates`, `dashboard`, `learn`, `checkout`, `community` |
-| Permission | `ScreenId int NOT NULL` FK Screen, `IsCourseGrantable bit NOT NULL` | see below |
+| Permission | `ScreenId int NOT NULL` FK Screen, `Action nvarchar(20) NOT NULL` (view/create/edit/delete/extra), `IsCourseGrantable bit NOT NULL` | see below |
 
 Permission seed (Code → Screen; ★ = course-grantable):
 | Screen | Permissions |
@@ -100,67 +96,68 @@ Permission seed (Code → Screen; ★ = course-grantable):
 | community | `community.view`, `community.post` |
 `admin.access` is **not stored** — it is computed (BR-ACL-02). Each screen's "view" permission is the first listed.
 
-## 5. Identity & access
+## 5. Identity & access (built in backend Step 2)
 ### User (+ std)
 | Column | Type | Null | Default | Key / Constraint | Notes |
 |---|---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK | |
-| Name | nvarchar(100) | NOT NULL | | CHECK len ≥ 2 | |
+| Name | nvarchar(100) | NOT NULL | | app: 2–100 chars | |
 | Email | nvarchar(256) | NOT NULL | | UQ filtered | stored trimmed, lower-case |
 | Phone | nvarchar(20) | NULL | | | BD pattern (app-validated) |
-| PasswordHash | nvarchar(max) | NOT NULL | | | ASP.NET password hasher |
-| RoleId | int | NOT NULL | | FK Role | default role = Student |
-| HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserPermission rows replace role permissions (BR-ACL-01) |
-| InstructorId | int | NULL | | FK Instructor, UQ filtered (where not null) | |
+| PasswordHash | nvarchar(500) | NOT NULL | | | ASP.NET Core `PasswordHasher` (PBKDF2) |
+| RoleId | int | NOT NULL | | FK Role | public sign-up = Student |
+| HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserScreen rows replace the role's screens (BR-ACL-01) |
+| InstructorId | int | NULL | | FK Instructor, UQ filtered | **added in Step 3** with the Instructor table |
 
-### RefreshToken (+ std)
+### RefreshToken (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| UserId | int | NOT NULL | FK User | |
-| TokenHash | nvarchar(256) | NOT NULL | UQ | hash only, never the raw token |
-| ExpiresAt | datetime2(3) | NOT NULL | | |
-| RevokedAt | datetime2(3) | NULL | | set on logout / rotation |
+| UserId | int | NOT NULL | FK User; index (UserId, ExpiresAt) | |
+| TokenHash | nvarchar(64) | NOT NULL | UQ | SHA-256 hex of the token; the raw token is never stored |
+| ExpiresAt | datetime2(3) | NOT NULL | | 30 days ("Remember me") or 24 hours |
+| RevokedAt | datetime2(3) | NULL | | set on logout / rotation; concurrency token |
 | ReplacedByTokenId | int | NULL | FK RefreshToken | rotation chain |
-| IsPersistent | bit | NOT NULL | | "Remember me" (BR-AUTH-05) |
+| IsPersistent | bit | NOT NULL | | "Remember me" (BR-AUTH-05); copied to the replacement |
+Expired tokens of a user are removed at their next sign-in.
 
 ### Role (+ std)
 | Column | Type | Null | Default | Key | Notes |
 |---|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | | PK | |
-| Code | nvarchar(50) | NOT NULL | | UQ filtered | system: `admin`, `instructor`, `user` |
-| Name | nvarchar(200) | NOT NULL | | UQ filtered (case-insensitive collation) | |
+| Id | int IDENTITY | NOT NULL | | PK | seed: 1 admin, 2 instructor, 3 user |
+| Code | nvarchar(50) | NOT NULL | | UQ filtered | system: `admin`, `instructor`, `user`; new roles `role-<hex>`. Used in the API URLs |
+| Name | nvarchar(200) | NOT NULL | | UQ filtered (case-insensitive) | |
 | Description | nvarchar(500) | NULL | | | |
 | IsSystem | bit | NOT NULL | 0 | | cannot be deleted (BR-ACL-06) |
 
-### RolePermission (+ std)
+### RoleScreen (+ std, hard delete) — screens of a role
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| RoleId | int | NOT NULL | FK Role; UQ (RoleId, PermissionId) filtered |
-| PermissionId | int | NOT NULL | FK Permission |
-Admin role: permissions are not checked from rows — always ALL (BR-ACL-01).
+| RoleId | int | NOT NULL | FK Role; UQ (RoleId, ScreenId) |
+| ScreenId | int | NOT NULL | FK Screen |
+A screen gives all of its permissions (BR-ACL-12). The admin role has no rows: it always has every screen (BR-ACL-01). Seed: instructor and student roles get `dashboard`, `learn`, `checkout`, `community`.
 
-### UserPermission (+ std) — per-user screen override
+### UserScreen (+ std, hard delete) — a user's own screen list
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| UserId | int | NOT NULL | FK User; UQ (UserId, PermissionId) filtered |
-| PermissionId | int | NOT NULL | FK Permission |
-Rows are always whole screens (BR-ACL-12, BR-ACL-19).
+| UserId | int | NOT NULL | FK User; UQ (UserId, ScreenId) |
+| ScreenId | int | NOT NULL | FK Screen |
+Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 
-### CourseGrant (+ std)
+### CourseGrant (+ std, hard delete)
 | Column | Type | Null | Key |
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
-| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered |
-| CourseId | int | NOT NULL | FK Course |
+| UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) |
+| CourseId | int | NOT NULL | index; **FK Course added in Step 3** with the Course table |
 
-### CourseGrantPermission (+ std)
+### CourseGrantPermission (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| CourseGrantId | int | NOT NULL | FK CourseGrant; UQ (CourseGrantId, PermissionId) filtered | |
+| CourseGrantId | int | NOT NULL | FK CourseGrant; UQ (CourseGrantId, PermissionId) | |
 | PermissionId | int | NOT NULL | FK Permission | must have `IsCourseGrantable = 1` (BR-ACL-13) |
 
 ## 6. Catalogue
@@ -393,8 +390,8 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | Parent | Child | Type | FK column |
 |---|---|---|---|
 | Role | User | 1–N | User.RoleId |
-| Role / Permission | RolePermission | N–N | RoleId, PermissionId |
-| User / Permission | UserPermission | N–N | UserId, PermissionId |
+| Role / Screen | RoleScreen | N–N | RoleId, ScreenId |
+| User / Screen | UserScreen | N–N | UserId, ScreenId |
 | User / Course | CourseGrant | N–N | UserId, CourseId |
 | CourseGrant / Permission | CourseGrantPermission | N–N | CourseGrantId, PermissionId |
 | Screen | Permission | 1–N | Permission.ScreenId |
@@ -419,7 +416,7 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | User | UQ Email; RoleId; UQ InstructorId (not null) |
 | RefreshToken | UQ TokenHash; (UserId, ExpiresAt) |
 | Role | UQ Code; UQ Name |
-| RolePermission / UserPermission | UQ (RoleId, PermissionId) / UQ (UserId, PermissionId) |
+| RoleScreen / UserScreen | UQ (RoleId, ScreenId) / UQ (UserId, ScreenId) |
 | CourseGrant | UQ (UserId, CourseId); CourseId |
 | Course | UQ Slug; (IsPublished, CategoryId); InstructorId; IsFeatured |
 | Section | (SubmoduleId, SortOrder); (ParentSectionId, SortOrder); CourseId |
@@ -436,7 +433,6 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | Comment | (PostId, CreatedAt); ParentCommentId |
 
 ## 13. Open questions (database)
-- Access / refresh token lifetimes and refresh-token rotation policy.
 - `ExamSubmission.Score`: integer or decimal? (rule fields are integers.)
 - `Course.ContentUpdatedMonth` could be derived from `UpdatedAt`. Keep the column or derive?
 - Should `Course.Language` become a lookup table?
@@ -448,11 +444,11 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 ```mermaid
 erDiagram
   ROLE ||--o{ USER : has
-  ROLE ||--o{ ROLE_PERMISSION : grants
-  PERMISSION ||--o{ ROLE_PERMISSION : in
+  ROLE ||--o{ ROLE_SCREEN : grants
+  SCREEN ||--o{ ROLE_SCREEN : in
   SCREEN ||--o{ PERMISSION : groups
-  USER ||--o{ USER_PERMISSION : overrides
-  PERMISSION ||--o{ USER_PERMISSION : in
+  USER ||--o{ USER_SCREEN : overrides
+  SCREEN ||--o{ USER_SCREEN : in
   USER ||--o{ REFRESH_TOKEN : holds
   USER ||--o{ COURSE_GRANT : receives
   COURSE ||--o{ COURSE_GRANT : scopes

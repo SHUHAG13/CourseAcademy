@@ -10,7 +10,7 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
           <app-format-badge [format]="c.format" />
           <span class="tag">{{ instructor()?.name | t }}</span>
-          @if (community.canRead(c.id)) {
+          @if (!apiMode && community.canRead(c.id)) {
             <a [routerLink]="['/courses', c.slug]" fragment="community" class="btn btn-sm btn-outline-light">
               <i class="bi bi-chat-dots" aria-hidden="true"></i> {{ 'Course community' | t }}
             </a>
@@ -109,7 +109,11 @@
               </div>
             }
 
-            <app-course-certificate class="d-block mb-4" [course]="c" />
+            @if (apiMode) {
+              <app-coming-soon class="d-block mb-4" />
+            } @else {
+              <app-course-certificate class="d-block mb-4" [course]="c" />
+            }
 
             @if (c.schedule.length) {
               <section class="mb-4" aria-labelledby="learn-schedule">

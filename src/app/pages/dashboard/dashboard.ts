@@ -1,3 +1,4 @@
+import { API_MODE } from '../../core/api/api-mode';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Course, LiveSession } from '../../core/models/course.model';
@@ -29,6 +30,8 @@ export class Dashboard {
   private readonly enrollments = inject(EnrollmentService);
   private readonly payments = inject(PaymentService);
   protected readonly auth = inject(AuthService);
+  /** Certificates have not moved to the API yet. */
+  protected readonly apiMode = inject(API_MODE);
   protected readonly progress = inject(ProgressService);
   protected readonly certificates = inject(CertificateService);
   private readonly toast = inject(ToastService);

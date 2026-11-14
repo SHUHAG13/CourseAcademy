@@ -1,3 +1,5 @@
+import { API_MODE } from '../../core/api/api-mode';
+import { ComingSoon } from '../../shared/components/coming-soon/coming-soon';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
@@ -22,7 +24,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 /** The course area for enrolled users: sections with their videos and documents, live classes and materials. */
 @Component({
   selector: 'app-learn',
-  imports: [TranslatePipe, RouterLink, NgTemplateOutlet, EmptyState, FormatBadge, SessionList, VideoEmbed, DocumentList, CourseCertificate],
+  imports: [ComingSoon, TranslatePipe, RouterLink, NgTemplateOutlet, EmptyState, FormatBadge, SessionList, VideoEmbed, DocumentList, CourseCertificate],
   templateUrl: './learn.html',
   styleUrl: './learn.scss',
 })
@@ -33,6 +35,8 @@ export class Learn {
   protected readonly progress = inject(ProgressService);
   protected readonly community = inject(CommunityService);
   private readonly certificates = inject(CertificateService);
+  /** Certificates and communities have not moved to the API yet. */
+  protected readonly apiMode = inject(API_MODE);
 
   /** Bound from the `:slug` route param. */
   readonly slug = input.required<string>();
@@ -115,7 +119,7 @@ export class Learn {
       if (complete && this.progress.percent(c) === 100) this.toast.success('You have completed every section of {0}!', [c.title]);
       // Completion certificates are issued as soon as the requirement is met.
       const hadCertificate = !!this.certificates.status(c)?.certificate;
-      if (complete && !hadCertificate && (await this.certificates.evaluate(c))) {
+      if (!this.apiMode && complete && !hadCertificate && (await this.certificates.evaluate(c))) {
         this.toast.success('Congratulations! Your certificate is ready.');
       }
     } catch (error) {
