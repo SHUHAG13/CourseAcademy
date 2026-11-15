@@ -124,35 +124,38 @@ Access is stored per **screen** (codes = frontend screen ids). A screen gives al
 | PUT | `/roles/{code}` 🔒 roles.edit | same | `RoleDto` (admin role: screens ignored) | `AdminRoles` | BR-ACL-05 |
 | DELETE | `/roles/{code}` 🔒 roles.edit | — | null (409 built-in role or role in use) | `AdminRoles` | BR-ACL-06,07 |
 
-## 6. Catalogue (public)
-| Method | Endpoint | Request | Response `data` | Used by | Rules |
-|---|---|---|---|---|---|
-| GET | `/categories` | — | `CategoryDto[]` | `Categories`, `CourseList`, `Navbar` | — |
-| GET | `/courses` | `search?, category?, price? (all\|under-2500\|2500-4500\|over-4500), levels? (csv), formats? (csv), featured? (bool), sort? (popular\|rating\|newest\|price-asc\|price-desc), page, pageSize (default 6)` | page of `CourseCardDto` + `facets:{ categories:{code,count}[], levels:{code,count}[], formats:{code,count}[] }` | `CourseList`, `Courses`, `Sports` | BR-CAT-01,03–10 |
-| GET | `/courses/{slug}` | — | `CourseCardDto` + `{ description, language, outcomes:string[], requirements:string[], instructor:InstructorDto, modules:ModuleDto[], schedule:LiveSessionDto[], materials:MaterialDto[], hasAccess:bool, isEnrolled:bool, isPublished:bool }` | `CourseDetail` | BR-CAT-02,13–20 |
-| GET | `/courses/{slug}/related` | `limit? (default 4)` | `CourseCardDto[]` | `CourseDetail` | BR-CAT-11 |
-| GET | `/courses/{slug}/reviews` | — | `{ reviews:{name,rating,date,text}[], breakdown:int[5] }` | `CourseDetail` | BR-CAT-12 (demo data, see Open Questions) |
+## 6. Catalogue (built in backend Step 3)
+Public endpoints. When a token is sent, people who manage a course (`courses.view` on it) also get its drafts, items without a file and every link.
 
-## 7. Course management (admin)
-`CourseUpsertDto` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description, categoryCode, formatCode, levelCode, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (≥0, ≤ originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (≤2048, http(s) or /path), badgeCode?, isFeatured, isPublished, outcomes:string[] (≥1), requirements:string[], schedule:{ id?:int, title, startsAt (Asia/Dhaka local "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?:int, title, typeCode, url }[] }` — array order = SortOrder; rows without `id` are created, missing rows are soft-deleted.
-
-`CurriculumDto` = `{ modules: { id?, title, submodules: { id?, title, sections: SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos: { id?, tempKey?, title, url, minutes (≥1), isPreview }[], documents: { id?, title, typeCode, url, videoId?:int, videoTempKey?:string }[], topics: SectionInput[] (depth ≤ 3) }`. `tempKey` lets a new document point to a new video in the same save.
+`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, url|null, hasMedia, isLocked }[], hasContentAccess }`
+`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked }[], documents:{ id, title, typeCode, videoId|null, url|null, hasMedia, isLocked }[], topics:SectionDto[] }`
+`CourseCardDto` = `{ id, slug, title, subtitle, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, instructorName, price, originalPrice, discountPercent, rating, ratingCount, students, durationHours, language, coverLabel, coverIcon, imageUrl, contentUpdatedMonth, sectionCount }`
+`url` is null when the item is locked for the caller (BR-CAT-13 to 15). Items with no link or file are left out for everyone but managers (BR-CAT-21).
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/admin/courses` 🔒 courses.view (course) | `search?, format?, page, pageSize` | page of `{ id, slug, title, instructorName, formatCode, price, originalPrice, discountPercent, sectionCount, sessionCount, materialCount, activeEnrollmentCount, isPublished, canEdit, canDelete, canManageCertificates }` | `AdminCourses` | BR-CMS-16 |
-| GET | `/admin/courses/{id}` 🔒 courses.edit (course) | — | `CourseUpsertDto` + `{ id, sectionCount, modules:ModuleDto[] }` | `CourseForm`, `CurriculumEditor` | BR-CMS-01 |
-| GET | `/admin/courses/slug-available` 🔒 courses.create or courses.edit | `slug, exceptId?` | `{ available:bool }` | `CourseForm` | BR-CMS-02 |
-| POST | `/admin/courses` 🔒 courses.create | `CourseUpsertDto` | `{ id, slug }` (201) | `CourseForm` | BR-CMS-01–05,11,17 |
-| PUT | `/admin/courses/{id}` 🔒 courses.edit (course) | `CourseUpsertDto` | `{ id, slug }` | `CourseForm` | BR-CMS-03–05,11,17 |
-| PATCH | `/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{ isPublished:bool }` | `{ id, isPublished }` | `AdminCourses` | BR-CMS-12 |
-| PUT | `/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `CurriculumDto` | `{ modules:ModuleDto[], sectionCount }` | `CurriculumEditor` | BR-CMS-06–10,18 |
-| DELETE | `/admin/courses/{id}` 🔒 courses.delete (course) | — | null (soft-deletes course + enrollments + posts/comments + grants) | `AdminCourses` | BR-CMS-13 |
-| GET | `/admin/instructors` 🔒 instructors.view | — | `InstructorDto[]` + `assignedCourseCount` | `AdminInstructors` | — |
-| GET | `/instructors/options` 🔒 courses.create or courses.edit | — | `{ id, name }[]` | `CourseForm` | — |
-| POST | `/admin/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio, expertise:string[], experienceYears (≥0), students (≥0) }` | `InstructorDto` (201) | `AdminInstructors` | BR-CMS-15 |
-| PUT | `/admin/instructors/{id}` 🔒 instructors.edit | same | `InstructorDto` | `AdminInstructors` | BR-CMS-15 |
-| DELETE | `/admin/instructors/{id}` 🔒 instructors.delete | — | null (409 if assigned to any course) | `AdminInstructors` | BR-CMS-14 |
+| GET | `/courses` | `search?, category?, price? (all\|under-2500\|2500-4500\|over-4500), levels? (csv), formats? (csv), featured?, sort? (popular\|rating\|newest\|price-asc\|price-desc), page, pageSize` | page of `CourseCardDto` (published only) | (paged catalogue; not used by the current frontend) | BR-CAT-01,03–06 |
+| GET | `/courses/all` | — | `CourseDetailDto[]` — every course the caller may see | `CourseService` (keeps the catalogue in memory) | BR-CAT-01,02,13–15,21 |
+| GET | `/courses/{slug}` | — | `CourseDetailDto` (404 for drafts the caller may not manage) | (reference) | BR-CAT-02 |
+| GET | `/courses/{slug}/related` | `limit? (default 4, max 12)` | `CourseCardDto[]` | (reference) | BR-CAT-11 |
+| GET | `/instructors` | — | `{ id, name, title, bio, expertise[], experienceYears, students, rating }[]` | `CourseService` | BR-CAT-18 |
+| — | Reviews | — | not built: reviews and rating breakdown stay demo data in the frontend (see Open Questions) | `CourseDetail` | BR-CAT-12 |
+
+## 7. Course management (built in backend Step 3)
+`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
+`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs a link until uploads exist; `url: null` keeps an existing video's media. `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
+
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| POST | `/admin/courses` 🔒 courses.create | `CourseUpsertRequest` (must be a draft) | `CourseDetailDto` (201) | `CourseForm` | BR-CMS-01–05,11,17 |
+| PUT | `/admin/courses/{id}` 🔒 courses.edit (course) | `CourseUpsertRequest` | `CourseDetailDto` | `CourseForm` | BR-CMS-01–05,11,17 |
+| PATCH | `/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{ isPublished }` | `CourseDetailDto` (400 if BR-CMS-04/05 fail) | `AdminCourses` | BR-CMS-12 |
+| PUT | `/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `CurriculumRequest` | `CourseDetailDto` | `CurriculumEditor` | BR-CMS-06–10,18,19 |
+| DELETE | `/admin/courses/{id}` 🔒 courses.delete (course) | — | null (soft-deletes the course, removes its grants) | `AdminCourses` | BR-CMS-13 |
+| GET | `/admin/courses/slug-available` 🔒 courses.create or courses.edit | `slug, exceptId?` | `{ available }` | (reference) | BR-CMS-02 |
+| POST | `/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio (≤4000), expertise[], experienceYears (≥0), students (≥0) }` | instructor (201) | `AdminInstructors` | BR-CMS-15 |
+| PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
+| DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
 
 ## 8. Checkout & payments
 | Method | Endpoint | Request | Response `data` | Used by | Rules |

@@ -73,8 +73,8 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 |---|---|---|---|
 | 1 | Accounts & Auth | Partial | People sign up and log in through the server (secure tokens). Sign-up always creates a Student. No password reset or profile editing yet. |
 | 2 | Access Control | Done (server) | Admin decides which screens each user can open, using roles, a personal screen list per user, and per-course rights for instructors. The server checks every action. |
-| 3 | Course Catalog | Done (reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. |
-| 4 | Course Management | Done | Admin/instructor creates and edits courses, builds the curriculum, schedules live classes, adds materials, publishes, and manages instructor profiles. |
+| 3 | Course Catalog | Done (server; reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. |
+| 4 | Course Management | Done (server; file uploads come later) | Admin/instructor creates and edits courses, builds the curriculum, schedules live classes, adds materials, publishes, and manages instructor profiles. |
 | 5 | Checkout & Payments | Partial (demo gateway) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
 | 6 | Enrollments | Done | Records who has access to which course. Admin can revoke or restore access. |
 | 7 | Learning & Progress | Partial (Live progress missing) | Enrolled students watch lessons, open documents, join live classes and mark sections complete. Dashboard shows courses, certificates, upcoming classes, payments. |
@@ -392,6 +392,7 @@ Course, Instructor, curriculum entities: see `course-management.md`.
 - **BR-CAT-17** "Play preview" opens the first module containing a preview video; if none: "This course has no free preview videos yet."
 - **BR-CAT-18** Instructor card course count = number of **published** courses by that instructor.
 - **BR-CAT-19** Format intro text: Pre-recorded = self-paced recorded; Live = instructor-led live classes; Hybrid = recorded + scheduled live.
+- **BR-CAT-21** (API) A video, document or material with no link or file yet is not shown to visitors or students; people who manage the course see it. Locked links are not sent to the browser at all (the API returns no URL).
 - **BR-CAT-20** Video URLs: YouTube (`youtu.be`, `youtube.com/watch|embed|shorts`), Vimeo (`vimeo.com/<id>`) or direct `https://…mp4|webm`; anything else shows a placeholder player.
 
 ### 5. Workflows & Status Transitions
@@ -552,13 +553,15 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-09** Removing a video detaches its documents (they become whole-section documents), not deletes them.
 - **BR-CMS-10** New documents attach to the section's first video by default.
 - **BR-CMS-11** Every save sets `updated` = current `YYYY-MM`. `rating`, `ratingCount`, `students` are preserved (0 for new).
-- **BR-CMS-12** Publish/unpublish toggle from the list goes through the same save (and same validation, BR-CMS-06; the form-only checks BR-CMS-04/05 are **not** re-run by the toggle).
-- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot).
+- **BR-CMS-12** Publish/unpublish toggle from the list. (API) The server checks BR-CMS-04/05 on every save and on the toggle, so a course without sections, or a Live/Hybrid course without sessions, cannot be published from the list either.
+- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API, Step 3) The course is soft-deleted and its grants removed; enrollments and communities are removed by the API once they move there (Steps 4+); until then the browser removes them.
 - **BR-CMS-14** Instructor delete is blocked while any course (published or not) has that `instructorId`: "{name} teaches {n} course(s). Reassign them before deleting."
 - **BR-CMS-15** Instructor create/edit/delete require `instructors.create` / `.edit` / `.delete`.
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
 - **BR-CMS-17** Text fields are trimmed on save; outcomes/requirements split by line, blank lines removed.
 - **BR-CMS-18** Rows (sessions, materials, modules, submodules, sections, topics, videos, documents) can be reordered up/down; array order = display order.
+- **BR-CMS-19** Until uploads exist (backend Step 6) a new video must have a link ("Add a link for every new video."). Documents and file materials may be saved without a link ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file.
+- **BR-CMS-20** (API) Curriculum save keeps the ids of items it is sent and removes (soft-deletes) items it is not sent; ids that do not belong to the course are refused ("Something in this course changed in the meantime. Reload the page and try again.").
 
 ### 5. Workflows & Status Transitions
 Course publish state: `Draft (published=false) → Published (published=true) → Draft` — triggered by Admin or instructor with `courses.edit` on the course.
@@ -1335,7 +1338,7 @@ Permission seed (Code → Screen; ★ = course-grantable):
 | PasswordHash | nvarchar(500) | NOT NULL | | | ASP.NET Core `PasswordHasher` (PBKDF2) |
 | RoleId | int | NOT NULL | | FK Role | public sign-up = Student |
 | HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserScreen rows replace the role's screens (BR-ACL-01) |
-| InstructorId | int | NULL | | FK Instructor, UQ filtered | **added in Step 3** with the Instructor table |
+| InstructorId | int | NULL | | FK Instructor, UQ filtered | the instructor profile this account teaches as; set to NULL when the profile is deleted |
 
 #### RefreshToken (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
@@ -1379,7 +1382,7 @@ Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
 | UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) |
-| CourseId | int | NOT NULL | index; **FK Course added in Step 3** with the Course table |
+| CourseId | int | NOT NULL | FK Course; index |
 
 #### CourseGrantPermission (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
@@ -1389,7 +1392,7 @@ Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 | PermissionId | int | NOT NULL | FK Permission | must have `IsCourseGrantable = 1` (BR-ACL-13) |
 
 ### 6. Catalogue
-#### CategorySkill (+ std)
+#### CategorySkill (+ std, hard delete) — seeded with the categories
 Id PK · CategoryId int NOT NULL FK Category · Skill nvarchar(100) NOT NULL · SortOrder int NOT NULL.
 
 #### Instructor (+ std)
@@ -1398,12 +1401,12 @@ Id PK · CategoryId int NOT NULL FK Category · Skill nvarchar(100) NOT NULL · 
 | Id | int IDENTITY | NOT NULL | | PK |
 | Name | nvarchar(100) | NOT NULL | | len ≥ 2 |
 | Title | nvarchar(200) | NOT NULL | | |
-| Bio | nvarchar(max) | NOT NULL | | |
+| Bio | nvarchar(4000) | NOT NULL | | |
 | ExperienceYears | int | NOT NULL | 0 | CHECK ≥ 0 |
 | Students | int | NOT NULL | 0 | CHECK ≥ 0 |
 | Rating | decimal(2,1) | NOT NULL | 0 | CHECK 0–5 |
 
-#### InstructorExpertise (+ std)
+#### InstructorExpertise (+ std, hard delete) — replaced on every instructor save
 Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT NULL · SortOrder int NOT NULL.
 
 #### Course (+ std)
@@ -1413,7 +1416,7 @@ Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT 
 | Slug | nvarchar(200) | NOT NULL | | UQ filtered; CHECK pattern `^[a-z0-9]+(-[a-z0-9]+)*$` (app) | public URL key |
 | Title | nvarchar(120) | NOT NULL | | len 5–120 | |
 | Subtitle | nvarchar(200) | NOT NULL | | | |
-| Description | nvarchar(max) | NOT NULL | | | |
+| Description | nvarchar(8000) | NOT NULL | | | |
 | CategoryId | int | NOT NULL | | FK Category | |
 | CourseFormatId | int | NOT NULL | | FK CourseFormat | |
 | CourseLevelId | int | NOT NULL | | FK CourseLevel | |
@@ -1433,8 +1436,8 @@ Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT 
 | Students | int | NOT NULL | 0 | CHECK ≥ 0 | demo stat |
 | ContentUpdatedMonth | char(7) | NOT NULL | | `YYYY-MM` | set on each save (BR-CMS-11) |
 
-#### CourseOutcome / CourseRequirement (+ std, same shape)
-Id PK · CourseId int NOT NULL FK Course · Text nvarchar(max) NOT NULL · SortOrder int NOT NULL. (≥ 1 CourseOutcome per course — app rule.)
+#### CourseOutcome / CourseRequirement (+ std, same shape, hard delete)
+Id PK · CourseId int NOT NULL FK Course · Text nvarchar(500) NOT NULL · SortOrder int NOT NULL. Replaced as a whole list on every course save. (≥ 1 CourseOutcome per course — app rule.)
 
 #### CourseModule (+ std)
 Id PK · CourseId int NOT NULL FK Course · Title nvarchar(200) NOT NULL · SortOrder int NOT NULL.
@@ -1455,25 +1458,28 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | CHECK | | | exactly one of SubmoduleId / ParentSectionId is not null; Depth = 0 ⇔ SubmoduleId not null | |
 
 #### SectionVideo (+ std)
-| Column | Type | Null | Default | Constraint |
-|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | | PK |
-| SectionId | int | NOT NULL | | FK Section |
-| Title | nvarchar(200) | NOT NULL | | |
-| Url | nvarchar(2048) | NOT NULL | | |
-| Minutes | int | NOT NULL | 10 | CHECK ≥ 1 |
-| IsPreview | bit | NOT NULL | 0 | |
-| SortOrder | int | NOT NULL | | |
+| Column | Type | Null | Default | Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| SectionId | int | NOT NULL | | FK Section | |
+| Title | nvarchar(200) | NOT NULL | | | |
+| ExternalUrl | nvarchar(2048) | NULL | | | seeded videos, and new videos until uploads exist (BR-CMS-19) |
+| AssetId | nvarchar(100) | NULL | | filtered index | Streaming asset of an uploaded video (Step 6) |
+| Minutes | int | NOT NULL | 10 | CHECK ≥ 1 | |
+| IsPreview | bit | NOT NULL | 0 | | |
+| SortOrder | int | NOT NULL | | | |
+A video with neither link nor asset is hidden from students (BR-CAT-21).
 
 #### SectionDocument (+ std)
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
 | SectionId | int | NOT NULL | FK Section | |
-| SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when video deleted (BR-CMS-09) |
+| SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when its video is removed (BR-CMS-09) |
 | DocumentTypeId | int | NOT NULL | FK DocumentType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| Url | nvarchar(2048) | NOT NULL | ends with type's FileExtension (app) | |
+| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | temporary link until uploads exist; seeded documents have none |
+| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset (Step 6) |
 | SortOrder | int | NOT NULL | | |
 
 #### LiveSession (+ std)
@@ -1488,7 +1494,15 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | SortOrder | int | NOT NULL | | | |
 
 #### Material (+ std)
-Id PK · CourseId int NOT NULL FK Course · MaterialTypeId int NOT NULL FK MaterialType · Title nvarchar(200) NOT NULL · Url nvarchar(2048) NOT NULL · SortOrder int NOT NULL.
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| CourseId | int | NOT NULL | FK Course | |
+| MaterialTypeId | int | NOT NULL | FK MaterialType | |
+| Title | nvarchar(200) | NOT NULL | | |
+| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; temporary link for files until uploads exist |
+| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset of a file material (Step 6) |
+| SortOrder | int | NOT NULL | | |
 
 ### 7. Commerce & learning
 #### Enrollment (+ std)
@@ -1842,35 +1856,38 @@ Access is stored per **screen** (codes = frontend screen ids). A screen gives al
 | PUT | `/roles/{code}` 🔒 roles.edit | same | `RoleDto` (admin role: screens ignored) | `AdminRoles` | BR-ACL-05 |
 | DELETE | `/roles/{code}` 🔒 roles.edit | — | null (409 built-in role or role in use) | `AdminRoles` | BR-ACL-06,07 |
 
-### 6. Catalogue (public)
-| Method | Endpoint | Request | Response `data` | Used by | Rules |
-|---|---|---|---|---|---|
-| GET | `/categories` | — | `CategoryDto[]` | `Categories`, `CourseList`, `Navbar` | — |
-| GET | `/courses` | `search?, category?, price? (all\|under-2500\|2500-4500\|over-4500), levels? (csv), formats? (csv), featured? (bool), sort? (popular\|rating\|newest\|price-asc\|price-desc), page, pageSize (default 6)` | page of `CourseCardDto` + `facets:{ categories:{code,count}[], levels:{code,count}[], formats:{code,count}[] }` | `CourseList`, `Courses`, `Sports` | BR-CAT-01,03–10 |
-| GET | `/courses/{slug}` | — | `CourseCardDto` + `{ description, language, outcomes:string[], requirements:string[], instructor:InstructorDto, modules:ModuleDto[], schedule:LiveSessionDto[], materials:MaterialDto[], hasAccess:bool, isEnrolled:bool, isPublished:bool }` | `CourseDetail` | BR-CAT-02,13–20 |
-| GET | `/courses/{slug}/related` | `limit? (default 4)` | `CourseCardDto[]` | `CourseDetail` | BR-CAT-11 |
-| GET | `/courses/{slug}/reviews` | — | `{ reviews:{name,rating,date,text}[], breakdown:int[5] }` | `CourseDetail` | BR-CAT-12 (demo data, see Open Questions) |
+### 6. Catalogue (built in backend Step 3)
+Public endpoints. When a token is sent, people who manage a course (`courses.view` on it) also get its drafts, items without a file and every link.
 
-### 7. Course management (admin)
-`CourseUpsertDto` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description, categoryCode, formatCode, levelCode, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (≥0, ≤ originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (≤2048, http(s) or /path), badgeCode?, isFeatured, isPublished, outcomes:string[] (≥1), requirements:string[], schedule:{ id?:int, title, startsAt (Asia/Dhaka local "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?:int, title, typeCode, url }[] }` — array order = SortOrder; rows without `id` are created, missing rows are soft-deleted.
-
-`CurriculumDto` = `{ modules: { id?, title, submodules: { id?, title, sections: SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos: { id?, tempKey?, title, url, minutes (≥1), isPreview }[], documents: { id?, title, typeCode, url, videoId?:int, videoTempKey?:string }[], topics: SectionInput[] (depth ≤ 3) }`. `tempKey` lets a new document point to a new video in the same save.
+`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, url|null, hasMedia, isLocked }[], hasContentAccess }`
+`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked }[], documents:{ id, title, typeCode, videoId|null, url|null, hasMedia, isLocked }[], topics:SectionDto[] }`
+`CourseCardDto` = `{ id, slug, title, subtitle, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, instructorName, price, originalPrice, discountPercent, rating, ratingCount, students, durationHours, language, coverLabel, coverIcon, imageUrl, contentUpdatedMonth, sectionCount }`
+`url` is null when the item is locked for the caller (BR-CAT-13 to 15). Items with no link or file are left out for everyone but managers (BR-CAT-21).
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/admin/courses` 🔒 courses.view (course) | `search?, format?, page, pageSize` | page of `{ id, slug, title, instructorName, formatCode, price, originalPrice, discountPercent, sectionCount, sessionCount, materialCount, activeEnrollmentCount, isPublished, canEdit, canDelete, canManageCertificates }` | `AdminCourses` | BR-CMS-16 |
-| GET | `/admin/courses/{id}` 🔒 courses.edit (course) | — | `CourseUpsertDto` + `{ id, sectionCount, modules:ModuleDto[] }` | `CourseForm`, `CurriculumEditor` | BR-CMS-01 |
-| GET | `/admin/courses/slug-available` 🔒 courses.create or courses.edit | `slug, exceptId?` | `{ available:bool }` | `CourseForm` | BR-CMS-02 |
-| POST | `/admin/courses` 🔒 courses.create | `CourseUpsertDto` | `{ id, slug }` (201) | `CourseForm` | BR-CMS-01–05,11,17 |
-| PUT | `/admin/courses/{id}` 🔒 courses.edit (course) | `CourseUpsertDto` | `{ id, slug }` | `CourseForm` | BR-CMS-03–05,11,17 |
-| PATCH | `/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{ isPublished:bool }` | `{ id, isPublished }` | `AdminCourses` | BR-CMS-12 |
-| PUT | `/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `CurriculumDto` | `{ modules:ModuleDto[], sectionCount }` | `CurriculumEditor` | BR-CMS-06–10,18 |
-| DELETE | `/admin/courses/{id}` 🔒 courses.delete (course) | — | null (soft-deletes course + enrollments + posts/comments + grants) | `AdminCourses` | BR-CMS-13 |
-| GET | `/admin/instructors` 🔒 instructors.view | — | `InstructorDto[]` + `assignedCourseCount` | `AdminInstructors` | — |
-| GET | `/instructors/options` 🔒 courses.create or courses.edit | — | `{ id, name }[]` | `CourseForm` | — |
-| POST | `/admin/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio, expertise:string[], experienceYears (≥0), students (≥0) }` | `InstructorDto` (201) | `AdminInstructors` | BR-CMS-15 |
-| PUT | `/admin/instructors/{id}` 🔒 instructors.edit | same | `InstructorDto` | `AdminInstructors` | BR-CMS-15 |
-| DELETE | `/admin/instructors/{id}` 🔒 instructors.delete | — | null (409 if assigned to any course) | `AdminInstructors` | BR-CMS-14 |
+| GET | `/courses` | `search?, category?, price? (all\|under-2500\|2500-4500\|over-4500), levels? (csv), formats? (csv), featured?, sort? (popular\|rating\|newest\|price-asc\|price-desc), page, pageSize` | page of `CourseCardDto` (published only) | (paged catalogue; not used by the current frontend) | BR-CAT-01,03–06 |
+| GET | `/courses/all` | — | `CourseDetailDto[]` — every course the caller may see | `CourseService` (keeps the catalogue in memory) | BR-CAT-01,02,13–15,21 |
+| GET | `/courses/{slug}` | — | `CourseDetailDto` (404 for drafts the caller may not manage) | (reference) | BR-CAT-02 |
+| GET | `/courses/{slug}/related` | `limit? (default 4, max 12)` | `CourseCardDto[]` | (reference) | BR-CAT-11 |
+| GET | `/instructors` | — | `{ id, name, title, bio, expertise[], experienceYears, students, rating }[]` | `CourseService` | BR-CAT-18 |
+| — | Reviews | — | not built: reviews and rating breakdown stay demo data in the frontend (see Open Questions) | `CourseDetail` | BR-CAT-12 |
+
+### 7. Course management (built in backend Step 3)
+`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
+`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs a link until uploads exist; `url: null` keeps an existing video's media. `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
+
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| POST | `/admin/courses` 🔒 courses.create | `CourseUpsertRequest` (must be a draft) | `CourseDetailDto` (201) | `CourseForm` | BR-CMS-01–05,11,17 |
+| PUT | `/admin/courses/{id}` 🔒 courses.edit (course) | `CourseUpsertRequest` | `CourseDetailDto` | `CourseForm` | BR-CMS-01–05,11,17 |
+| PATCH | `/admin/courses/{id}/publish` 🔒 courses.edit (course) | `{ isPublished }` | `CourseDetailDto` (400 if BR-CMS-04/05 fail) | `AdminCourses` | BR-CMS-12 |
+| PUT | `/admin/courses/{id}/curriculum` 🔒 courses.edit (course) | `CurriculumRequest` | `CourseDetailDto` | `CurriculumEditor` | BR-CMS-06–10,18,19 |
+| DELETE | `/admin/courses/{id}` 🔒 courses.delete (course) | — | null (soft-deletes the course, removes its grants) | `AdminCourses` | BR-CMS-13 |
+| GET | `/admin/courses/slug-available` 🔒 courses.create or courses.edit | `slug, exceptId?` | `{ available }` | (reference) | BR-CMS-02 |
+| POST | `/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio (≤4000), expertise[], experienceYears (≥0), students (≥0) }` | instructor (201) | `AdminInstructors` | BR-CMS-15 |
+| PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
+| DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
 
 ### 8. Checkout & payments
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -2071,9 +2088,9 @@ See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-ap
 1. **Live courses can never be completed** — the learning page hides "Mark as complete" for Live format. Demo course 2 (Live, exam rule needing 100%) can never award a certificate. (BR-LRN-08, BR-CERT-06)
 2. **Revoked completion certificates come back** — the next section toggle or "Get my certificate" issues a new one, because a revoked certificate no longer counts. (BR-CERT-03, BR-CERT-04, BR-CERT-11)
 3. **Successful payments can be deleted** — only the button is disabled; `PaymentService.remove()` does not block it. Backend must enforce. (BR-PAY-12)
-4. **Publish toggle skips validation** — publishing from the course list does not check "needs sections / needs live sessions". (BR-CMS-04, BR-CMS-05, BR-CMS-12)
+4. ~~**Publish toggle skips validation**~~ — **fixed in backend Step 3** (server checks on every publish). Original note: publishing from the course list does not check "needs sections / needs live sessions". (BR-CMS-04, BR-CMS-05, BR-CMS-12)
 5. **Course delete leaves data behind** — progress, certification rule, exam submissions and certificates are not removed. (BR-CMS-13)
-6. **Non-preview video links are public** — all video URLs are sent to every visitor in the course data. Backend must hide them from non-enrolled users. (BR-CAT-13)
+6. ~~**Non-preview video links are public**~~ — **fixed in backend Step 3** (the API sends no locked links). Original note: all video URLs are sent to every visitor in the course data. Backend must hide them from non-enrolled users. (BR-CAT-13)
 7. **Password rules disagree** — login checks min 6 characters, register requires min 8 + letter + digit. (BR-AUTH-01, BR-AUTH-07)
 8. **Exam input checks** — notes length is checked before trimming; review score may be a decimal while rule fields must be integers. (BR-CERT-08, BR-CERT-09)
 9. **Free enrollment** — `EnrollmentService.grant()` does not check `checkout.view`; only the route guard does. (BR-PAY-03, BR-ENR-04)

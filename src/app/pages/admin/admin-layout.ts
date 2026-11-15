@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { API_MODE } from '../../core/api/api-mode';
 import { SCREENS } from '../../core/data/screens.data';
 import { PermissionService } from '../../core/services/permission.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
@@ -25,7 +26,11 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
         <div class="demo-note mb-4">
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <p>
-            {{ 'Frontend demo: this data lives only in this browser. It is not secure and is not shared with other devices or users.' | t }}
+            @if (apiMode) {
+              {{ 'Users, roles and courses are saved on the server. Enrollments, payments and progress are still demo data in this browser.' | t }}
+            } @else {
+              {{ 'Frontend demo: this data lives only in this browser. It is not secure and is not shared with other devices or users.' | t }}
+            }
           </p>
         </div>
         <router-outlet />
@@ -70,6 +75,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class AdminLayout {
   private readonly permissions = inject(PermissionService);
+  protected readonly apiMode = inject(API_MODE);
 
   /** One link per admin screen the user can view. Screens in a section share one link. */
   protected readonly links = computed(() => {

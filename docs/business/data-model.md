@@ -107,7 +107,7 @@ Permission seed (Code → Screen; ★ = course-grantable):
 | PasswordHash | nvarchar(500) | NOT NULL | | | ASP.NET Core `PasswordHasher` (PBKDF2) |
 | RoleId | int | NOT NULL | | FK Role | public sign-up = Student |
 | HasCustomAccess | bit | NOT NULL | 0 | | 1 = UserScreen rows replace the role's screens (BR-ACL-01) |
-| InstructorId | int | NULL | | FK Instructor, UQ filtered | **added in Step 3** with the Instructor table |
+| InstructorId | int | NULL | | FK Instructor, UQ filtered | the instructor profile this account teaches as; set to NULL when the profile is deleted |
 
 ### RefreshToken (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
@@ -151,7 +151,7 @@ Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 |---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK |
 | UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) |
-| CourseId | int | NOT NULL | index; **FK Course added in Step 3** with the Course table |
+| CourseId | int | NOT NULL | FK Course; index |
 
 ### CourseGrantPermission (+ std, hard delete)
 | Column | Type | Null | Key | Notes |
@@ -161,7 +161,7 @@ Used only when `User.HasCustomAccess = 1` (BR-ACL-11, BR-ACL-19).
 | PermissionId | int | NOT NULL | FK Permission | must have `IsCourseGrantable = 1` (BR-ACL-13) |
 
 ## 6. Catalogue
-### CategorySkill (+ std)
+### CategorySkill (+ std, hard delete) — seeded with the categories
 Id PK · CategoryId int NOT NULL FK Category · Skill nvarchar(100) NOT NULL · SortOrder int NOT NULL.
 
 ### Instructor (+ std)
@@ -170,12 +170,12 @@ Id PK · CategoryId int NOT NULL FK Category · Skill nvarchar(100) NOT NULL · 
 | Id | int IDENTITY | NOT NULL | | PK |
 | Name | nvarchar(100) | NOT NULL | | len ≥ 2 |
 | Title | nvarchar(200) | NOT NULL | | |
-| Bio | nvarchar(max) | NOT NULL | | |
+| Bio | nvarchar(4000) | NOT NULL | | |
 | ExperienceYears | int | NOT NULL | 0 | CHECK ≥ 0 |
 | Students | int | NOT NULL | 0 | CHECK ≥ 0 |
 | Rating | decimal(2,1) | NOT NULL | 0 | CHECK 0–5 |
 
-### InstructorExpertise (+ std)
+### InstructorExpertise (+ std, hard delete) — replaced on every instructor save
 Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT NULL · SortOrder int NOT NULL.
 
 ### Course (+ std)
@@ -185,7 +185,7 @@ Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT 
 | Slug | nvarchar(200) | NOT NULL | | UQ filtered; CHECK pattern `^[a-z0-9]+(-[a-z0-9]+)*$` (app) | public URL key |
 | Title | nvarchar(120) | NOT NULL | | len 5–120 | |
 | Subtitle | nvarchar(200) | NOT NULL | | | |
-| Description | nvarchar(max) | NOT NULL | | | |
+| Description | nvarchar(8000) | NOT NULL | | | |
 | CategoryId | int | NOT NULL | | FK Category | |
 | CourseFormatId | int | NOT NULL | | FK CourseFormat | |
 | CourseLevelId | int | NOT NULL | | FK CourseLevel | |
@@ -205,8 +205,8 @@ Id PK · InstructorId int NOT NULL FK Instructor · Expertise nvarchar(100) NOT 
 | Students | int | NOT NULL | 0 | CHECK ≥ 0 | demo stat |
 | ContentUpdatedMonth | char(7) | NOT NULL | | `YYYY-MM` | set on each save (BR-CMS-11) |
 
-### CourseOutcome / CourseRequirement (+ std, same shape)
-Id PK · CourseId int NOT NULL FK Course · Text nvarchar(max) NOT NULL · SortOrder int NOT NULL. (≥ 1 CourseOutcome per course — app rule.)
+### CourseOutcome / CourseRequirement (+ std, same shape, hard delete)
+Id PK · CourseId int NOT NULL FK Course · Text nvarchar(500) NOT NULL · SortOrder int NOT NULL. Replaced as a whole list on every course save. (≥ 1 CourseOutcome per course — app rule.)
 
 ### CourseModule (+ std)
 Id PK · CourseId int NOT NULL FK Course · Title nvarchar(200) NOT NULL · SortOrder int NOT NULL.
@@ -227,25 +227,28 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | CHECK | | | exactly one of SubmoduleId / ParentSectionId is not null; Depth = 0 ⇔ SubmoduleId not null | |
 
 ### SectionVideo (+ std)
-| Column | Type | Null | Default | Constraint |
-|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | | PK |
-| SectionId | int | NOT NULL | | FK Section |
-| Title | nvarchar(200) | NOT NULL | | |
-| Url | nvarchar(2048) | NOT NULL | | |
-| Minutes | int | NOT NULL | 10 | CHECK ≥ 1 |
-| IsPreview | bit | NOT NULL | 0 | |
-| SortOrder | int | NOT NULL | | |
+| Column | Type | Null | Default | Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| SectionId | int | NOT NULL | | FK Section | |
+| Title | nvarchar(200) | NOT NULL | | | |
+| ExternalUrl | nvarchar(2048) | NULL | | | seeded videos, and new videos until uploads exist (BR-CMS-19) |
+| AssetId | nvarchar(100) | NULL | | filtered index | Streaming asset of an uploaded video (Step 6) |
+| Minutes | int | NOT NULL | 10 | CHECK ≥ 1 | |
+| IsPreview | bit | NOT NULL | 0 | | |
+| SortOrder | int | NOT NULL | | | |
+A video with neither link nor asset is hidden from students (BR-CAT-21).
 
 ### SectionDocument (+ std)
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
 | SectionId | int | NOT NULL | FK Section | |
-| SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when video deleted (BR-CMS-09) |
+| SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when its video is removed (BR-CMS-09) |
 | DocumentTypeId | int | NOT NULL | FK DocumentType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| Url | nvarchar(2048) | NOT NULL | ends with type's FileExtension (app) | |
+| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | temporary link until uploads exist; seeded documents have none |
+| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset (Step 6) |
 | SortOrder | int | NOT NULL | | |
 
 ### LiveSession (+ std)
@@ -260,7 +263,15 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | SortOrder | int | NOT NULL | | | |
 
 ### Material (+ std)
-Id PK · CourseId int NOT NULL FK Course · MaterialTypeId int NOT NULL FK MaterialType · Title nvarchar(200) NOT NULL · Url nvarchar(2048) NOT NULL · SortOrder int NOT NULL.
+| Column | Type | Null | Key | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| CourseId | int | NOT NULL | FK Course | |
+| MaterialTypeId | int | NOT NULL | FK MaterialType | |
+| Title | nvarchar(200) | NOT NULL | | |
+| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; temporary link for files until uploads exist |
+| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset of a file material (Step 6) |
+| SortOrder | int | NOT NULL | | |
 
 ## 7. Commerce & learning
 ### Enrollment (+ std)

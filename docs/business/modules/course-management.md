@@ -115,13 +115,15 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-09** Removing a video detaches its documents (they become whole-section documents), not deletes them.
 - **BR-CMS-10** New documents attach to the section's first video by default.
 - **BR-CMS-11** Every save sets `updated` = current `YYYY-MM`. `rating`, `ratingCount`, `students` are preserved (0 for new).
-- **BR-CMS-12** Publish/unpublish toggle from the list goes through the same save (and same validation, BR-CMS-06; the form-only checks BR-CMS-04/05 are **not** re-run by the toggle).
-- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot).
+- **BR-CMS-12** Publish/unpublish toggle from the list. (API) The server checks BR-CMS-04/05 on every save and on the toggle, so a course without sections, or a Live/Hybrid course without sessions, cannot be published from the list either.
+- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API, Step 3) The course is soft-deleted and its grants removed; enrollments and communities are removed by the API once they move there (Steps 4+); until then the browser removes them.
 - **BR-CMS-14** Instructor delete is blocked while any course (published or not) has that `instructorId`: "{name} teaches {n} course(s). Reassign them before deleting."
 - **BR-CMS-15** Instructor create/edit/delete require `instructors.create` / `.edit` / `.delete`.
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
 - **BR-CMS-17** Text fields are trimmed on save; outcomes/requirements split by line, blank lines removed.
 - **BR-CMS-18** Rows (sessions, materials, modules, submodules, sections, topics, videos, documents) can be reordered up/down; array order = display order.
+- **BR-CMS-19** Until uploads exist (backend Step 6) a new video must have a link ("Add a link for every new video."). Documents and file materials may be saved without a link ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file.
+- **BR-CMS-20** (API) Curriculum save keeps the ids of items it is sent and removes (soft-deletes) items it is not sent; ids that do not belong to the course are refused ("Something in this course changed in the meantime. Reload the page and try again.").
 
 ## 5. Workflows & Status Transitions
 Course publish state: `Draft (published=false) → Published (published=true) → Draft` — triggered by Admin or instructor with `courses.edit` on the course.

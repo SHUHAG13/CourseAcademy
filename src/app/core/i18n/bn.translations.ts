@@ -1227,6 +1227,13 @@ const BN_INTERFACE: Record<string, string> = {
   'Please accept the terms to continue.': 'চালিয়ে যেতে শর্তাবলিতে সম্মতি দিন।',
   'Use at least 8 characters with a letter and a number.': 'অন্তত ৮ অক্ষর ব্যবহার করুন, যেখানে অক্ষর ও সংখ্যা দুটোই থাকবে।',
   'Coming soon': 'শীঘ্রই আসছে',
+  'Users, roles and courses are saved on the server. Enrollments, payments and progress are still demo data in this browser.':
+    'ইউজার, রোল ও কোর্স সার্ভারে সংরক্ষিত হয়। এনরোলমেন্ট, পেমেন্ট ও প্রগ্রেস এখনো এই ব্রাউজারের ডেমো ডেটা।',
+  'Add a link for every new video.': 'প্রতিটি নতুন ভিডিওর জন্য একটি লিংক দিন।',
+  'Every video needs a title.': 'প্রতিটি ভিডিওর একটি শিরোনাম দরকার।',
+  'Every document needs a title.': 'প্রতিটি ডকুমেন্টের একটি শিরোনাম দরকার।',
+  'Something in this course changed in the meantime. Reload the page and try again.':
+    'এর মধ্যে এই কোর্সে কিছু বদলেছে। পেজটি রিলোড করে আবার চেষ্টা করুন।',
   'This part is being moved to the new server and will be available again soon.':
     'এই অংশটি নতুন সার্ভারে নেওয়া হচ্ছে, শীঘ্রই আবার পাওয়া যাবে।',
   'Topics in this section': 'এই সেকশনের টপিক',

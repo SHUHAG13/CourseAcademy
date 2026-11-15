@@ -62,6 +62,7 @@ Course, Instructor, curriculum entities: see `course-management.md`.
 - **BR-CAT-17** "Play preview" opens the first module containing a preview video; if none: "This course has no free preview videos yet."
 - **BR-CAT-18** Instructor card course count = number of **published** courses by that instructor.
 - **BR-CAT-19** Format intro text: Pre-recorded = self-paced recorded; Live = instructor-led live classes; Hybrid = recorded + scheduled live.
+- **BR-CAT-21** (API) A video, document or material with no link or file yet is not shown to visitors or students; people who manage the course see it. Locked links are not sent to the browser at all (the API returns no URL).
 - **BR-CAT-20** Video URLs: YouTube (`youtu.be`, `youtube.com/watch|embed|shorts`), Vimeo (`vimeo.com/<id>`) or direct `https://…mp4|webm`; anything else shows a placeholder player.
 
 ## 5. Workflows & Status Transitions

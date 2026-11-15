@@ -161,7 +161,7 @@ export class AdminCourses {
 
   protected async togglePublished(course: Course): Promise<void> {
     try {
-      await this.courses.saveCourse({ ...course, published: !course.published });
+      await this.courses.setPublished(course, !course.published);
       this.toast.success(course.published ? '{0} is now unpublished.' : '{0} is now published.', [course.title]);
     } catch (error) {
       this.toast.error(failureMessage(error, 'The change could not be saved. Browser storage may be full or blocked.'));

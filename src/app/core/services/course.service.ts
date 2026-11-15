@@ -1,4 +1,16 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { API_MODE } from '../api/api-mode';
+import { ApiService } from '../api/api.service';
+import {
+  CourseDetailDto,
+  InstructorDto,
+  fromCourseDto,
+  fromInstructorDto,
+  isStoredId,
+  toCourseUpsert,
+  toCurriculum,
+  toInstructorSave,
+} from '../api/catalog.models';
 import { CATEGORIES, REVIEWS } from '../data/courses.data';
 import { COURSE_REPOSITORY, INSTRUCTOR_REPOSITORY } from '../data/repositories';
 import { EntityStore } from '../data/repository';
@@ -18,7 +30,9 @@ import {
   PriceRange,
   Review,
 } from '../models/course.model';
+import { AuthService } from './auth.service';
 import { PermissionService } from './permission.service';
+import { ToastService } from './toast.service';
 
 /** Simulated network latency so loading states are visible with mock data. */
 const MOCK_LATENCY_MS = 350;
@@ -137,7 +151,8 @@ function sectionsError(sections: Section[], depth: number): string | null {
   if (sections.length && depth > MAX_TOPIC_DEPTH) return 'Topics can be nested at most 3 levels deep.';
   for (const sec of sections) {
     if (!sec.title.trim()) return depth ? 'Every topic needs a title.' : 'Every section needs a title.';
-    if (sec.documents.some((d) => !documentUrlMatchesType(d.url, d.type))) {
+    // A document without a link is allowed: its file is added later.
+    if (sec.documents.some((d) => d.url && !documentUrlMatchesType(d.url, d.type))) {
       return 'A document link must end in .pdf, .docx or .pptx to match its type.';
     }
     if (sec.documents.some((d) => d.videoId && !sec.videos.some((v) => v.id === d.videoId))) {
@@ -151,20 +166,60 @@ function sectionsError(sections: Section[], depth: number): string | null {
 
 @Injectable({ providedIn: 'root' })
 export class CourseService {
+  private readonly apiMode = inject(API_MODE);
+  private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private readonly courseStore = new EntityStore(inject(COURSE_REPOSITORY));
   private readonly instructorStore = new EntityStore(inject(INSTRUCTOR_REPOSITORY));
   private readonly permissions = inject(PermissionService);
 
+  // API mode: the catalogue the signed-in user may see, kept in memory like the demo data.
+  private readonly apiCourses = signal<Course[]>([]);
+  private readonly apiInstructors = signal<Instructor[]>([]);
+  /** The user the API catalogue was loaded for; drafts and links depend on who is signed in. */
+  private loadedFor: number | null | undefined;
+
   readonly categories: Category[] = CATEGORIES;
 
-  readonly ready = Promise.all([this.courseStore.ready, this.instructorStore.ready]);
-  readonly recovered = computed(() => this.courseStore.recovered() || this.instructorStore.recovered());
+  readonly ready: Promise<unknown> = this.apiMode
+    ? this.auth.ready.then(() => this.loadCatalog())
+    : Promise.all([this.courseStore.ready, this.instructorStore.ready]);
+  readonly recovered = computed(() => !this.apiMode && (this.courseStore.recovered() || this.instructorStore.recovered()));
 
-  /** Every course, including unpublished ones. For the admin area. */
-  readonly courses = this.courseStore.items;
+  /** Every course this user may see, including unpublished ones they manage. For the admin area. */
+  readonly courses = computed(() => (this.apiMode ? this.apiCourses() : this.courseStore.items()));
   /** What visitors can see. */
   readonly published = computed(() => this.courses().filter((c) => c.published));
-  readonly instructors = this.instructorStore.items;
+  readonly instructors = computed(() => (this.apiMode ? this.apiInstructors() : this.instructorStore.items()));
+
+  constructor() {
+    if (this.apiMode) {
+      // Signing in or out changes which drafts and lesson links the API returns.
+      effect(() => {
+        const id = this.auth.currentSession()?.id ?? null;
+        untracked(() => {
+          if (this.loadedFor !== undefined && this.loadedFor !== id) void this.loadCatalog();
+        });
+      });
+    }
+  }
+
+  /** API mode: (re)loads courses and instructors. A failure leaves an empty catalogue and tells the user. */
+  async loadCatalog(): Promise<void> {
+    if (!this.apiMode) return;
+    this.loadedFor = this.auth.currentSession()?.id ?? null;
+    try {
+      const [courses, instructors] = await Promise.all([
+        this.api.get<CourseDetailDto[]>('courses/all'),
+        this.api.get<InstructorDto[]>('instructors'),
+      ]);
+      this.apiCourses.set(courses.map(fromCourseDto));
+      this.apiInstructors.set(instructors.map(fromInstructorDto));
+    } catch (error) {
+      this.toast.error((error as Error).message);
+    }
+  }
 
   /** Simulated wait for pages that show a loading state before rendering a course. */
   async whenLoaded(): Promise<void> {
@@ -237,30 +292,88 @@ export class CourseService {
     return this.courses().some((c) => c.slug === slug && c.id !== exceptId);
   }
 
+  /** Saves the course details. In API mode the curriculum is saved separately with `saveCurriculum`. */
   async saveCourse(course: Course): Promise<Course> {
-    if (this.byId(course.id)) {
+    const existing = this.byId(course.id);
+    if (existing) {
       this.permissions.assert('courses.edit', course.id);
     } else {
       this.permissions.assert('courses.create');
     }
     const error = curriculumError(course.modules);
     if (error) throw new Error(error);
+    if (this.apiMode) {
+      const saved = existing
+        ? await this.api.put<CourseDetailDto>(`admin/courses/${course.id}`, toCourseUpsert(course))
+        : await this.api.post<CourseDetailDto>('admin/courses', toCourseUpsert(course));
+      return this.storeApiCourse(saved);
+    }
     return this.courseStore.save(course);
+  }
+
+  /** Saves the curriculum of a course (modules, submodules, sections, videos, documents). */
+  async saveCurriculum(course: Course, modules: CourseModule[]): Promise<Course> {
+    this.permissions.assert('courses.edit', course.id);
+    const error = curriculumError(modules);
+    if (error) throw new Error(error);
+    if (this.apiMode) {
+      return this.storeApiCourse(await this.api.put<CourseDetailDto>(`admin/courses/${course.id}/curriculum`, toCurriculum(modules)));
+    }
+    return this.courseStore.save({ ...course, modules });
+  }
+
+  async setPublished(course: Course, published: boolean): Promise<Course> {
+    this.permissions.assert('courses.edit', course.id);
+    if (this.apiMode) {
+      return this.storeApiCourse(await this.api.patch<CourseDetailDto>(`admin/courses/${course.id}/publish`, { isPublished: published }));
+    }
+    return this.courseStore.save({ ...course, published });
   }
 
   async removeCourse(id: number): Promise<void> {
     this.permissions.assert('courses.delete', id);
+    if (this.apiMode) {
+      await this.api.delete(`admin/courses/${id}`);
+      this.apiCourses.update((list) => list.filter((c) => c.id !== id));
+      return;
+    }
     return this.courseStore.remove(id);
   }
 
   async saveInstructor(instructor: Instructor): Promise<Instructor> {
-    this.permissions.assert(this.instructor(instructor.id) ? 'instructors.edit' : 'instructors.create');
+    const existing = this.instructor(instructor.id);
+    this.permissions.assert(existing ? 'instructors.edit' : 'instructors.create');
+    if (this.apiMode) {
+      const saved =
+        existing && isStoredId(instructor.id)
+          ? await this.api.put<InstructorDto>(`instructors/${instructor.id}`, toInstructorSave(instructor))
+          : await this.api.post<InstructorDto>('instructors', toInstructorSave(instructor));
+      const mapped = fromInstructorDto(saved);
+      this.apiInstructors.update((list) =>
+        list.some((i) => i.id === mapped.id) ? list.map((i) => (i.id === mapped.id ? mapped : i)) : [...list, mapped],
+      );
+      return mapped;
+    }
     return this.instructorStore.save(instructor);
   }
 
   async removeInstructor(id: string): Promise<void> {
     this.permissions.assert('instructors.delete');
+    if (this.apiMode) {
+      await this.api.delete(`instructors/${id}`);
+      this.apiInstructors.update((list) => list.filter((i) => i.id !== id));
+      return;
+    }
     return this.instructorStore.remove(id);
+  }
+
+  /** Puts a course returned by the API into the in-memory catalogue. */
+  private storeApiCourse(dto: CourseDetailDto): Course {
+    const course = fromCourseDto(dto);
+    this.apiCourses.update((list) =>
+      list.some((c) => c.id === course.id) ? list.map((c) => (c.id === course.id ? course : c)) : [...list, course],
+    );
+    return course;
   }
 
   /** Courses that would lose their instructor, whether published or not. */
@@ -269,6 +382,8 @@ export class CourseService {
   }
 
   async reset(): Promise<void> {
+    // Courses in API mode live on the server; demo reset does not touch them.
+    if (this.apiMode) return;
     await Promise.all([this.courseStore.reset(), this.instructorStore.reset()]);
   }
 }

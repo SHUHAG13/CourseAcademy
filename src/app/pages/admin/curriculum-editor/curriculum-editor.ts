@@ -137,7 +137,8 @@ export class CurriculumEditor implements OnInit {
         id: [document?.id ?? uid('document')],
         title: [document?.title ?? '', Validators.required],
         type: [document?.type ?? ('PDF' as DocumentType), Validators.required],
-        url: [document?.url ?? '', [Validators.required, Validators.pattern(URL_PATTERN)]],
+        // Optional: a document can be listed before its file is added (uploads come with the media module).
+        url: [document?.url ?? '', [Validators.pattern(URL_PATTERN)]],
         videoId: [document?.videoId ?? ''],
       },
       { validators: urlMatchesType },
@@ -242,7 +243,7 @@ export class CurriculumEditor implements OnInit {
 
     this.saving.set(true);
     try {
-      await this.courses.saveCourse({ ...course, modules: this.toModules() });
+      await this.courses.saveCurriculum(course, this.toModules());
       this.form.markAsPristine();
       this.toast.success('The curriculum of {0} was saved.', [course.title]);
     } catch (error) {

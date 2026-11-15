@@ -168,12 +168,15 @@ export class CourseForm implements OnInit {
   }
 
   private materialGroup(material?: Material): FormGroup {
-    return this.fb.group({
+    const group = this.fb.group({
       id: [material?.id ?? uid('material')],
       title: [material?.title ?? '', Validators.required],
       type: [material?.type ?? 'PDF', Validators.required],
-      url: [material?.url ?? 'https://example.com/demo-materials/file', [Validators.required, Validators.pattern(URL_PATTERN)]],
+      // A link is required for Link materials. Files may be listed before the file is added.
+      url: [material?.url ?? 'https://example.com/demo-materials/file', [linkNeedsUrl, Validators.pattern(URL_PATTERN)]],
     });
+    group.controls.type.valueChanges.subscribe(() => group.controls.url.updateValueAndValidity());
+    return group;
   }
 
   protected addSession(): void {
@@ -272,6 +275,10 @@ export class CourseForm implements OnInit {
       this.saving.set(false);
     }
   }
+}
+
+function linkNeedsUrl(control: AbstractControl): ValidationErrors | null {
+  return control.parent?.get('type')?.value === 'Link' && !control.value ? { required: true } : null;
 }
 
 function saleNotAboveRegular(group: AbstractControl): ValidationErrors | null {
