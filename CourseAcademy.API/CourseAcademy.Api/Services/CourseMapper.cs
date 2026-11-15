@@ -25,7 +25,7 @@ public static class CourseMapper
         c.Price, c.OriginalPrice, DiscountPercent(c.Price, c.OriginalPrice), c.Rating, c.RatingCount, c.Students, c.DurationHours,
         c.Language, c.CoverLabel, c.CoverIcon, c.ImageUrl, c.ContentUpdatedMonth, sectionCount);
 
-    public static CourseDetailDto ToDetail(Course c, IReadOnlyList<Section> sections, CourseViewer viewer)
+    public static CourseDetailDto ToDetail(Course c, IReadOnlyList<Section> sections, CourseViewer viewer, (int Active, int Total)? enrollments = null)
     {
         var bySubmodule = sections.Where(s => s.SubmoduleId is not null).ToLookup(s => s.SubmoduleId!.Value);
         var byParent = sections.Where(s => s.ParentSectionId is not null).ToLookup(s => s.ParentSectionId!.Value);
@@ -82,7 +82,9 @@ public static class CourseMapper
                     viewer.HasContentAccess ? s.MeetingUrl : null))
                 .ToList(),
             materials,
-            viewer.HasContentAccess);
+            viewer.HasContentAccess,
+            viewer.CanManage ? enrollments?.Active ?? 0 : null,
+            viewer.CanManage ? enrollments?.Total ?? 0 : null);
     }
 
     /// <summary>

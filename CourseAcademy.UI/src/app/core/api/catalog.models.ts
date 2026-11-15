@@ -84,6 +84,9 @@ export interface CourseDetailDto {
   schedule: { id: number; title: string; startsAt: string; durationMinutes: number; meetingUrl: string | null }[];
   materials: { id: number; title: string; typeCode: MaterialType; url: string | null; hasMedia: boolean; isLocked: boolean }[];
   hasContentAccess: boolean;
+  /** Only for people who manage the course. */
+  activeEnrollmentCount: number | null;
+  enrollmentCount: number | null;
 }
 
 export function fromInstructorDto(i: InstructorDto): Instructor {
@@ -140,6 +143,10 @@ export function fromCourseDto(c: CourseDetailDto): Course {
     })),
     schedule: c.schedule.map((s) => ({ id: String(s.id), title: s.title, startsAt: s.startsAt, durationMinutes: s.durationMinutes, meetingUrl: s.meetingUrl ?? '' })),
     materials: c.materials.map((m) => ({ id: String(m.id), title: m.title, type: m.typeCode, url: m.url ?? '' })),
+    enrollmentCounts:
+      c.activeEnrollmentCount === null || c.enrollmentCount === null
+        ? undefined
+        : { active: c.activeEnrollmentCount, total: c.enrollmentCount },
   };
 }
 

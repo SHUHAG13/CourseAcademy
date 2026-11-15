@@ -46,8 +46,9 @@ describe('PaymentService', () => {
   }
 
   async function startPayment(): Promise<string> {
-    const url = await payments.checkout(course, 'bkash');
-    return url.split('/').pop()!;
+    const next = await payments.checkout(course, 'bkash');
+    expect(next.isExternal).toBe(false);
+    return next.url.split('/').pop()!;
   }
 
   it('records a pending transaction with the price and masked test account', async () => {

@@ -968,6 +968,57 @@ namespace CourseAcademy.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Enrollment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("EnrollmentStatusId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int?>("PaymentTransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnrollmentStatusId");
+
+                    b.HasIndex("PaymentTransactionId");
+
+                    b.HasIndex("CourseId", "EnrollmentStatusId");
+
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("Enrollment", (string)null);
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.EnrollmentStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -1509,6 +1560,132 @@ namespace CourseAcademy.Api.Data.Migrations
                             IsDeleted = false,
                             Name = "Refunded",
                             SortOrder = 5
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CourseSlug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CourseTitle")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<int>("CurrencyId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("FulfilledAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("GatewayReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("MaskedAccount")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("OriginalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PaymentMethodId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PaymentStatusId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("TransactionNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("UserEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CurrencyId");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("PaymentStatusId");
+
+                    b.HasIndex("TransactionNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("Gateway", "GatewayReference")
+                        .HasFilter("[GatewayReference] IS NOT NULL");
+
+                    b.HasIndex("PaymentStatusId", "ExpiresAt");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("PaymentTransaction", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PaymentTransaction_Amounts", "[OriginalAmount] >= 0 AND [DiscountAmount] >= 0 AND [Amount] >= 0 AND [Amount] + [DiscountAmount] = [OriginalAmount]");
                         });
                 });
 
@@ -2822,6 +2999,40 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Enrollment", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.EnrollmentStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("EnrollmentStatusId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.PaymentTransaction", "PaymentTransaction")
+                        .WithMany()
+                        .HasForeignKey("PaymentTransactionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("PaymentTransaction");
+
+                    b.Navigation("Status");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.InstructorExpertise", b =>
                 {
                     b.HasOne("CourseAcademy.Api.Entities.Instructor", "Instructor")
@@ -2857,6 +3068,45 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("MaterialType");
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.PaymentTransaction", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Currency", "Currency")
+                        .WithMany()
+                        .HasForeignKey("CurrencyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.PaymentMethod", "Method")
+                        .WithMany()
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.PaymentStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("PaymentStatusId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Currency");
+
+                    b.Navigation("Method");
+
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Permission", b =>

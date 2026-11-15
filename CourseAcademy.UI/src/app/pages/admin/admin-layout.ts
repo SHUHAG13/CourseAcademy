@@ -27,7 +27,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <p>
             @if (apiMode) {
-              {{ 'Users, roles and courses are saved on the server. Enrollments, payments and progress are still demo data in this browser.' | t }}
+              {{ 'Users, roles, courses, enrollments and payments are saved on the server. Learning progress is still demo data in this browser.' | t }}
             } @else {
               {{ 'Frontend demo: this data lives only in this browser. It is not secure and is not shared with other devices or users.' | t }}
             }

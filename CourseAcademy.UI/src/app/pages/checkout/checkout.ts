@@ -6,6 +6,7 @@ import { PaymentService } from '../../core/payments/payment.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CourseService, discountPercent } from '../../core/services/course.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
+import { failureMessage } from '../../core/services/permission.service';
 import { ToastService } from '../../core/services/toast.service';
 import { CourseCover } from '../../shared/components/course-cover/course-cover';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
@@ -61,14 +62,20 @@ export class Checkout {
     this.submitting.set(true);
     try {
       if (course.price === 0) {
-        await this.enrollments.grant(user.id, course.id);
+        await this.enrollments.enrollFree(course);
         this.toast.success("You're enrolled in {0}.", [course.title]);
         await this.router.navigate(['/learn', course.slug]);
       } else {
-        await this.router.navigateByUrl(await this.payments.checkout(course, this.method()));
+        const next = await this.payments.checkout(course, this.method());
+        // A real provider's payment page is on another site; the demo page is part of this app.
+        if (next.isExternal) {
+          window.location.assign(next.url);
+        } else {
+          await this.router.navigateByUrl(next.url);
+        }
       }
-    } catch {
-      this.toast.error('We could not start the payment. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'We could not start the payment. Browser storage may be full or blocked.'));
     } finally {
       this.submitting.set(false);
     }

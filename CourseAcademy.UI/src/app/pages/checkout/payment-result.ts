@@ -1,3 +1,4 @@
+import { API_MODE } from '../../core/api/api-mode';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PaymentStatus, paymentMethod } from '../../core/payments/payment.model';
@@ -55,6 +56,7 @@ export class PaymentResult {
   private readonly payments = inject(PaymentService);
   protected readonly auth = inject(AuthService);
   protected readonly permissions = inject(PermissionService);
+  protected readonly apiMode = inject(API_MODE);
   private readonly enrollments = inject(EnrollmentService);
   private readonly toast = inject(ToastService);
 

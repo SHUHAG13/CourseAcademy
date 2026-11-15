@@ -2,6 +2,7 @@ using CourseAcademy.Api.Common.Middleware;
 using CourseAcademy.Api.Common.Options;
 using CourseAcademy.Api.Data;
 using CourseAcademy.Api.Data.Seed;
+using CourseAcademy.Api.Services.Payments;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,13 @@ public static class ApplicationBuilderExtensions
 {
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
+        // The demo gateway opens courses without payment, so it must never run outside development.
+        var gateway = app.Services.GetRequiredService<IPaymentGatewayResolver>().Active;
+        if (!gateway.AllowedInProduction && !app.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException($"Payment gateway \"{gateway.Name}\" may only be used in Development. Set Payments:Gateway to a real provider.");
+        }
+
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseSerilogRequestLogging();
 
@@ -80,6 +88,7 @@ public static class ApplicationBuilderExtensions
             }
             await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(CancellationToken.None);
             await scope.ServiceProvider.GetRequiredService<DemoCourseSeeder>().SeedAsync(CancellationToken.None);
+            await scope.ServiceProvider.GetRequiredService<DemoCommerceSeeder>().SeedAsync(CancellationToken.None);
         }
     }
 }

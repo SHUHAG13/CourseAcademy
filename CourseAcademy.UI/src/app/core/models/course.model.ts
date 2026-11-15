@@ -143,6 +143,8 @@ export interface Course {
   modules: CourseModule[];
   schedule: LiveSession[];
   materials: Material[];
+  /** API mode, for people who manage the course: its active and total enrollments. */
+  enrollmentCounts?: { active: number; total: number };
 }
 
 export interface Review {

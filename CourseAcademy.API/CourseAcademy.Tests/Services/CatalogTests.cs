@@ -4,6 +4,9 @@ using CourseAcademy.Api.Dtos;
 using CourseAcademy.Api.Entities;
 using CourseAcademy.Api.Repositories;
 using CourseAcademy.Api.Services;
+using CourseAcademy.Api.Services.Payments;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseAcademy.Tests.Services;
@@ -13,12 +16,15 @@ public class CatalogTests
 {
     private static readonly CancellationToken Ct = CancellationToken.None;
 
-    private sealed class Kit
+    internal sealed class Kit
     {
         public IdentityTestKit Identity { get; } = new();
         public CatalogService Catalog { get; }
         public CourseAdminService Admin { get; }
         public InstructorService Instructors { get; }
+        public EnrollmentService Enrollments { get; }
+        public PaymentService Payments { get; }
+        public PaymentGatewayResolver Gateways { get; }
         public int InstructorId { get; }
 
         public Kit()
@@ -27,13 +33,19 @@ public class CatalogTests
             var courses = new CourseRepository(db);
             var instructors = new InstructorRepository(db);
             var unitOfWork = new UnitOfWork(db);
-            Catalog = new CatalogService(courses, instructors, Identity.CurrentUser);
+            var enrollmentRepository = new EnrollmentRepository(db);
+            Catalog = new CatalogService(courses, instructors, enrollmentRepository, Identity.CurrentUser);
             Admin = new CourseAdminService(courses, instructors, new LookupRepository(db),
                 new Repository<CourseOutcome>(db), new Repository<CourseRequirement>(db), new Repository<LiveSession>(db),
                 new Repository<Material>(db), new Repository<CourseModule>(db), new Repository<Submodule>(db), new Repository<Section>(db),
                 new Repository<SectionVideo>(db), new Repository<SectionDocument>(db), new Repository<CourseGrant>(db),
-                unitOfWork, Identity.CurrentUser, Identity.Clock);
+                enrollmentRepository, unitOfWork, Identity.CurrentUser, Identity.Clock);
             Instructors = new InstructorService(instructors, new Repository<InstructorExpertise>(db), Identity.Users, unitOfWork, Identity.CurrentUser);
+            Enrollments = new EnrollmentService(enrollmentRepository, courses, unitOfWork, Identity.CurrentUser, Identity.Clock);
+            Gateways = new PaymentGatewayResolver([new DemoPaymentGateway()], Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }));
+            Payments = new PaymentService(new PaymentRepository(db), courses, enrollmentRepository, Enrollments, Identity.Users, new LookupRepository(db),
+                Gateways, unitOfWork, Identity.CurrentUser, Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }), Identity.Clock,
+                NullLogger<PaymentService>.Instance);
 
             var instructor = new Instructor { Name = "Tanvir Hasan", Title = "Editor", Bio = "Bio" };
             db.Instructors.Add(instructor);
@@ -55,10 +67,10 @@ public class CatalogTests
             ["Use manual mode", "  "], [], schedule ?? [], materials ?? []);
     }
 
-    private static SectionInput Section(string title, IReadOnlyList<VideoInput>? videos = null, IReadOnlyList<DocumentInput>? documents = null,
+    internal static SectionInput Section(string title, IReadOnlyList<VideoInput>? videos = null, IReadOnlyList<DocumentInput>? documents = null,
         IReadOnlyList<SectionInput>? topics = null) => new(null, title, videos ?? [], documents ?? [], topics ?? []);
 
-    private static CurriculumRequest TwoSections(VideoInput? video = null, DocumentInput? document = null) => new(
+    internal static CurriculumRequest TwoSections(VideoInput? video = null, DocumentInput? document = null) => new(
     [
         new ModuleInput(null, "Module", [new SubmoduleInput(null, "Submodule",
         [

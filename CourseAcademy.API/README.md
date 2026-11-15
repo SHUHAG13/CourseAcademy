@@ -61,6 +61,28 @@ Production: generate an idempotent script (`dotnet ef migrations script --idempo
 - Development seeds the frontend's demo catalogue from `Data/Seed/demo-courses.json` (exported from the frontend's `courses.data.ts`), keeping course ids 1–4, and links the two demo instructor accounts to their profiles with course grants.
 - Media columns: `ExternalUrl` (links) and `AssetId` (uploads, added with the media module).
 
+## Payments (Step 4)
+All payment rules (server-side price, one open payment per course, 30-minute expiry, access granted once, refunds) live in `Services/Payments/PaymentService.cs` and are the same for every provider. A provider is a plug-in implementing `IPaymentGateway`:
+
+| Member | What it does |
+|---|---|
+| `Name` | Stored with each payment and used in the callback URL `POST /api/v1/payments/callback/{Name}` |
+| `TransactionPrefix` | Start of the transaction numbers it creates, e.g. `SSL-20261115-K7Q2XM` |
+| `AllowedInProduction` | `false` only for the demo gateway |
+| `InitiateAsync` | Creates the provider's session and returns its hosted page URL |
+| `VerifyCallbackAsync` | Checks the callback's signature (and, ideally, re-queries the provider) and returns the result, or `null` if not genuine |
+| `QueryStatusAsync` | Asks the provider for a payment's status (used when the receipt is opened before the callback arrived) |
+
+### Adding a real gateway (for example SSLCOMMERZ)
+1. Create `Services/Payments/SslCommerzGateway.cs` implementing `IPaymentGateway`. Call the provider with a typed `HttpClient`.
+2. Put its settings (store id, secret, sandbox URL) in a new options section, with the secrets in user secrets or environment variables.
+3. Register it in `Common/ServiceCollectionExtensions.cs`: `services.AddSingleton<IPaymentGateway, SslCommerzGateway>();`
+4. Set `Payments:Gateway` to its `Name` (for example `sslcommerz`) and give the provider the callback URL `https://<api-host>/api/v1/payments/callback/sslcommerz`.
+
+No change to `PaymentService`, the controllers, the database or the Angular app is needed: the frontend already follows an external `redirectUrl`. `GatewayPluginTests` shows a made-up provider plugged in this way.
+
+The demo gateway (`Payments:Gateway = demo`) is for Development only; the API refuses to start with it in any other environment. A background job cancels pending payments after `Payments:PendingMinutes`.
+
 ### First run on a new machine
 The JWT signing key is a secret and is not in the repository. Set one once (any random string of 32+ characters):
 ```powershell

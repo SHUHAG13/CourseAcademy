@@ -1227,8 +1227,13 @@ const BN_INTERFACE: Record<string, string> = {
   'Please accept the terms to continue.': 'চালিয়ে যেতে শর্তাবলিতে সম্মতি দিন।',
   'Use at least 8 characters with a letter and a number.': 'অন্তত ৮ অক্ষর ব্যবহার করুন, যেখানে অক্ষর ও সংখ্যা দুটোই থাকবে।',
   'Coming soon': 'শীঘ্রই আসছে',
-  'Users, roles and courses are saved on the server. Enrollments, payments and progress are still demo data in this browser.':
-    'ইউজার, রোল ও কোর্স সার্ভারে সংরক্ষিত হয়। এনরোলমেন্ট, পেমেন্ট ও প্রগ্রেস এখনো এই ব্রাউজারের ডেমো ডেটা।',
+  'Paid through the test gateway. It is not a real receipt, and no money has moved.':
+    'টেস্ট গেটওয়ের মাধ্যমে পেমেন্ট। এটি আসল রসিদ নয়, কোনো টাকা লেনদেন হয়নি।',
+  'This course is not free. Please pay to enroll.': 'এই কোর্সটি ফ্রি নয়। ভর্তি হতে পেমেন্ট করুন।',
+  "You're already enrolled in this course.": 'আপনি এই কোর্সে আগে থেকেই ভর্তি আছেন।',
+  'We could not start the payment. Please try again in a moment.': 'পেমেন্ট শুরু করা যায়নি। একটু পরে আবার চেষ্টা করুন।',
+  'Users, roles, courses, enrollments and payments are saved on the server. Learning progress is still demo data in this browser.':
+    'ইউজার, রোল, কোর্স, এনরোলমেন্ট ও পেমেন্ট সার্ভারে সংরক্ষিত হয়। শেখার প্রগ্রেস এখনো এই ব্রাউজারের ডেমো ডেটা।',
   'Add a link for every new video.': 'প্রতিটি নতুন ভিডিওর জন্য একটি লিংক দিন।',
   'Every video needs a title.': 'প্রতিটি ভিডিওর একটি শিরোনাম দরকার।',
   'Every document needs a title.': 'প্রতিটি ডকুমেন্টের একটি শিরোনাম দরকার।',

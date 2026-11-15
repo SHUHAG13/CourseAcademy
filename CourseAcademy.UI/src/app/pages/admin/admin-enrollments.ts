@@ -87,8 +87,8 @@ export class AdminEnrollments {
         const user = this.auth.users().find((u) => u.id === enrollment.userId);
         return {
           enrollment,
-          student: user?.name ?? 'Deleted user',
-          email: user?.email ?? '',
+          student: user?.name ?? enrollment.studentName ?? 'Deleted user',
+          email: user?.email ?? enrollment.studentEmail ?? '',
           course: this.courses.byId(enrollment.courseId)?.title ?? 'Deleted course',
         };
       })

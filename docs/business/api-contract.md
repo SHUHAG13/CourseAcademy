@@ -157,29 +157,35 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
 | DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
 
-## 8. Checkout & payments
+## 8. Checkout & payments (built in backend Step 4)
+`TransactionDto` = `{ transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle, methodCode, maskedAccount, originalAmount, discountAmount, amount, currency, statusCode, failureReason, fulfilledAt, expiresAt, createdAt, updatedAt, allowedActions[] (admin only), canOpenCourse }`. Payments are addressed by their public `transactionNo`.
+
+Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query status). `Payments:Gateway` picks the one new payments use; the demo gateway is refused outside Development. All payment rules live in `PaymentService`, the same for every gateway.
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/payment-methods` | — | `{ code, name, description, logoUrl, icon }[]` | `Checkout`, `PaymentMethods` | — |
-| GET | `/checkout/{slug}` 🔒 checkout.view | — | `{ course:CourseCardDto, instructorName, originalPrice, discountAmount, amount, discountPercent, isFree:bool, alreadyEnrolled:bool }` | `Checkout` | BR-PAY-01,02 |
-| POST | `/checkout/{slug}/enroll-free` 🔒 checkout.view | — | `{ enrollmentId, courseSlug }` (201; 409 if price > 0 or already enrolled) | `Checkout` | BR-PAY-03 |
-| POST | `/payments` 🔒 checkout.view | `{ courseSlug, methodCode }` (amount computed by server) | `{ transactionNo, redirectUrl }` (201) | `Checkout` | BR-PAY-04,05 |
-| POST | `/payments/callback/{gateway}` (gateway → server, signature-verified, no JWT) | gateway payload | gateway-specific | real gateway | BR-PAY-06–08 |
-| GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (without `allowedActions`) + `{ canOpenCourse:bool }` | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18 |
-| GET | `/me/payments` | `page, pageSize` | page of `TransactionDto` (newest first) | `Dashboard` | BR-LRN-14 |
-| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | page of `TransactionDto` + `totals:{ collected, refunded, successful:int, unsuccessful:int }` + `courseOptions:{ id, title }[]` | `AdminTransactions` | BR-PAY-13,14 |
-| PATCH | `/admin/transactions/{id}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if transition not allowed) | `AdminTransactions` | BR-PAY-10,11 |
-| DELETE | `/admin/transactions/{id}` 🔒 transactions.delete | — | null (409 if status = success) | `AdminTransactions` | BR-PAY-12 |
-| POST | `/dev/payments/{transactionNo}/simulate` (development only) | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` | `DemoGateway` | BR-PAY-06,07 |
+| GET | `/payment-methods` | — | via `/lookups` (`paymentMethods`) | `Checkout`, `PaymentMethods` | — |
+| GET | `/payments/checkout/{slug}` 🔒 checkout.view | — | `{ course:CourseCardDto, originalPrice, discountAmount, amount, discountPercent, isFree, alreadyEnrolled, methods[] }` | (reference) | BR-PAY-01,02 |
+| POST | `/enrollments/free/{slug}` 🔒 checkout.view | — | `EnrollmentDto` (201; 409 if not free or already enrolled) | `Checkout` | BR-PAY-03 |
+| POST | `/payments` 🔒 checkout.view | `{ courseSlug, methodCode }` — no amount | `{ transactionNo, redirectUrl, isExternal }` (201; 409 free course / already enrolled) | `Checkout` | BR-PAY-04,05,19,22 |
+| POST | `/payments/callback/{gateway}` (anonymous; the gateway verifies signature + status) | provider payload (raw body, headers, query, form) | null (400 if not verified) | payment provider | BR-PAY-06–08,21 |
+| GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (expires an overdue pending payment; may ask the provider for its status) | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18,20 |
+| POST | `/payments/{transactionNo}/demo-outcome` 🔒 buyer, demo gateway only | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` (only a pending, unexpired payment changes) | `DemoGateway` | BR-PAY-06,07,21 |
+| GET | `/payments/mine` | — | `TransactionDto[]` (newest first) | `Dashboard` | BR-LRN-14 |
+| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions`, `AdminOverview` | BR-PAY-13,14 |
+| PATCH | `/admin/transactions/{transactionNo}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if not allowed) | `AdminTransactions` | BR-PAY-10,11 |
+| DELETE | `/admin/transactions/{transactionNo}` 🔒 transactions.delete | — | null (409 if status = success; soft delete) | `AdminTransactions` | BR-PAY-12 |
 
-`from`/`to` are the admin's local days; server converts Asia/Dhaka day bounds to UTC (BR-PAY-13).
+`from`/`to` are Bangladesh days; the server converts them to UTC (BR-PAY-13).
 
-## 9. Enrollments
+## 9. Enrollments (built in backend Step 4)
+`EnrollmentDto` = `{ id, userId, studentName, studentEmail, courseId, courseTitle, statusCode, enrolledAt, transactionNo }`. Course access (locked lessons, links) is worked out by the API from active enrollments (BR-ENR-03).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/me/enrollments` | — | `{ enrollmentId, statusCode, enrolledAt, course:CourseCardDto, progressPercent:int, completedCount:int, sessionCount:int }[]` (courses that still exist) | `Dashboard` | BR-ENR-10, BR-LRN-12 |
-| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `{ id, statusCode, enrolledAt, userId, studentName, email, courseId, courseTitle, transactionNo:string\|null }` (newest first) | `AdminEnrollments` | BR-ENR-09 |
-| PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `{ id, statusCode }` | `AdminEnrollments` | BR-ENR-05 |
+| GET | `/enrollments/mine` | — | `EnrollmentDto[]` (newest first, revoked included) | `Dashboard`, `EnrollmentService` | BR-ENR-10 |
+| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments`, `AdminOverview` | BR-ENR-09 |
+| PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `EnrollmentDto` | `AdminEnrollments` | BR-ENR-05 |
 
 ## 10. Learning & progress
 | Method | Endpoint | Request | Response `data` | Used by | Rules |

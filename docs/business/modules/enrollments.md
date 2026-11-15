@@ -31,6 +31,7 @@ Records which user has access to which course, links access to the payment that 
 - **BR-ENR-08** Enrollment counts: admin courses list and overview count only `active`; delete-course confirmation counts all.
 - **BR-ENR-09** Rows whose user or course was deleted show "Deleted user" / "Deleted course".
 - **BR-ENR-10** A revoked enrollment still appears on the student dashboard (tagged revoked), without "Continue learning".
+- **BR-ENR-11** (API) Enrollments are created only by the server: free enrollment, a verified payment, or an admin marking a payment as paid. The browser never grants access itself.
 
 ## 5. Workflows & Status Transitions
 | Transition | Triggered by |
@@ -51,13 +52,15 @@ Records which user has access to which course, links access to the payment that 
 - Dashboard active count = own enrollments (for existing courses) with status active.
 
 ## 8. Data Source
-| Current | Future endpoint |
+**Done in API mode (backend Step 4).** Demo mode keeps browser storage (`ca-enrollments`).
+| Current | Endpoint |
 |---|---|
-| `EnrollmentService.enrollments` (`ca-enrollments`) | `GET /api/admin/enrollments?search=&status=&page=&pageSize=` |
-| `EnrollmentService.mine` | `GET /api/me/enrollments` |
-| `EnrollmentService.setStatus` | `PATCH /api/admin/enrollments/{id}/status` |
-| `EnrollmentService.grant` | Server-side only (payment fulfilment, free enroll) |
-| `hasAccess` / `isEnrolled` | `GET /api/me/courses/{id}/access` or included in course/me payloads |
+| `EnrollmentService.mine` | `GET /api/v1/enrollments/mine` |
+| `EnrollmentService.enrollments` (admin) | `GET /api/v1/admin/enrollments` |
+| `EnrollmentService.setStatus` | `PATCH /api/v1/admin/enrollments/{id}/status` |
+| `EnrollmentService.enrollFree` | `POST /api/v1/enrollments/free/{slug}` |
+| `grant` / `revokeForTransaction` | server only (payment fulfilment, refund) |
+| enrollment counts on admin course list | `activeEnrollmentCount`, `enrollmentCount` in `GET /api/v1/courses/all` (managers only) |
 
 ## 9. Open Questions / Assumptions
 - Admin cannot manually create an enrollment (e.g. cash/offline payment via WhatsApp). Needed? The WhatsApp flow suggests offline payments exist.

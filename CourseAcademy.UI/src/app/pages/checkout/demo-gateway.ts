@@ -1,6 +1,7 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { DemoOutcome, DemoPaymentGateway } from '../../core/payments/demo-payment-gateway';
+import { DemoOutcome } from '../../core/payments/demo-payment-gateway';
+import { failureMessage } from '../../core/services/permission.service';
 import { paymentMethod } from '../../core/payments/payment.model';
 import { PaymentService } from '../../core/payments/payment.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -21,7 +22,6 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   styleUrl: './demo-gateway.scss',
 })
 export class DemoGateway {
-  private readonly gateway = inject(DemoPaymentGateway);
   private readonly payments = inject(PaymentService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -43,6 +43,11 @@ export class DemoGateway {
   });
 
   constructor() {
+    // Read the payment's current status: it may have timed out since it was started.
+    effect(() => {
+      const id = this.id();
+      untracked(() => void this.payments.confirm(id).catch(() => undefined));
+    });
     // Going back to this page after finishing shows the result, not a second payment.
     effect(() => {
       const t = this.transaction();
@@ -57,12 +62,11 @@ export class DemoGateway {
     this.processing.set(outcome);
     try {
       await new Promise((r) => setTimeout(r, outcome === 'cancelled' ? 300 : 1200));
-      await this.gateway.simulate(this.id(), outcome);
-      await this.payments.confirm(this.id());
+      await this.payments.completeDemoPayment(this.id(), outcome);
       await this.router.navigate(['/checkout/result', this.id()], { replaceUrl: true });
-    } catch {
+    } catch (error) {
       this.processing.set(null);
-      this.toast.error('The payment could not be recorded. Browser storage may be full or blocked.');
+      this.toast.error(failureMessage(error, 'The payment could not be recorded. Browser storage may be full or blocked.'));
     }
   }
 }

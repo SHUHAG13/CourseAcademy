@@ -44,10 +44,16 @@
           <a [routerLink]="permissions.homeUrl()" class="btn btn-outline btn-lg">{{ (permissions.hasAdminPanel() ? 'Admin dashboard' : 'My dashboard') | t }}</a>
         </div>
 
-        <p class="demo-footnote">
-          <i class="bi bi-info-circle" aria-hidden="true"></i>
-          {{ 'Demo record stored in this browser. It is not a real receipt, and no money has moved.' | t }}
-        </p>
+        @if (t.gateway === 'demo') {
+          <p class="demo-footnote">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            @if (apiMode) {
+              {{ 'Paid through the test gateway. It is not a real receipt, and no money has moved.' | t }}
+            } @else {
+              {{ 'Demo record stored in this browser. It is not a real receipt, and no money has moved.' | t }}
+            }
+          </p>
+        }
       </div>
     } @else {
       <app-empty-state icon="bi-receipt" title="Payment not found"

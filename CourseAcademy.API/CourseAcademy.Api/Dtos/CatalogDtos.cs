@@ -40,7 +40,10 @@ public sealed record CourseCardDto(
     decimal Price, decimal OriginalPrice, int DiscountPercent, decimal Rating, int RatingCount, int Students, int DurationHours,
     string Language, string CoverLabel, string CoverIcon, string? ImageUrl, string ContentUpdatedMonth, int SectionCount);
 
-/// <summary>A whole course. HasContentAccess tells whether the caller may open locked lessons and links.</summary>
+/// <summary>
+/// A whole course. HasContentAccess tells whether the caller may open locked lessons and links.
+/// The enrollment counts are only filled for people who manage the course.
+/// </summary>
 public sealed record CourseDetailDto(
     int Id, string Slug, string Title, string Subtitle, string Description, string CategoryCode, string FormatCode, string LevelCode,
     string? BadgeCode, bool IsPublished, bool IsFeatured, int InstructorId, string Language, int DurationHours,
@@ -48,7 +51,7 @@ public sealed record CourseDetailDto(
     decimal Rating, int RatingCount, int Students, string ContentUpdatedMonth, int SectionCount,
     IReadOnlyList<string> Outcomes, IReadOnlyList<string> Requirements,
     IReadOnlyList<ModuleDto> Modules, IReadOnlyList<LiveSessionDto> Schedule, IReadOnlyList<MaterialDto> Materials,
-    bool HasContentAccess);
+    bool HasContentAccess, int? ActiveEnrollmentCount = null, int? EnrollmentCount = null);
 
 public sealed class CourseSearchQuery : Common.PageQuery
 {

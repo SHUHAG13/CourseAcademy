@@ -25,15 +25,20 @@ public interface ICatalogService
     Task<IReadOnlyList<InstructorDto>> GetInstructorsAsync(CancellationToken ct);
 }
 
-public sealed class CatalogService(ICourseRepository courses, IInstructorRepository instructors, ICurrentUser currentUser) : ICatalogService
+public sealed class CatalogService(
+    ICourseRepository courses, IInstructorRepository instructors, IEnrollmentRepository enrollments, ICurrentUser currentUser) : ICatalogService
 {
     public async Task<IReadOnlyList<CourseDetailDto>> GetAllAsync(CancellationToken ct)
     {
         var access = await currentUser.TryGetAccessAsync(ct);
+        var enrolled = await EnrolledCoursesAsync(access, ct);
         var list = await courses.ListWithDetailsAsync(c => true, tracking: false, ct);
         var visible = list.Where(c => c.IsPublished || CanManage(access, c.Id)).ToList();
-        var sections = (await courses.ListSectionsAsync(visible.Select(c => c.Id).ToList(), tracking: false, ct)).ToLookup(s => s.CourseId);
-        return visible.Select(c => CourseMapper.ToDetail(c, sections[c.Id].ToList(), Viewer(access, c.Id))).ToList();
+        var ids = visible.Select(c => c.Id).ToList();
+        var sections = (await courses.ListSectionsAsync(ids, tracking: false, ct)).ToLookup(s => s.CourseId);
+        var counts = visible.Any(c => CanManage(access, c.Id)) ? await enrollments.CountByCourseAsync(ids, ct) : [];
+        return visible.Select(c => CourseMapper.ToDetail(c, sections[c.Id].ToList(), Viewer(access, enrolled, c.Id),
+            counts.TryGetValue(c.Id, out var n) ? n : (0, 0))).ToList();
     }
 
     public async Task<CourseDetailDto> GetBySlugAsync(string slug, CancellationToken ct)
@@ -43,7 +48,9 @@ public sealed class CatalogService(ICourseRepository courses, IInstructorReposit
         // An unpublished course looks like a missing one to everybody who may not manage it (BR-CAT-02).
         if (course is null || (!course.IsPublished && !CanManage(access, course.Id))) throw new NotFoundException("Course not found.");
         var sections = await courses.ListSectionsAsync([course.Id], tracking: false, ct);
-        return CourseMapper.ToDetail(course, sections, Viewer(access, course.Id));
+        var counts = await enrollments.CountByCourseAsync([course.Id], ct);
+        return CourseMapper.ToDetail(course, sections, Viewer(access, await EnrolledCoursesAsync(access, ct), course.Id),
+            counts.TryGetValue(course.Id, out var n) ? n : (0, 0));
     }
 
     public async Task<PagedResult<CourseCardDto>> SearchAsync(CourseSearchQuery q, CancellationToken ct)
@@ -103,12 +110,15 @@ public sealed class CatalogService(ICourseRepository courses, IInstructorReposit
 
     private static bool CanManage(UserAccess? access, int courseId) => access?.Can(PermissionCodes.CoursesView, courseId) == true;
 
-    /// <summary>Course access: managing the course. Enrolled students get access when enrollments move to the API.</summary>
-    private static CourseViewer Viewer(UserAccess? access, int courseId)
+    /// <summary>Course access (BR-ENR-03): an active enrollment, or managing the course.</summary>
+    private static CourseViewer Viewer(UserAccess? access, IReadOnlySet<int> enrolled, int courseId)
     {
         var manage = CanManage(access, courseId);
-        return new CourseViewer(manage, manage);
+        return new CourseViewer(manage, manage || enrolled.Contains(courseId));
     }
+
+    private async Task<IReadOnlySet<int>> EnrolledCoursesAsync(UserAccess? access, CancellationToken ct) =>
+        access is null ? new HashSet<int>() : await enrollments.ActiveCourseIdsAsync(access.UserId, ct);
 
     private static List<string> SplitCodes(string? csv) =>
         string.IsNullOrWhiteSpace(csv) ? [] : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();

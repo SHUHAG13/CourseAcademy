@@ -42,6 +42,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<LiveSession> LiveSessions => Set<LiveSession>();
     public DbSet<Material> Materials => Set<Material>();
 
+    public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

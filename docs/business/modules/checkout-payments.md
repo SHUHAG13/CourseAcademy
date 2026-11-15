@@ -60,13 +60,17 @@ Lets a signed-in user buy a course with bKash, Nagad, Rocket or card, records ea
 - **BR-PAY-09** Only the buyer can see the gateway page; buyer or `transactions.view` can see the receipt.
 - **BR-PAY-10** Admin status transitions allowed only: `pending → success`, `pending → cancelled`, `success → refunded`. Others rejected: "This change is not allowed for this transaction."
 - **BR-PAY-11** Admin marks `success` → fulfil (grant access once). Admin `refunded` → enrollment linked to this transaction set to `revoked`.
-- **BR-PAY-12** A `success` transaction cannot be deleted (refund first). Delete requires `transactions.delete`. *(Enforced in UI only — see Open Questions.)*
+- **BR-PAY-12** A `success` transaction cannot be deleted (refund first). Delete requires `transactions.delete`. (API) Enforced by the server too; deleted records are soft-deleted.
 - **BR-PAY-13** Transaction filter: date bounds inclusive, using the admin's local day (from 00:00:00 to 23:59:59.999); search matches id, userName, userEmail, courseTitle (contains, case-insensitive); result sorted newest first.
 - **BR-PAY-14** Admin course filter options = distinct courses appearing in transactions (includes deleted courses, by snapshot title).
 - **BR-PAY-15** Transactions keep a snapshot of user and course data so they survive course edits/deletion.
 - **BR-PAY-16** Card/wallet credentials are never collected or stored; only masked test account.
 - **BR-PAY-17** Admins buying a course see a note that the test payment is recorded under their account.
 - **BR-PAY-18** Receipt "Go to course" shows only if status = success and user still has course access.
+- **BR-PAY-19** One open payment per user and course: starting again with the same method continues the open payment; another method cancels it ("Replaced by a new payment.") and starts a new one.
+- **BR-PAY-20** A pending payment expires after 30 minutes (`Payments:PendingMinutes`): it becomes `cancelled` with "The payment time ran out." The API checks every minute and whenever the payment is read.
+- **BR-PAY-21** A success confirmed by a real provider after the payment expired is still accepted, because the buyer has paid. The demo page cannot change a payment that is no longer pending.
+- **BR-PAY-22** Payment gateways are plug-ins: each has a name (stored with the payment), a transaction-number prefix (`DEMO-YYYYMMDD-XXXXXX` for the demo) and its own callback URL `/payments/callback/{name}`. The demo gateway runs only in Development; the API refuses to start with it elsewhere.
 
 ## 5. Workflows & Status Transitions
 **Purchase (Student)**: Course detail → Enroll Now → (login) → Checkout → choose method → Pay → `pending` created → Gateway page → choose outcome → status set → confirm → Result page.
@@ -97,16 +101,17 @@ Transitions:
 - Admin totals (over the **filtered** list): collected = Σ amount where success; refunded = Σ amount where refunded; successful = count success; unsuccessful = count failed + cancelled.
 
 ## 8. Data Source
-| Current | Future endpoint |
+**Done in API mode (backend Step 4).** Demo mode keeps browser storage (`ca-transactions`) and the in-browser demo gateway.
+| Current | Endpoint |
 |---|---|
-| `PaymentService.checkout` → `DemoPaymentGateway.initiate` | `POST /api/payments` `{courseId, method}` → `{transactionId, redirectUrl}` |
-| `DemoPaymentGateway.simulate` | Replaced by real gateway hosted page + `POST /api/payments/callback/{gateway}` (IPN) |
-| `PaymentService.confirm` / gateway `transaction()` | `GET /api/payments/{id}` (verified status) |
-| `PaymentService.mine` | `GET /api/me/payments` |
-| `PaymentService.transactions` + `filterTransactions` | `GET /api/admin/transactions?search=&status=&method=&courseId=&from=&to=&page=&pageSize=` (+ totals) |
-| `PaymentService.setStatus` | `PATCH /api/admin/transactions/{id}/status` |
-| `PaymentService.remove` | `DELETE /api/admin/transactions/{id}` |
-| Free enroll `EnrollmentService.grant` | `POST /api/courses/{id}/enroll-free` |
+| `PaymentService.checkout` | `POST /api/v1/payments` → `{ transactionNo, redirectUrl, isExternal }` |
+| demo page outcome | `POST /api/v1/payments/{no}/demo-outcome` (Development only) |
+| real provider result | `POST /api/v1/payments/callback/{gateway}` (signed, server-to-server) |
+| `PaymentService.confirm` | `GET /api/v1/payments/{no}` |
+| `PaymentService.mine` | `GET /api/v1/payments/mine` |
+| `PaymentService.transactions` (admin) | `GET /api/v1/admin/transactions` |
+| `PaymentService.setStatus` / `remove` | `PATCH /api/v1/admin/transactions/{no}/status`, `DELETE /api/v1/admin/transactions/{no}` |
+| Free enroll | `POST /api/v1/enrollments/free/{slug}` |
 
 ## 9. Open Questions / Assumptions
 - `PaymentService.remove()` does not itself block deleting a `success` transaction (only the button is disabled). Backend must enforce BR-PAY-12.

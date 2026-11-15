@@ -46,8 +46,8 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 | Access Control | [access-control.md](modules/access-control.md) | `/admin/security/*`, `/admin/users` | Done (API) | Roles, screen access, user overrides, course grants — served by the API |
 | Course Catalog | [course-catalog.md](modules/course-catalog.md) | `/`, `/courses`, `/courses/:slug` | Done (API; reviews fake) | Browse, filter, detail, previews — served by the API |
 | Course Management | [course-management.md](modules/course-management.md) | `/admin/courses/**`, `/admin/instructors` | Done (API; uploads Step 6) | Course CRUD, curriculum, sessions, materials, instructors — served by the API |
-| Checkout & Payments | [checkout-payments.md](modules/checkout-payments.md) | `/payment`, `/checkout/**`, `/admin/transactions` | Partial (demo gateway) | Purchase flow, transactions, refunds |
-| Enrollments | [enrollments.md](modules/enrollments.md) | `/admin/enrollments` | Done | Access records, revoke/restore |
+| Checkout & Payments | [checkout-payments.md](modules/checkout-payments.md) | `/payment`, `/checkout/**`, `/admin/transactions` | Done (API; demo gateway, real ones plug in) | Purchase flow, transactions, refunds — served by the API |
+| Enrollments | [enrollments.md](modules/enrollments.md) | `/admin/enrollments` | Done (API) | Access records, revoke/restore — served by the API |
 | Learning & Progress | [learning-progress.md](modules/learning-progress.md) | `/dashboard`, `/learn/:slug` | Partial (Live progress missing) | Learning area, completion, dashboard |
 | Certification | [certification.md](modules/certification.md) | `/admin/courses/:id/certification`, `/admin/certificates`, `/verify[/:code]` | Done | Rules, exams, certificates, verify |
 | Community | [community.md](modules/community.md) | `/courses/:slug#community`, `/admin/community` | Done | Course discussions + moderation |

@@ -9,6 +9,7 @@ using CourseAcademy.Api.Data.Seed;
 using CourseAcademy.Api.Entities;
 using CourseAcademy.Api.Repositories;
 using CourseAcademy.Api.Services;
+using CourseAcademy.Api.Services.Payments;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -29,6 +30,7 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<CorsSettings>().Bind(configuration.GetSection(CorsSettings.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<DatabaseSettings>().Bind(configuration.GetSection(DatabaseSettings.SectionName));
+        services.AddOptions<PaymentSettings>().Bind(configuration.GetSection(PaymentSettings.SectionName)).ValidateDataAnnotations().ValidateOnStart();
 
         services.AddDatabase(configuration);
         services.AddApplicationServices();
@@ -120,6 +122,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<ICourseAdminService, CourseAdminService>();
         services.AddScoped<IInstructorService, InstructorService>();
+
+        services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<DemoCommerceSeeder>();
+        // Payment gateways: register each provider here; Payments:Gateway picks the one new payments use.
+        services.AddSingleton<IPaymentGateway, DemoPaymentGateway>();
+        services.AddSingleton<IPaymentGatewayResolver, PaymentGatewayResolver>();
+        services.AddHostedService<PendingPaymentExpiryService>();
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly(), includeInternalTypes: true);
     }

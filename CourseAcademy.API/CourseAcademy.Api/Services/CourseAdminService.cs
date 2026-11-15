@@ -33,6 +33,7 @@ public sealed class CourseAdminService(
     IRepository<SectionVideo> videos,
     IRepository<SectionDocument> documents,
     IRepository<CourseGrant> grants,
+    IEnrollmentRepository enrollments,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider clock) : ICourseAdminService
@@ -93,7 +94,9 @@ public sealed class CourseAdminService(
         await currentUser.EnsureCanAsync(PermissionCodes.CoursesDelete, courseId, ct);
         var course = await courses.GetByIdAsync(courseId, ct) ?? throw new NotFoundException("Course not found.");
         courses.Remove(course);
-        // Grants on a deleted course mean nothing (BR-ACL-14). Enrollments and communities follow when they move to the API.
+        // Its enrollments go with it (BR-CMS-13); payments stay as records. Communities follow when they move to the API.
+        foreach (var enrollment in await enrollments.ListForCourseAsync(courseId, ct)) enrollments.Remove(enrollment);
+        // Grants on a deleted course mean nothing (BR-ACL-14).
         foreach (var grant in await grants.ListAsync(g => g.CourseId == courseId, ct))
         {
             var tracked = await grants.GetByIdAsync(grant.Id, ct);
@@ -413,7 +416,9 @@ public sealed class CourseAdminService(
     {
         var course = (await courses.ListWithDetailsAsync(c => c.Id == courseId, tracking: false, ct)).Single();
         var sections = await courses.ListSectionsAsync([courseId], tracking: false, ct);
-        return CourseMapper.ToDetail(course, sections, new CourseViewer(CanManage: true, HasContentAccess: true));
+        var counts = await enrollments.CountByCourseAsync([courseId], ct);
+        return CourseMapper.ToDetail(course, sections, new CourseViewer(CanManage: true, HasContentAccess: true),
+            counts.TryGetValue(courseId, out var n) ? n : (0, 0));
     }
 }
 

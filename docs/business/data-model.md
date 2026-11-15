@@ -274,36 +274,38 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | SortOrder | int | NOT NULL | | |
 
 ## 7. Commerce & learning
-### Enrollment (+ std)
+### Enrollment (+ std) — built in backend Step 4
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
 | UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered | one per user+course (BR-ENR-01) |
-| CourseId | int | NOT NULL | FK Course | |
+| CourseId | int | NOT NULL | FK Course; index (CourseId, EnrollmentStatusId) | soft-deleted with the course (BR-CMS-13) |
 | EnrollmentStatusId | int | NOT NULL | FK EnrollmentStatus | |
-| EnrolledAt | datetime2(3) | NOT NULL | | |
-| PaymentTransactionId | int | NULL | FK PaymentTransaction | NULL for free courses |
+| EnrolledAt | datetime2(3) | NOT NULL | | reset on every re-grant |
+| PaymentTransactionId | int | NULL | FK PaymentTransaction; index | NULL for free courses; replaced on re-grant |
 
-### PaymentTransaction (+ std)
+### PaymentTransaction (+ std) — built in backend Step 4
 | Column | Type | Null | Default | Key / Constraint | Notes |
 |---|---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK | |
-| TransactionNo | nvarchar(32) | NOT NULL | | UQ filtered | public id (today `DEMO-YYYYMMDD-XXXXXX`) |
-| Gateway | nvarchar(50) | NOT NULL | | | `demo` today |
-| UserId | int | NOT NULL | | FK User | |
+| TransactionNo | nvarchar(40) | NOT NULL | | UQ filtered | public id `<GATEWAY PREFIX>-YYYYMMDD-XXXXXX`, e.g. `DEMO-20261115-K7Q2XM` (BR-PAY-22) |
+| Gateway | nvarchar(50) | NOT NULL | | index (Gateway, GatewayReference) | name of the gateway that handled it, e.g. `demo` |
+| GatewayReference | nvarchar(200) | NULL | | | the provider's own id, when it has one |
+| UserId | int | NOT NULL | | FK User; index (UserId, CreatedAt) | |
 | UserName | nvarchar(100) | NOT NULL | | | snapshot |
 | UserEmail | nvarchar(256) | NOT NULL | | | snapshot |
 | CourseId | int | NOT NULL | | FK Course | course row is only soft-deleted, so FK holds |
 | CourseSlug | nvarchar(200) | NOT NULL | | | snapshot |
 | CourseTitle | nvarchar(120) | NOT NULL | | | snapshot |
 | PaymentMethodId | int | NOT NULL | | FK PaymentMethod | |
-| MaskedAccount | nvarchar(50) | NOT NULL | | | never full card/wallet |
+| MaskedAccount | nvarchar(50) | NULL | | | from the gateway; never full card/wallet |
 | OriginalAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | |
-| DiscountAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | = Original − Amount |
-| Amount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | charged; computed by server (BR-PAY-05) |
+| DiscountAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0; Amount + Discount = Original | |
+| Amount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | charged; computed by server from the course (BR-PAY-05) |
 | CurrencyId | int | NOT NULL | | FK Currency | BDT |
-| PaymentStatusId | int | NOT NULL | | FK PaymentStatus | |
-| FailureReason | nvarchar(200) | NULL | | | |
+| PaymentStatusId | int | NOT NULL | | FK PaymentStatus; concurrency token | only the first of two simultaneous status changes is saved |
+| FailureReason | nvarchar(200) | NULL | | | gateway reason, or "The payment time ran out." |
+| ExpiresAt | datetime2(3) | NOT NULL | | index (PaymentStatusId, ExpiresAt) | created + Payments:PendingMinutes (30) (BR-PAY-20) |
 | FulfilledAt | datetime2(3) | NULL | | | access granted once (BR-PAY-08) |
 
 ### Progress (+ std)

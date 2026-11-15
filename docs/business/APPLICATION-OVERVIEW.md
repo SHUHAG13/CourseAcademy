@@ -75,8 +75,8 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 | 2 | Access Control | Done (server) | Admin decides which screens each user can open, using roles, a personal screen list per user, and per-course rights for instructors. The server checks every action. |
 | 3 | Course Catalog | Done (server; reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. |
 | 4 | Course Management | Done (server; file uploads come later) | Admin/instructor creates and edits courses, builds the curriculum, schedules live classes, adds materials, publishes, and manages instructor profiles. |
-| 5 | Checkout & Payments | Partial (demo gateway) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
-| 6 | Enrollments | Done | Records who has access to which course. Admin can revoke or restore access. |
+| 5 | Checkout & Payments | Done on the server (demo gateway; real gateways plug in later) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
+| 6 | Enrollments | Done (server) | Records who has access to which course. Admin can revoke or restore access. |
 | 7 | Learning & Progress | Partial (Live progress missing) | Enrolled students watch lessons, open documents, join live classes and mark sections complete. Dashboard shows courses, certificates, upcoming classes, payments. |
 | 8 | Certification | Done | Each course awards a certificate on completion or after an exam (project/presentation scored by instructor). Anyone can verify a certificate by code. |
 | 9 | Community | Done | Each course has a discussion board. Moderators can pin, lock, hide and delete. |
@@ -670,13 +670,17 @@ Lets a signed-in user buy a course with bKash, Nagad, Rocket or card, records ea
 - **BR-PAY-09** Only the buyer can see the gateway page; buyer or `transactions.view` can see the receipt.
 - **BR-PAY-10** Admin status transitions allowed only: `pending → success`, `pending → cancelled`, `success → refunded`. Others rejected: "This change is not allowed for this transaction."
 - **BR-PAY-11** Admin marks `success` → fulfil (grant access once). Admin `refunded` → enrollment linked to this transaction set to `revoked`.
-- **BR-PAY-12** A `success` transaction cannot be deleted (refund first). Delete requires `transactions.delete`. *(Enforced in UI only — see Open Questions.)*
+- **BR-PAY-12** A `success` transaction cannot be deleted (refund first). Delete requires `transactions.delete`. (API) Enforced by the server too; deleted records are soft-deleted.
 - **BR-PAY-13** Transaction filter: date bounds inclusive, using the admin's local day (from 00:00:00 to 23:59:59.999); search matches id, userName, userEmail, courseTitle (contains, case-insensitive); result sorted newest first.
 - **BR-PAY-14** Admin course filter options = distinct courses appearing in transactions (includes deleted courses, by snapshot title).
 - **BR-PAY-15** Transactions keep a snapshot of user and course data so they survive course edits/deletion.
 - **BR-PAY-16** Card/wallet credentials are never collected or stored; only masked test account.
 - **BR-PAY-17** Admins buying a course see a note that the test payment is recorded under their account.
 - **BR-PAY-18** Receipt "Go to course" shows only if status = success and user still has course access.
+- **BR-PAY-19** One open payment per user and course: starting again with the same method continues the open payment; another method cancels it ("Replaced by a new payment.") and starts a new one.
+- **BR-PAY-20** A pending payment expires after 30 minutes (`Payments:PendingMinutes`): it becomes `cancelled` with "The payment time ran out." The API checks every minute and whenever the payment is read.
+- **BR-PAY-21** A success confirmed by a real provider after the payment expired is still accepted, because the buyer has paid. The demo page cannot change a payment that is no longer pending.
+- **BR-PAY-22** Payment gateways are plug-ins: each has a name (stored with the payment), a transaction-number prefix (`DEMO-YYYYMMDD-XXXXXX` for the demo) and its own callback URL `/payments/callback/{name}`. The demo gateway runs only in Development; the API refuses to start with it elsewhere.
 
 ### 5. Workflows & Status Transitions
 **Purchase (Student)**: Course detail → Enroll Now → (login) → Checkout → choose method → Pay → `pending` created → Gateway page → choose outcome → status set → confirm → Result page.
@@ -760,6 +764,7 @@ Records which user has access to which course, links access to the payment that 
 - **BR-ENR-08** Enrollment counts: admin courses list and overview count only `active`; delete-course confirmation counts all.
 - **BR-ENR-09** Rows whose user or course was deleted show "Deleted user" / "Deleted course".
 - **BR-ENR-10** A revoked enrollment still appears on the student dashboard (tagged revoked), without "Continue learning".
+- **BR-ENR-11** (API) Enrollments are created only by the server: free enrollment, a verified payment, or an admin marking a payment as paid. The browser never grants access itself.
 
 ### 5. Workflows & Status Transitions
 | Transition | Triggered by |
@@ -1506,36 +1511,38 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | SortOrder | int | NOT NULL | | |
 
 ### 7. Commerce & learning
-#### Enrollment (+ std)
+#### Enrollment (+ std) — built in backend Step 4
 | Column | Type | Null | Key | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
 | UserId | int | NOT NULL | FK User; UQ (UserId, CourseId) filtered | one per user+course (BR-ENR-01) |
-| CourseId | int | NOT NULL | FK Course | |
+| CourseId | int | NOT NULL | FK Course; index (CourseId, EnrollmentStatusId) | soft-deleted with the course (BR-CMS-13) |
 | EnrollmentStatusId | int | NOT NULL | FK EnrollmentStatus | |
-| EnrolledAt | datetime2(3) | NOT NULL | | |
-| PaymentTransactionId | int | NULL | FK PaymentTransaction | NULL for free courses |
+| EnrolledAt | datetime2(3) | NOT NULL | | reset on every re-grant |
+| PaymentTransactionId | int | NULL | FK PaymentTransaction; index | NULL for free courses; replaced on re-grant |
 
-#### PaymentTransaction (+ std)
+#### PaymentTransaction (+ std) — built in backend Step 4
 | Column | Type | Null | Default | Key / Constraint | Notes |
 |---|---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK | |
-| TransactionNo | nvarchar(32) | NOT NULL | | UQ filtered | public id (today `DEMO-YYYYMMDD-XXXXXX`) |
-| Gateway | nvarchar(50) | NOT NULL | | | `demo` today |
-| UserId | int | NOT NULL | | FK User | |
+| TransactionNo | nvarchar(40) | NOT NULL | | UQ filtered | public id `<GATEWAY PREFIX>-YYYYMMDD-XXXXXX`, e.g. `DEMO-20261115-K7Q2XM` (BR-PAY-22) |
+| Gateway | nvarchar(50) | NOT NULL | | index (Gateway, GatewayReference) | name of the gateway that handled it, e.g. `demo` |
+| GatewayReference | nvarchar(200) | NULL | | | the provider's own id, when it has one |
+| UserId | int | NOT NULL | | FK User; index (UserId, CreatedAt) | |
 | UserName | nvarchar(100) | NOT NULL | | | snapshot |
 | UserEmail | nvarchar(256) | NOT NULL | | | snapshot |
 | CourseId | int | NOT NULL | | FK Course | course row is only soft-deleted, so FK holds |
 | CourseSlug | nvarchar(200) | NOT NULL | | | snapshot |
 | CourseTitle | nvarchar(120) | NOT NULL | | | snapshot |
 | PaymentMethodId | int | NOT NULL | | FK PaymentMethod | |
-| MaskedAccount | nvarchar(50) | NOT NULL | | | never full card/wallet |
+| MaskedAccount | nvarchar(50) | NULL | | | from the gateway; never full card/wallet |
 | OriginalAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | |
-| DiscountAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | = Original − Amount |
-| Amount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | charged; computed by server (BR-PAY-05) |
+| DiscountAmount | decimal(18,2) | NOT NULL | | CHECK ≥ 0; Amount + Discount = Original | |
+| Amount | decimal(18,2) | NOT NULL | | CHECK ≥ 0 | charged; computed by server from the course (BR-PAY-05) |
 | CurrencyId | int | NOT NULL | | FK Currency | BDT |
-| PaymentStatusId | int | NOT NULL | | FK PaymentStatus | |
-| FailureReason | nvarchar(200) | NULL | | | |
+| PaymentStatusId | int | NOT NULL | | FK PaymentStatus; concurrency token | only the first of two simultaneous status changes is saved |
+| FailureReason | nvarchar(200) | NULL | | | gateway reason, or "The payment time ran out." |
+| ExpiresAt | datetime2(3) | NOT NULL | | index (PaymentStatusId, ExpiresAt) | created + Payments:PendingMinutes (30) (BR-PAY-20) |
 | FulfilledAt | datetime2(3) | NULL | | | access granted once (BR-PAY-08) |
 
 #### Progress (+ std)
@@ -1890,29 +1897,35 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
 | DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
 
-### 8. Checkout & payments
+### 8. Checkout & payments (built in backend Step 4)
+`TransactionDto` = `{ transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle, methodCode, maskedAccount, originalAmount, discountAmount, amount, currency, statusCode, failureReason, fulfilledAt, expiresAt, createdAt, updatedAt, allowedActions[] (admin only), canOpenCourse }`. Payments are addressed by their public `transactionNo`.
+
+Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query status). `Payments:Gateway` picks the one new payments use; the demo gateway is refused outside Development. All payment rules live in `PaymentService`, the same for every gateway.
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/payment-methods` | — | `{ code, name, description, logoUrl, icon }[]` | `Checkout`, `PaymentMethods` | — |
-| GET | `/checkout/{slug}` 🔒 checkout.view | — | `{ course:CourseCardDto, instructorName, originalPrice, discountAmount, amount, discountPercent, isFree:bool, alreadyEnrolled:bool }` | `Checkout` | BR-PAY-01,02 |
-| POST | `/checkout/{slug}/enroll-free` 🔒 checkout.view | — | `{ enrollmentId, courseSlug }` (201; 409 if price > 0 or already enrolled) | `Checkout` | BR-PAY-03 |
-| POST | `/payments` 🔒 checkout.view | `{ courseSlug, methodCode }` (amount computed by server) | `{ transactionNo, redirectUrl }` (201) | `Checkout` | BR-PAY-04,05 |
-| POST | `/payments/callback/{gateway}` (gateway → server, signature-verified, no JWT) | gateway payload | gateway-specific | real gateway | BR-PAY-06–08 |
-| GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (without `allowedActions`) + `{ canOpenCourse:bool }` | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18 |
-| GET | `/me/payments` | `page, pageSize` | page of `TransactionDto` (newest first) | `Dashboard` | BR-LRN-14 |
-| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | page of `TransactionDto` + `totals:{ collected, refunded, successful:int, unsuccessful:int }` + `courseOptions:{ id, title }[]` | `AdminTransactions` | BR-PAY-13,14 |
-| PATCH | `/admin/transactions/{id}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if transition not allowed) | `AdminTransactions` | BR-PAY-10,11 |
-| DELETE | `/admin/transactions/{id}` 🔒 transactions.delete | — | null (409 if status = success) | `AdminTransactions` | BR-PAY-12 |
-| POST | `/dev/payments/{transactionNo}/simulate` (development only) | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` | `DemoGateway` | BR-PAY-06,07 |
+| GET | `/payment-methods` | — | via `/lookups` (`paymentMethods`) | `Checkout`, `PaymentMethods` | — |
+| GET | `/payments/checkout/{slug}` 🔒 checkout.view | — | `{ course:CourseCardDto, originalPrice, discountAmount, amount, discountPercent, isFree, alreadyEnrolled, methods[] }` | (reference) | BR-PAY-01,02 |
+| POST | `/enrollments/free/{slug}` 🔒 checkout.view | — | `EnrollmentDto` (201; 409 if not free or already enrolled) | `Checkout` | BR-PAY-03 |
+| POST | `/payments` 🔒 checkout.view | `{ courseSlug, methodCode }` — no amount | `{ transactionNo, redirectUrl, isExternal }` (201; 409 free course / already enrolled) | `Checkout` | BR-PAY-04,05,19,22 |
+| POST | `/payments/callback/{gateway}` (anonymous; the gateway verifies signature + status) | provider payload (raw body, headers, query, form) | null (400 if not verified) | payment provider | BR-PAY-06–08,21 |
+| GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (expires an overdue pending payment; may ask the provider for its status) | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18,20 |
+| POST | `/payments/{transactionNo}/demo-outcome` 🔒 buyer, demo gateway only | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` (only a pending, unexpired payment changes) | `DemoGateway` | BR-PAY-06,07,21 |
+| GET | `/payments/mine` | — | `TransactionDto[]` (newest first) | `Dashboard` | BR-LRN-14 |
+| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions`, `AdminOverview` | BR-PAY-13,14 |
+| PATCH | `/admin/transactions/{transactionNo}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if not allowed) | `AdminTransactions` | BR-PAY-10,11 |
+| DELETE | `/admin/transactions/{transactionNo}` 🔒 transactions.delete | — | null (409 if status = success; soft delete) | `AdminTransactions` | BR-PAY-12 |
 
-`from`/`to` are the admin's local days; server converts Asia/Dhaka day bounds to UTC (BR-PAY-13).
+`from`/`to` are Bangladesh days; the server converts them to UTC (BR-PAY-13).
 
-### 9. Enrollments
+### 9. Enrollments (built in backend Step 4)
+`EnrollmentDto` = `{ id, userId, studentName, studentEmail, courseId, courseTitle, statusCode, enrolledAt, transactionNo }`. Course access (locked lessons, links) is worked out by the API from active enrollments (BR-ENR-03).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/me/enrollments` | — | `{ enrollmentId, statusCode, enrolledAt, course:CourseCardDto, progressPercent:int, completedCount:int, sessionCount:int }[]` (courses that still exist) | `Dashboard` | BR-ENR-10, BR-LRN-12 |
-| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `{ id, statusCode, enrolledAt, userId, studentName, email, courseId, courseTitle, transactionNo:string\|null }` (newest first) | `AdminEnrollments` | BR-ENR-09 |
-| PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `{ id, statusCode }` | `AdminEnrollments` | BR-ENR-05 |
+| GET | `/enrollments/mine` | — | `EnrollmentDto[]` (newest first, revoked included) | `Dashboard`, `EnrollmentService` | BR-ENR-10 |
+| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments`, `AdminOverview` | BR-ENR-09 |
+| PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `EnrollmentDto` | `AdminEnrollments` | BR-ENR-05 |
 
 ### 10. Learning & progress
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -2088,10 +2101,10 @@ See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-ap
 ## C2. Likely bugs & inconsistencies (found in the frontend code)
 1. **Live courses can never be completed** — the learning page hides "Mark as complete" for Live format. Demo course 2 (Live, exam rule needing 100%) can never award a certificate. (BR-LRN-08, BR-CERT-06)
 2. **Revoked completion certificates come back** — the next section toggle or "Get my certificate" issues a new one, because a revoked certificate no longer counts. (BR-CERT-03, BR-CERT-04, BR-CERT-11)
-3. **Successful payments can be deleted** — only the button is disabled; `PaymentService.remove()` does not block it. Backend must enforce. (BR-PAY-12)
+3. ~~**Successful payments can be deleted**~~ — **fixed in backend Step 4** (the server refuses it). Original note: only the button is disabled; `PaymentService.remove()` does not block it. Backend must enforce. (BR-PAY-12)
 4. ~~**Publish toggle skips validation**~~ — **fixed in backend Step 3** (server checks on every publish). Original note: publishing from the course list does not check "needs sections / needs live sessions". (BR-CMS-04, BR-CMS-05, BR-CMS-12)
 5. **Course delete leaves data behind** — progress, certification rule, exam submissions and certificates are not removed. (BR-CMS-13)
 6. ~~**Non-preview video links are public**~~ — **fixed in backend Step 3** (the API sends no locked links). Original note: all video URLs are sent to every visitor in the course data. Backend must hide them from non-enrolled users. (BR-CAT-13)
 7. **Password rules disagree** — login checks min 6 characters, register requires min 8 + letter + digit. (BR-AUTH-01, BR-AUTH-07)
 8. **Exam input checks** — notes length is checked before trimming; review score may be a decimal while rule fields must be integers. (BR-CERT-08, BR-CERT-09)
-9. **Free enrollment** — `EnrollmentService.grant()` does not check `checkout.view`; only the route guard does. (BR-PAY-03, BR-ENR-04)
+9. ~~**Free enrollment**~~ — **fixed in backend Step 4** (the server checks `checkout.view` and the price). Original note: `EnrollmentService.grant()` does not check `checkout.view`; only the route guard does. (BR-PAY-03, BR-ENR-04)

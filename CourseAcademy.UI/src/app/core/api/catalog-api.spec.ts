@@ -27,6 +27,8 @@ const course: CourseDetailDto = {
   schedule: [{ id: 61, title: 'Class 1', startsAt: '2026-11-20T20:00', durationMinutes: 90, meetingUrl: null }],
   materials: [{ id: 71, title: 'Guide', typeCode: 'Link', url: null, hasMedia: true, isLocked: true }],
   hasContentAccess: false,
+  activeEnrollmentCount: null,
+  enrollmentCount: null,
 };
 
 describe('Catalogue API mapping', () => {
