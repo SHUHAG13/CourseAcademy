@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "additionalDirectories": [
-      "C:\\Users\\User\\Desktop\\Course Academy\\CourseAcademy.Backend\\CourseAcademy.Api\\Entities",
-      "C:\\Users\\User\\Desktop\\Course Academy\\CourseAcademy.Backend\\CourseAcademy.Api\\Data\\Configurations",
-      "C:\\Users\\User\\Desktop\\Course Academy\\CourseAcademy.Backend\\CourseAcademy.Api\\Data\\Seed"
-    ]
-  }
-}

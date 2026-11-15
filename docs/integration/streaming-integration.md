@@ -5,7 +5,7 @@ Status: **draft for review**. Items marked **(proposal)** need confirmation befo
 ## 1. Systems and responsibilities
 | System | Owns | Never does |
 |---|---|---|
-| **Main App** (ASP.NET Core API, `CourseAcademy.Backend`) | Users, permissions, courses, enrollments, payments. Decides **who** may upload, watch, download or delete. Stores only the Streaming `assetId` + cached status for each media item. | Store or proxy media bytes; transcode; expose Streaming URLs without an authorization check. |
+| **Main App** (ASP.NET Core API, `CourseAcademy.API`) | Users, permissions, courses, enrollments, payments. Decides **who** may upload, watch, download or delete. Stores only the Streaming `assetId` + cached status for each media item. | Store or proxy media bytes; transcode; expose Streaming URLs without an authorization check. |
 | **Streaming Service** (NestJS, separate) | Media bytes, temporary upload storage, transcoding (video → HLS), document storage, signed playback/download URLs, asset lifecycle. | Know about users, courses or enrollments; make business decisions. |
 | **Angular app** | UI. Calls **only** the Main App API. Exception: uploads file bytes directly to the temporary `uploadUrl` returned by the API. | Call Streaming internal APIs; hold Streaming credentials. |
 

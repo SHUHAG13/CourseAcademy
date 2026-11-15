@@ -1,15 +1,18 @@
 # Course Academy
 
-Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rocket/card), learning area, course communities, certificates, and an admin panel with role/permission management. Angular frontend with browser-storage demo data; the ASP.NET Core 10 backend is being built step by step in the sibling folder `../CourseAcademy.Backend` (see its README).
+Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rocket/card), learning area, course communities, certificates, and an admin panel with role/permission management. One repository with two projects:
+- `CourseAcademy.UI/` — Angular frontend (browser-storage demo data, moving to the API step by step)
+- `CourseAcademy.API/` — ASP.NET Core 10 Web API being built step by step (see `CourseAcademy.API/README.md`)
+- `docs/` — business and integration documentation for both
 
-## Stack
+## Stack (frontend; backend stack is in `CourseAcademy.API/README.md`)
 - Angular 22 (standalone components, signals, lazy routes), TypeScript 6
 - Bootstrap 5 + Bootstrap Icons, SCSS
 - jsPDF (certificate PDFs)
 - Vitest + jsdom (unit tests via `ng test`)
-- i18n: runtime Bangla/English (`src/app/core/i18n`)
+- i18n: runtime Bangla/English (`CourseAcademy.UI/src/app/core/i18n`)
 
-## Folder structure
+## Folder structure (frontend, inside `CourseAcademy.UI/`)
 - `src/app/app.routes.ts` — all routes and guards
 - `src/app/core/models` — domain interfaces/enums
 - `src/app/core/services` — business logic + permission checks
@@ -22,13 +25,15 @@ Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rock
 - `src/app/pages` — routed pages (incl. `pages/admin`)
 - `src/app/components` — home/marketing sections
 - `src/app/shared` — reusable components, pipes, form validators
-- `docs/business` — business documentation (see below)
+- `docs/business` (repository root) — business documentation (see below)
 
 ## Commands
+Run the frontend commands inside `CourseAcademy.UI/`, the backend commands inside `CourseAcademy.API/`.
 - `npm start` — dev server (`ng serve`)
 - `npm run build` — production build
 - `npm test` — unit tests (Vitest). Uses the `test` build configuration (production `environment.ts`, so demo mode); specs for API mode provide `API_MODE`/`API_BASE_URL` themselves.
-- `npm start` with `useApi: true` needs the API running: `dotnet run --project CourseAcademy.Api --launch-profile http` in `../CourseAcademy.Backend`.
+- `npm start` with `useApi: true` needs the API running: `dotnet run --project CourseAcademy.Api --launch-profile http` in `CourseAcademy.API/`.
+- `dotnet test` (in `CourseAcademy.API/`) — backend unit tests (xUnit).
 
 ## Task Workflow (MANDATORY)
 

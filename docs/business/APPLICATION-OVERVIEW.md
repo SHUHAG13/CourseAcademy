@@ -124,6 +124,7 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 | Enums / permissions | Lookup tables (incl. `Screen` and `Permission`) |
 | Text lengths | Standard defaults, see data-model §3 |
 | Auth | JWT access token + refresh token (`RefreshToken` table) |
+| Backend code | `CourseAcademy.API/` in this repository: one ASP.NET Core 10 Web API project, Controller → Service → Repository, EF Core code-first |
 | API | `/api/v1`, wrapper `{success, data, message, errors}`, lists `data = {items,total,page,pageSize}` |
 
 ## B1. Accounts & Authentication
