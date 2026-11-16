@@ -115,9 +115,20 @@
       <div class="row-line item" [formGroup]="v">
         <input class="form-control form-control-sm" formControlName="title" [placeholder]="'Video title' | t"
           [attr.aria-label]="'Video {0} title' | t: [n + 1]" [class.is-invalid]="invalid(v.get('title'))" />
-        <input class="form-control form-control-sm url" formControlName="url" type="url"
-          [placeholder]="'YouTube, Vimeo or .mp4 link' | t" [attr.aria-label]="'Video {0} link' | t: [n + 1]"
-          [class.is-invalid]="invalid(v.get('url'))" />
+        @if (apiMode) {
+          <div class="file-cell">
+            @if (v.get('url')!.value && !v.get('mediaId')!.value) {
+              <span class="file-state text-truncate" [title]="v.get('url')!.value">
+                <i class="bi bi-link-45deg" aria-hidden="true"></i> {{ v.get('url')!.value }}
+              </span>
+            }
+            <ng-container *ngTemplateOutlet="fileCell; context: { $implicit: v, kind: 'video', label: 'Video {0} file', n: n }" />
+          </div>
+        } @else {
+          <input class="form-control form-control-sm url" formControlName="url" type="url"
+            [placeholder]="'YouTube, Vimeo or .mp4 link' | t" [attr.aria-label]="'Video {0} link' | t: [n + 1]"
+            [class.is-invalid]="invalid(v.get('url'))" />
+        }
         <input type="number" min="1" class="form-control form-control-sm minutes" formControlName="minutes"
           [attr.aria-label]="'Video {0} minutes' | t: [n + 1]" [class.is-invalid]="invalid(v.get('minutes'))" />
         <span class="unit">{{ 'min' | t }}</span>
@@ -129,6 +140,9 @@
           <button type="button" class="icon-btn" [disabled]="last" (click)="move(videosOf(sec), n, 1)" [attr.aria-label]="'Move video down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
           <button type="button" class="icon-btn danger" (click)="removeVideo(sec, n)" [attr.aria-label]="'Delete video' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
         </span>
+        @if (v.hasError('needsFile') && (v.touched || v.dirty)) {
+          <div class="field-error w-100">{{ 'Upload the video file.' | t }}</div>
+        }
       </div>
     } @empty {
       <p class="small text-muted mb-1">{{ 'No videos yet.' | t }}</p>
@@ -147,9 +161,16 @@
             <option [value]="type">{{ type }}</option>
           }
         </select>
-        <input class="form-control form-control-sm url" formControlName="url" type="url"
-          [placeholder]="'Link ending in .pdf, .docx or .pptx' | t" [attr.aria-label]="'Document {0} link' | t: [n + 1]"
-          [class.is-invalid]="invalid(d.get('url')) || (d.hasError('extension') && (d.touched || d.dirty))" />
+        @if (!d.get('mediaId')!.value) {
+          <input class="form-control form-control-sm url" formControlName="url" type="url"
+            [placeholder]="'Link ending in .pdf, .docx or .pptx' | t" [attr.aria-label]="'Document {0} link' | t: [n + 1]"
+            [class.is-invalid]="invalid(d.get('url')) || (d.hasError('extension') && (d.touched || d.dirty))" />
+        }
+        @if (apiMode) {
+          <div class="file-cell">
+            <ng-container *ngTemplateOutlet="fileCell; context: { $implicit: d, kind: 'document', label: 'Document {0} file', n: n }" />
+          </div>
+        }
         <select class="form-select form-select-sm video" formControlName="videoId" [attr.aria-label]="'Document {0} is shown under' | t: [n + 1]">
           <option value="">{{ 'Whole section' | t }}</option>
           @for (v of videosOf(sec).controls; track v; let m = $index) {
@@ -159,10 +180,12 @@
         <span class="row-actions">
           <button type="button" class="icon-btn" [disabled]="first" (click)="move(documentsOf(sec), n, -1)" [attr.aria-label]="'Move document up' | t"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
           <button type="button" class="icon-btn" [disabled]="last" (click)="move(documentsOf(sec), n, 1)" [attr.aria-label]="'Move document down' | t"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
-          <button type="button" class="icon-btn danger" (click)="removeAt(documentsOf(sec), n)" [attr.aria-label]="'Delete document' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+          <button type="button" class="icon-btn danger" (click)="removeDocument(sec, n)" [attr.aria-label]="'Delete document' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
         </span>
         @if (d.hasError('extension') && (d.touched || d.dirty)) {
-          <div class="field-error w-100">{{ 'The link must end in .pdf, .docx or .pptx to match the type.' | t }}</div>
+          <div class="field-error w-100">
+            {{ (d.get('mediaId')!.value ? 'The file must be a .pdf, .docx or .pptx that matches the type.' : 'The link must end in .pdf, .docx or .pptx to match the type.') | t }}
+          </div>
         }
       </div>
     } @empty {
@@ -189,4 +212,31 @@
       <p class="small text-muted mb-0">{{ 'Topics can be nested at most 3 levels deep.' | t }}</p>
     }
   </div>
+</ng-template>
+
+<!-- API mode: the uploaded file of a video or document row, with upload progress and processing status. -->
+<ng-template #fileCell let-row let-kind="kind" let-label="label" let-n="n">
+  @if (uploading()[row.get('id')!.value] !== undefined) {
+    <span class="file-state" role="status">
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+      {{ 'Uploading {0}%' | t: [uploading()[row.get('id')!.value]] }}
+    </span>
+  } @else {
+    @if (row.get('media')!.value; as file) {
+      <span class="file-state" [class.failed]="file.status === 'failed'" [class.ready]="file.status === 'ready'">
+        <i class="bi" [class]="file.status === 'ready' ? 'bi-check-circle-fill' : file.status === 'failed' ? 'bi-exclamation-triangle-fill' : 'bi-hourglass-split'"
+          aria-hidden="true"></i>
+        <span class="text-truncate" [title]="file.fileName">{{ file.fileName }}</span>
+        <span>· {{ fileStatusLabel(file) | t }}</span>
+      </span>
+    }
+    <label class="btn btn-sm btn-outline upload-btn">
+      <i class="bi bi-upload" aria-hidden="true"></i> {{ (row.get('media')!.value ? 'Replace file' : 'Upload file') | t }}
+      <input type="file" class="visually-hidden" [accept]="acceptFor(kind)" (change)="uploadFile(row, kind, $event)"
+        [attr.aria-label]="label | t: [n + 1]" />
+    </label>
+    @if (kind === 'document' && row.get('mediaId')!.value) {
+      <button type="button" class="btn btn-sm btn-link px-1" (click)="clearFile(row)">{{ 'Remove file' | t }}</button>
+    }
+  }
 </ng-template>

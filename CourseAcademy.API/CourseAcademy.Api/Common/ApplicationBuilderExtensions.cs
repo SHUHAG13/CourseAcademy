@@ -2,6 +2,7 @@ using CourseAcademy.Api.Common.Middleware;
 using CourseAcademy.Api.Common.Options;
 using CourseAcademy.Api.Data;
 using CourseAcademy.Api.Data.Seed;
+using CourseAcademy.Api.Services.Media;
 using CourseAcademy.Api.Services.Payments;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.WebUtilities;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Events;
 
 namespace CourseAcademy.Api.Common;
 
@@ -24,9 +26,18 @@ public static class ApplicationBuilderExtensions
         {
             throw new InvalidOperationException($"Payment gateway \"{gateway.Name}\" may only be used in Development. Set Payments:Gateway to a real provider.");
         }
+        // The fake streaming service keeps files on this machine and is not secured for real use.
+        if (app.Services.GetRequiredService<IOptions<StreamingSettings>>().Value.IsFake && !app.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException("Streaming:Mode Fake may only be used in Development. Set Streaming:Mode to Http and configure the Streaming service.");
+        }
 
         app.UseMiddleware<ExceptionHandlingMiddleware>();
-        app.UseSerilogRequestLogging();
+        // Requests the client cancelled (e.g. by leaving the page) are not errors.
+        app.UseSerilogRequestLogging(options => options.GetLevel = (context, _, exception) =>
+            context.RequestAborted.IsCancellationRequested ? LogEventLevel.Debug
+            : exception is not null || context.Response.StatusCode >= StatusCodes.Status500InternalServerError ? LogEventLevel.Error
+            : LogEventLevel.Information);
 
         // Empty error responses (unknown route, wrong method) get the standard envelope too.
         app.UseStatusCodePages(async context =>

@@ -19,13 +19,13 @@ const course: CourseDetailDto = {
   rating: 4.8, ratingCount: 10, students: 100, contentUpdatedMonth: '2026-10', sectionCount: 2, outcomes: ['A'], requirements: [],
   modules: [{ id: 11, title: 'M', submodules: [{ id: 21, title: 'S', sections: [
     { id: 31, title: 'One', depth: 0, topics: [],
-      videos: [{ id: 41, title: 'Free', minutes: 5, isPreview: true, sourceType: 'external', url: 'https://youtu.be/x', hasMedia: true, isLocked: false },
-               { id: 42, title: 'Paid', minutes: 5, isPreview: false, sourceType: 'external', url: null, hasMedia: true, isLocked: true }],
-      documents: [{ id: 51, title: 'Notes', typeCode: 'PDF', videoId: 41, url: 'https://f.example.com/n.pdf', hasMedia: true, isLocked: false }] },
+      videos: [{ id: 41, title: 'Free', minutes: 5, isPreview: true, sourceType: 'external', url: 'https://youtu.be/x', hasMedia: true, isLocked: false, media: null },
+               { id: 42, title: 'Paid', minutes: 5, isPreview: false, sourceType: 'external', url: null, hasMedia: true, isLocked: true, media: null }],
+      documents: [{ id: 51, title: 'Notes', typeCode: 'PDF', videoId: 41, sourceType: 'external', url: 'https://f.example.com/n.pdf', hasMedia: true, isLocked: false, media: null }] },
     { id: 32, title: 'Two', depth: 0, topics: [], videos: [], documents: [] },
   ] }] }],
   schedule: [{ id: 61, title: 'Class 1', startsAt: '2026-11-20T20:00', durationMinutes: 90, meetingUrl: null }],
-  materials: [{ id: 71, title: 'Guide', typeCode: 'Link', url: null, hasMedia: true, isLocked: true }],
+  materials: [{ id: 71, title: 'Guide', typeCode: 'Link', sourceType: 'external', url: null, hasMedia: true, isLocked: true, media: null }],
   hasContentAccess: false,
   activeEnrollmentCount: null,
   enrollmentCount: null,
@@ -48,8 +48,14 @@ describe('Catalogue API mapping', () => {
   it('sends stored ids as numbers and new rows with temporary keys', () => {
     const modules: CourseModule[] = [{ id: '11', title: 'M', submodules: [{ id: 'submodule-new', title: 'S', sections: [
       { id: '31', title: 'One', topics: [],
-        videos: [{ id: '41', title: 'Free', url: '', minutes: 5, preview: true }, { id: 'video-new', title: 'New', url: 'https://youtu.be/y', minutes: 3, preview: false }],
-        documents: [{ id: 'document-new', title: 'Sheet', type: 'PDF', url: '', videoId: 'video-new' }, { id: '51', title: 'Notes', type: 'PDF', url: 'https://f.example.com/n.pdf', videoId: '41' }] },
+        videos: [
+          { id: '41', title: 'Free', url: 'https://youtu.be/x', minutes: 5, preview: true },
+          { id: 'video-new', title: 'New', url: '', minutes: 3, preview: false, mediaId: 7 },
+        ],
+        documents: [
+          { id: 'document-new', title: 'Sheet', type: 'PDF', url: '', videoId: 'video-new', mediaId: 8 },
+          { id: '51', title: 'Notes', type: 'PDF', url: 'https://f.example.com/n.pdf', videoId: '41' },
+        ] },
     ] }] }];
 
     const body = toCurriculum(modules) as unknown as { modules: any[] };
@@ -58,12 +64,33 @@ describe('Catalogue API mapping', () => {
 
     expect(body.modules[0].id).toBe(11);
     expect(submodule.id).toBeNull();
+    // An older video sends its unchanged link; a new one its uploaded file.
     expect(section.videos).toEqual([
-      { id: 41, tempKey: null, title: 'Free', url: null, minutes: 5, isPreview: true },
-      { id: null, tempKey: 'video-new', title: 'New', url: 'https://youtu.be/y', minutes: 3, isPreview: false },
+      { id: 41, tempKey: null, title: 'Free', url: 'https://youtu.be/x', minutes: 5, isPreview: true, mediaAssetId: null },
+      { id: null, tempKey: 'video-new', title: 'New', url: null, minutes: 3, isPreview: false, mediaAssetId: 7 },
     ]);
-    expect(section.documents[0]).toEqual({ id: null, title: 'Sheet', typeCode: 'PDF', url: null, videoId: null, videoTempKey: 'video-new' });
+    expect(section.documents[0]).toEqual({
+      id: null, title: 'Sheet', typeCode: 'PDF', url: null, videoId: null, videoTempKey: 'video-new', mediaAssetId: 8,
+    });
     expect(section.documents[1].videoId).toBe(41);
+    expect(section.documents[1].mediaAssetId).toBeNull();
+  });
+
+  it('reads uploads: managers get the file details, everyone gets the source', () => {
+    const mapped = fromCourseDto({
+      ...course,
+      modules: [{ id: 11, title: 'M', submodules: [{ id: 21, title: 'S', sections: [{ id: 31, title: 'One', depth: 0, topics: [], documents: [],
+        videos: [{
+          id: 41, title: 'Upload', minutes: 5, isPreview: false, sourceType: 'upload', url: null, hasMedia: true, isLocked: false,
+          media: { id: 7, courseId: 1, kindCode: 'video', statusCode: 'processing', fileName: 'intro.mp4', mimeType: 'video/mp4',
+            sizeBytes: 1000, durationSeconds: null, errorMessage: null },
+        }] }] }] }],
+    });
+    const video = mapped.modules[0].submodules[0].sections[0].videos[0];
+
+    expect(video.source).toBe('upload');
+    expect(video.mediaId).toBe(7);
+    expect(video.media).toEqual({ id: 7, status: 'processing', fileName: 'intro.mp4', sizeBytes: 1000, durationSeconds: undefined, errorMessage: undefined });
   });
 });
 

@@ -161,9 +161,9 @@ public sealed class SectionVideoConfiguration : IEntityTypeConfiguration<Section
         builder.ConfigureBase();
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ExternalUrl).HasMaxLength(2048);
-        builder.Property(e => e.AssetId).HasMaxLength(100);
+        builder.HasOne(e => e.Asset).WithMany().HasForeignKey(e => e.MediaAssetId).OnDelete(DeleteBehavior.NoAction);
         builder.HasIndex(e => new { e.SectionId, e.SortOrder });
-        builder.HasIndex(e => e.AssetId).HasFilter("[AssetId] IS NOT NULL");
+        builder.HasIndex(e => e.MediaAssetId).HasFilter("[MediaAssetId] IS NOT NULL");
         builder.ToTable(t => t.HasCheckConstraint("CK_SectionVideo_Minutes", "[Minutes] >= 1"));
     }
 }
@@ -175,11 +175,11 @@ public sealed class SectionDocumentConfiguration : IEntityTypeConfiguration<Sect
         builder.ConfigureBase();
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ExternalUrl).HasMaxLength(2048);
-        builder.Property(e => e.AssetId).HasMaxLength(100);
+        builder.HasOne(e => e.Asset).WithMany().HasForeignKey(e => e.MediaAssetId).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(e => e.DocumentType).WithMany().HasForeignKey(e => e.DocumentTypeId).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(e => e.Video).WithMany().HasForeignKey(e => e.SectionVideoId).OnDelete(DeleteBehavior.NoAction);
         builder.HasIndex(e => new { e.SectionId, e.SortOrder });
-        builder.HasIndex(e => e.AssetId).HasFilter("[AssetId] IS NOT NULL");
+        builder.HasIndex(e => e.MediaAssetId).HasFilter("[MediaAssetId] IS NOT NULL");
     }
 }
 
@@ -202,9 +202,9 @@ public sealed class MaterialConfiguration : IEntityTypeConfiguration<Material>
         builder.ConfigureBase();
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.ExternalUrl).HasMaxLength(2048);
-        builder.Property(e => e.AssetId).HasMaxLength(100);
+        builder.HasOne(e => e.Asset).WithMany().HasForeignKey(e => e.MediaAssetId).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(e => e.MaterialType).WithMany().HasForeignKey(e => e.MaterialTypeId).OnDelete(DeleteBehavior.NoAction);
         builder.HasIndex(e => new { e.CourseId, e.SortOrder });
-        builder.HasIndex(e => e.AssetId).HasFilter("[AssetId] IS NOT NULL");
+        builder.HasIndex(e => e.MediaAssetId).HasFilter("[MediaAssetId] IS NOT NULL");
     }
 }

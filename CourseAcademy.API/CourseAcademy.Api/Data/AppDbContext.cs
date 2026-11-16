@@ -45,6 +45,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
+    public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
+
+    public DbSet<MediaKind> MediaKinds => Set<MediaKind>();
+    public DbSet<MediaAssetStatus> MediaAssetStatuses => Set<MediaAssetStatus>();
+    public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+    public DbSet<StreamingWebhookEvent> StreamingWebhookEvents => Set<StreamingWebhookEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

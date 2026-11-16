@@ -13,13 +13,13 @@ public static class MediaSources
 }
 
 /// <summary>
-/// Url is null when the caller may not open it (IsLocked) or when the media is an upload, which is played
-/// through the media endpoints. HasMedia is false when no link or file has been added yet; such items are
-/// only returned to people who manage the course.
+/// Url is null when the caller may not open it (IsLocked) or when the media is an upload (SourceType "upload"),
+/// which is opened through the media endpoints. HasMedia is false when no link or ready file is there yet; such
+/// items are only returned to people who manage the course, who also get the upload's details in Media.
 /// </summary>
-public sealed record VideoDto(int Id, string Title, int Minutes, bool IsPreview, string? SourceType, string? Url, bool HasMedia, bool IsLocked);
+public sealed record VideoDto(int Id, string Title, int Minutes, bool IsPreview, string? SourceType, string? Url, bool HasMedia, bool IsLocked, MediaAssetDto? Media = null);
 
-public sealed record DocumentDto(int Id, string Title, string TypeCode, int? VideoId, string? Url, bool HasMedia, bool IsLocked);
+public sealed record DocumentDto(int Id, string Title, string TypeCode, int? VideoId, string? SourceType, string? Url, bool HasMedia, bool IsLocked, MediaAssetDto? Media = null);
 
 public sealed record SectionDto(
     int Id, string Title, int Depth, IReadOnlyList<VideoDto> Videos, IReadOnlyList<DocumentDto> Documents, IReadOnlyList<SectionDto> Topics);
@@ -31,7 +31,7 @@ public sealed record ModuleDto(int Id, string Title, IReadOnlyList<SubmoduleDto>
 /// <summary>StartsAt is Bangladesh local time, "YYYY-MM-DDTHH:mm". MeetingUrl is null without course access.</summary>
 public sealed record LiveSessionDto(int Id, string Title, string StartsAt, int DurationMinutes, string? MeetingUrl);
 
-public sealed record MaterialDto(int Id, string Title, string TypeCode, string? Url, bool HasMedia, bool IsLocked);
+public sealed record MaterialDto(int Id, string Title, string TypeCode, string? SourceType, string? Url, bool HasMedia, bool IsLocked, MediaAssetDto? Media = null);
 
 /// <summary>A course as a catalogue card.</summary>
 public sealed record CourseCardDto(
@@ -73,8 +73,11 @@ public sealed class CourseSearchQuery : Common.PageQuery
 /// <summary>StartsAt is Bangladesh local time, "YYYY-MM-DDTHH:mm". Rows without Id are created.</summary>
 public sealed record LiveSessionInput(int? Id, string Title, string StartsAt, int DurationMinutes, string MeetingUrl);
 
-/// <summary>Url is required for Link materials; for files it is a temporary link until uploads exist.</summary>
-public sealed record MaterialInput(int? Id, string Title, string TypeCode, string? Url);
+/// <summary>
+/// Link materials need Url. File materials hold an uploaded document (MediaAssetId of this course), an older link,
+/// or nothing yet. The request is the full state: what it leaves out is cleared.
+/// </summary>
+public sealed record MaterialInput(int? Id, string Title, string TypeCode, string? Url, int? MediaAssetId = null);
 
 /// <summary>Course details. Lists replace the stored lists; their order is the display order.</summary>
 public sealed record CourseUpsertRequest(
@@ -88,12 +91,16 @@ public sealed record SetPublishedRequest(bool IsPublished);
 
 /// <summary>
 /// Id: an existing video of this course, or null for a new one. TempKey lets a new document point to a new video.
-/// Url: a link (required for new videos until uploads exist); null keeps the stored media.
+/// MediaAssetId: an uploaded video of this course; required for new videos, and replaces the media of an existing one.
+/// Url: only the existing link of an older video (links can no longer be added or changed). Both null keep the stored media.
 /// </summary>
-public sealed record VideoInput(int? Id, string? TempKey, string Title, string? Url, int Minutes, bool IsPreview);
+public sealed record VideoInput(int? Id, string? TempKey, string Title, string? Url, int Minutes, bool IsPreview, int? MediaAssetId = null);
 
-/// <summary>VideoId or VideoTempKey attach the document to a video of the same section; both null = whole section.</summary>
-public sealed record DocumentInput(int? Id, string Title, string TypeCode, string? Url, int? VideoId, string? VideoTempKey);
+/// <summary>
+/// VideoId or VideoTempKey attach the document to a video of the same section; both null = whole section.
+/// The file is an upload (MediaAssetId), a link (Url) or nothing yet; the request is the full state.
+/// </summary>
+public sealed record DocumentInput(int? Id, string Title, string TypeCode, string? Url, int? VideoId, string? VideoTempKey, int? MediaAssetId = null);
 
 public sealed record SectionInput(int? Id, string Title, IReadOnlyList<VideoInput>? Videos, IReadOnlyList<DocumentInput>? Documents, IReadOnlyList<SectionInput>? Topics);
 

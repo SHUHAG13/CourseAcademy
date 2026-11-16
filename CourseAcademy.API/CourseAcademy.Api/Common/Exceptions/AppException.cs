@@ -28,3 +28,7 @@ public sealed class NotFoundException(string message = "The requested item was n
 
 /// <summary>The request conflicts with the current state: duplicate value, invalid status change, etc.</summary>
 public sealed class ConflictException(string message) : AppException(StatusCodes.Status409Conflict, message);
+
+/// <summary>A service this API depends on (e.g. Streaming) could not be reached or failed. The client may retry.</summary>
+public sealed class ServiceUnavailableException(string message = "The file service is not available right now. Please try again in a moment.")
+    : AppException(StatusCodes.Status503ServiceUnavailable, message);

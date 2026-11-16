@@ -70,6 +70,9 @@ public sealed class CourseUpsertRequestValidator : AbstractValidator<CourseUpser
             m.RuleFor(x => x.TypeCode).NotEmpty().WithMessage("Choose a material type.");
             m.RuleFor(x => x.Url).Must(CatalogPatterns.IsUrl).WithMessage("Enter a valid http(s) link.")
                 .When(x => x.TypeCode == "Link" || !string.IsNullOrWhiteSpace(x.Url));
+            m.RuleFor(x => x.MediaAssetId).Null().WithMessage("A link material can't have an uploaded file.").When(x => x.TypeCode == "Link");
+            m.RuleFor(x => x.MediaAssetId).Null().WithMessage("A material has either an uploaded file or a link, not both.")
+                .When(x => x.TypeCode != "Link" && !string.IsNullOrWhiteSpace(x.Url));
         });
     }
 }

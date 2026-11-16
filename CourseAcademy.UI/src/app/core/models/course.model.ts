@@ -33,10 +33,33 @@ export interface Instructor {
 
 // Curriculum: Course → Module → Submodule → Section. Array order is display order.
 
-export interface SectionVideo {
+/** Status of an uploaded file at the Streaming service (API mode). Only `ready` files are shown to students. */
+export type MediaStatus = 'pending_upload' | 'uploaded' | 'queued' | 'processing' | 'ready' | 'failed' | 'deleting' | 'deleted';
+
+/** An uploaded file (API mode). Course managers see these details; students only see that an item is an upload. */
+export interface MediaFile {
+  id: number;
+  status: MediaStatus;
+  fileName: string;
+  sizeBytes: number;
+  durationSeconds?: number;
+  errorMessage?: string;
+}
+
+/**
+ * Where an item's media lives (API mode). An `upload` has no `url`: it is played or downloaded through the API,
+ * which hands out a short-lived link. `mediaId` is set when the item holds an upload, `media` only for managers.
+ */
+export interface MediaSource {
+  source?: 'external' | 'upload';
+  mediaId?: number;
+  media?: MediaFile;
+}
+
+export interface SectionVideo extends MediaSource {
   id: string;
   title: string;
-  /** YouTube, Vimeo or a direct .mp4/.webm link. Anything else shows a placeholder player. */
+  /** YouTube, Vimeo or a direct .mp4/.webm link. Anything else shows a placeholder player. Empty for uploads. */
   url: string;
   minutes: number;
   /** Visitors who are not enrolled can watch it, and open its documents. */
@@ -47,11 +70,11 @@ export type DocumentType = 'PDF' | 'DOCX' | 'PPTX';
 
 export const DOCUMENT_TYPES: DocumentType[] = ['PDF', 'DOCX', 'PPTX'];
 
-export interface SectionDocument {
+export interface SectionDocument extends MediaSource {
   id: string;
   title: string;
   type: DocumentType;
-  /** Must end in the file extension of `type`. */
+  /** Must end in the file extension of `type`. Empty for uploads. */
   url: string;
   /** The video this document belongs to, shown right under it. Absent for documents for the whole section. */
   videoId?: string;
@@ -104,10 +127,11 @@ export type MaterialType = 'PDF' | 'Slides' | 'Worksheet' | 'Link';
 
 export const MATERIAL_TYPES: MaterialType[] = ['PDF', 'Slides', 'Worksheet', 'Link'];
 
-export interface Material {
+export interface Material extends MediaSource {
   id: string;
   title: string;
   type: MaterialType;
+  /** Empty for uploads. */
   url: string;
 }
 

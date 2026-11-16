@@ -22,7 +22,7 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 | Term | Meaning |
 |---|---|
 | Course format | Pre-recorded (self-paced), Live (scheduled classes), Hybrid (both) |
-| Module → Submodule → Section → Topic | Curriculum tree. Submodule has 2–3 sections; sections can nest topics ≤ 3 levels; each section/topic counts for progress |
+| Module → Submodule → Section → Topic | Curriculum tree. Submodule has 2–3 sections; sections can nest topics ≤ 3 levels; demo: each section/topic counts for progress; API: each video, or a section without videos, is one lesson |
 | Preview video | Video free to watch without enrolling |
 | Material | Course-level resource (PDF, Slides, Worksheet, Link) |
 | Document | Section-level file (PDF/DOCX/PPTX), optionally attached to one video |
@@ -45,13 +45,13 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 | Accounts & Auth | [accounts-auth.md](modules/accounts-auth.md) | `/login`, `/register` | Partial | Register/login/logout via API (JWT + refresh tokens); no reset/profile |
 | Access Control | [access-control.md](modules/access-control.md) | `/admin/security/*`, `/admin/users` | Done (API) | Roles, screen access, user overrides, course grants — served by the API |
 | Course Catalog | [course-catalog.md](modules/course-catalog.md) | `/`, `/courses`, `/courses/:slug` | Done (API; reviews fake) | Browse, filter, detail, previews — served by the API |
-| Course Management | [course-management.md](modules/course-management.md) | `/admin/courses/**`, `/admin/instructors` | Done (API; uploads Step 6) | Course CRUD, curriculum, sessions, materials, instructors — served by the API |
+| Course Management | [course-management.md](modules/course-management.md) | `/admin/courses/**`, `/admin/instructors` | Done (API, with file uploads) | Course CRUD, curriculum, sessions, materials, instructors, video/document uploads — served by the API |
 | Checkout & Payments | [checkout-payments.md](modules/checkout-payments.md) | `/payment`, `/checkout/**`, `/admin/transactions` | Done (API; demo gateway, real ones plug in) | Purchase flow, transactions, refunds — served by the API |
 | Enrollments | [enrollments.md](modules/enrollments.md) | `/admin/enrollments` | Done (API) | Access records, revoke/restore — served by the API |
-| Learning & Progress | [learning-progress.md](modules/learning-progress.md) | `/dashboard`, `/learn/:slug` | Partial (Live progress missing) | Learning area, completion, dashboard |
+| Learning & Progress | [learning-progress.md](modules/learning-progress.md) | `/dashboard`, `/learn/:slug` | Done (API; certificates Coming soon) | Learning area, per-video progress with resume, dashboard — served by the API |
 | Certification | [certification.md](modules/certification.md) | `/admin/courses/:id/certification`, `/admin/certificates`, `/verify[/:code]` | Done | Rules, exams, certificates, verify |
 | Community | [community.md](modules/community.md) | `/courses/:slug#community`, `/admin/community` | Done | Course discussions + moderation |
-| Admin Overview | [admin-overview.md](modules/admin-overview.md) | `/admin` | Done | Stats, recent payments, demo reset |
+| Admin Overview | [admin-overview.md](modules/admin-overview.md) | `/admin` | Done (API) | Stats, recent payments, demo reset |
 | Site Content | [site-content.md](modules/site-content.md) | `/about`, `/sports`, `/career`, `/contact`, `/testimonials`, `/faq`, `/privacy`, `/terms`, `**` | Partial (forms not stored) | Static pages, contact & career forms, language |
 
 ## Global rules

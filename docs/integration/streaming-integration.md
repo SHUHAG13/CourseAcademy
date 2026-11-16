@@ -1,6 +1,6 @@
-# Streaming Service Integration Spec (DRAFT v0.1)
+# Streaming Service Integration Spec (v1.0)
 
-Status: **draft for review**. Items marked **(proposal)** need confirmation before Part 5.
+Status: **confirmed 2026-11-16**; the Main App side is built (backend Step 6). The former proposals (limits, link lifetimes, webhook window) were accepted as written. Virus scanning and the retry policy are the Streaming service's own concern.
 
 ## 1. Systems and responsibilities
 | System | Owns | Never does |
@@ -13,7 +13,7 @@ Status: **draft for review**. Items marked **(proposal)** need confirmation befo
 | Kind | Used for | Processing | Delivery |
 |---|---|---|---|
 | `video` | Section videos | Transcode to HLS (multiple renditions) + thumbnail + duration | Signed HLS playlist URL (short-lived) |
-| `document` | Section documents (PDF/DOCX/PPTX), course materials (PDF, Slides, Worksheet) | Virus scan **(proposal)**, metadata only | Signed download URL (short-lived) |
+| `document` | Section documents (PDF/DOCX/PPTX), course materials (PDF, Slides, Worksheet) | Virus scan (Streaming side, optional), metadata only | Signed download URL (short-lived) |
 Link materials and live-session meeting links are plain external URLs and never go to Streaming.
 
 ## 3. Asset status
@@ -47,8 +47,8 @@ Angular                Main App API                         Streaming
   |                                   |<== webhooks: queued, processing, ready|failed
 ```
 - `context` = where the media will be attached, e.g. `{ type: "sectionVideo", courseId, sectionId }`. Main App checks `courses.edit` on that course **before** calling Streaming.
-- Upload URL lifetime: **15 minutes (proposal)**.
-- Limits **(proposal)**: video ≤ 2 GB, `video/mp4`, `video/webm`, `video/quicktime`; document ≤ 50 MB, `application/pdf`, DOCX, PPTX MIME types.
+- Upload URL lifetime: **15 minutes** (`Streaming:UploadUrlMinutes`).
+- Limits: video ≤ 2 GB, `video/mp4`, `video/webm`, `video/quicktime`; document ≤ 50 MB, `application/pdf`, DOCX, PPTX MIME types. Checked by the Main App before Streaming is called.
 
 ## 5. Streaming internal API (called only by Main App)
 Base: `{Streaming:BaseUrl}/internal/v1`. Auth header: `X-Api-Key: <secret>` (from configuration, never in source).
@@ -62,7 +62,7 @@ Base: `{Streaming:BaseUrl}/internal/v1`. Auth header: `X-Api-Key: <secret>` (fro
 | POST | `/assets/{assetId}/download` | `{ viewerRef, ttlSeconds, fileName }` | `{ downloadUrl, expiresAt }` |
 | DELETE | `/assets/{assetId}` | — | `{ assetId, status: "deleting" }` |
 `externalRef` = Main App `MediaAsset.Id` (for support/tracing). `viewerRef` = opaque Main App user id (for Streaming logs only).
-Playback/download TTL: **10 minutes (proposal)**.
+Playback/download TTL: **10 minutes** (`Streaming:LinkMinutes`).
 
 ## 6. Webhooks (Streaming → Main App)
 `POST /api/v1/internal/streaming/webhooks`
@@ -87,13 +87,13 @@ Body:
 }
 ```
 Main App rules:
-1. Verify signature on the **raw** body with constant-time compare; reject if timestamp is older than **5 minutes (proposal)** → `401`.
+1. Verify signature on the **raw** body with constant-time compare; reject if the timestamp is more than **5 minutes** away from now (`Streaming:WebhookToleranceMinutes`) → `401`.
 2. Insert the event into `StreamingWebhookEvent` (unique `EventId`). Duplicate → return `200` without reprocessing.
 3. Apply only if `sequence` > the asset's last applied sequence (tolerates out-of-order delivery); older events are stored and ignored.
 4. Respond `200` only after the event row is committed. Any failure → `5xx` so Streaming retries.
 5. Unknown `assetId` → store and return `200` (asset may have been deleted).
 
-Streaming retry policy **(proposal)**: exponential backoff for up to 24 hours on non-2xx.
+Streaming retry policy (Streaming side): exponential backoff for up to 24 hours on non-2xx.
 
 ## 7. Main App rules around assets
 - A video/document can be published (visible to students) only when its asset is `ready`.
@@ -103,3 +103,14 @@ Streaming retry policy **(proposal)**: exponential backoff for up to 24 hours on
 
 ## 8. Development without the real service
 Main App ships a **fake Streaming implementation** (`FakeStreamingClient` + a local fake upload endpoint) selected by configuration `Streaming:Mode = Fake | Http`. It simulates upload, processing delay and webhook delivery.
+
+As built: files go to `App_Data/fake-streaming` (git-ignored); uploads and file links are signed, expiring URLs under `/api/v1/dev/fake-streaming/…`; after `complete` it waits `Streaming:FakeProcessingSeconds` (3) and sends signed `asset.queued → asset.processing → asset.ready` webhooks to the real webhook handler; videos are served as plain files (`format: "file"`), not HLS, and report no duration. The API refuses to start with `Mode = Fake` outside Development.
+
+## 9. Main App implementation notes (backend Step 6)
+- Main App API for Angular: see `docs/business/api-contract.md` section 7a. Asset ids of Streaming are never sent to the browser; the browser uses the Main App's `MediaAsset.Id`.
+- `pending_upload` is the Main App's own status before `complete`.
+- Playback responses carry `format`: `hls` for the real service (`playlistUrl`), `file` for the fake.
+- HTTP client: `X-Api-Key` header, standard resilience handler (retries only for safe methods, so `POST /uploads` is never sent twice; timeouts; circuit breaker). 4xx from Streaming → 409 to the browser; 5xx/timeouts → 503.
+- If a file stays in progress for more than 30 s without a webhook, `GET /media/assets/{id}` asks Streaming (`GET /assets/{assetId}`) as a fallback.
+- Files no lesson or material uses are marked `deleting`; a background worker sends `DELETE /assets/{assetId}` at once and retries every minute; `asset.deleted` sets `deleted`. A deleting/deleted file ignores other events.
+- Configuration: `Streaming:Mode`, `BaseUrl`, `ApiKey` and `WebhookSecret` (secrets: user secrets or `Streaming__ApiKey`, `Streaming__WebhookSecret`), `UploadUrlMinutes`, `LinkMinutes`, `WebhookToleranceMinutes`.

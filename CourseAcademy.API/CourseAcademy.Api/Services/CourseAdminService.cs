@@ -4,6 +4,7 @@ using CourseAcademy.Api.Common.Exceptions;
 using CourseAcademy.Api.Dtos;
 using CourseAcademy.Api.Entities;
 using CourseAcademy.Api.Repositories;
+using CourseAcademy.Api.Services.Media;
 using CourseAcademy.Api.Validators;
 
 namespace CourseAcademy.Api.Services;
@@ -34,13 +35,17 @@ public sealed class CourseAdminService(
     IRepository<SectionDocument> documents,
     IRepository<CourseGrant> grants,
     IEnrollmentRepository enrollments,
+    IMediaAssetRepository mediaAssets,
+    MediaDeletionSignal mediaDeletions,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider clock) : ICourseAdminService
 {
     public const string NeedsSectionsMessage = "A published course needs at least one section. Save it as a draft, then add the curriculum.";
     public const string NeedsSessionsMessage = "A published Live or Hybrid course needs at least one session.";
+    public const string ReplaceLinkMessage = "A video link can no longer be changed. Upload the video file instead.";
     private const string StaleMessage = "Something in this course changed in the meantime. Reload the page and try again.";
+    private const string FileMissingMessage = "An uploaded file was not found. Upload it again.";
 
     // ── Course details ──────────────────────────────────────────
 
@@ -52,10 +57,16 @@ public sealed class CourseAdminService(
         // A new course has no curriculum yet, so it can only be published once lessons are added (BR-CMS-04).
         if (course.IsPublished) throw new BusinessRuleException(NeedsSectionsMessage, "isPublished");
 
+        // Files are uploaded for an existing course, so a new course cannot bring any.
+        if ((request.Materials ?? []).Any(m => m.MediaAssetId is not null))
+        {
+            throw new BusinessRuleException("Save the course first, then upload its files.", "materials");
+        }
+
         await courses.AddAsync(course, ct);
         ReplaceTexts(course, request);
         foreach (var (input, index) in (request.Schedule ?? []).Select((s, i) => (s, i))) course.Sessions.Add(NewSession(input, index));
-        foreach (var (input, index) in (request.Materials ?? []).Select((m, i) => (m, i))) course.Materials.Add(await NewMaterialAsync(input, index, ct));
+        foreach (var (input, index) in (request.Materials ?? []).Select((m, i) => (m, i))) course.Materials.Add(await NewMaterialAsync(input, index, new Dictionary<int, MediaAsset>(), ct));
         await unitOfWork.SaveChangesAsync(ct);
         return await LoadDetailAsync(course.Id, ct);
     }
@@ -72,10 +83,16 @@ public sealed class CourseAdminService(
         course.Requirements.Clear();
         ReplaceTexts(course, request);
         SyncSessions(course, request.Schedule ?? []);
-        await SyncMaterialsAsync(course, request.Materials ?? [], ct);
+        var heldBefore = course.Materials.Where(m => m.MediaAssetId is not null).Select(m => m.MediaAssetId!.Value).ToHashSet();
+        await SyncMaterialsAsync(course, request.Materials ?? [], heldBefore, ct);
 
         await EnsurePublishableAsync(course, formatCode, request.Schedule?.Count ?? 0, ct);
         await unitOfWork.SaveChangesAsync(ct);
+        if (await ReleaseUnusedAsync(heldBefore, ct))
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            mediaDeletions.Notify();
+        }
         return await LoadDetailAsync(course.Id, ct);
     }
 
@@ -102,7 +119,11 @@ public sealed class CourseAdminService(
             var tracked = await grants.GetByIdAsync(grant.Id, ct);
             if (tracked is not null) grants.Remove(tracked);
         }
+        // Its uploaded files are deleted from Streaming.
+        var files = await mediaAssets.ListActiveForCourseAsync(courseId, ct);
+        foreach (var file in files) file.MediaAssetStatusId = MediaStatusCodes.Id(MediaStatusCodes.Deleting);
         await unitOfWork.SaveChangesAsync(ct);
+        if (files.Count > 0) mediaDeletions.Notify();
     }
 
     public async Task<SlugAvailabilityDto> IsSlugAvailableAsync(string slug, int? exceptId, CancellationToken ct)
@@ -198,25 +219,28 @@ public sealed class CourseAdminService(
         foreach (var removed in existing.Values.Where(s => !kept.Contains(s.Id))) sessions.Remove(removed);
     }
 
-    private async Task<Material> NewMaterialAsync(MaterialInput input, int index, CancellationToken ct)
+    private async Task<Material> NewMaterialAsync(MaterialInput input, int index, IReadOnlyDictionary<int, MediaAsset> files, CancellationToken ct)
     {
         var material = new Material();
-        await ApplyMaterialAsync(material, input, index, ct);
+        await ApplyMaterialAsync(material, input, index, files, ct);
         return material;
     }
 
-    private async Task ApplyMaterialAsync(Material material, MaterialInput input, int index, CancellationToken ct)
+    private async Task ApplyMaterialAsync(Material material, MaterialInput input, int index, IReadOnlyDictionary<int, MediaAsset> files, CancellationToken ct)
     {
         var type = await lookups.FindByCodeAsync<MaterialType>(input.TypeCode, ct) ?? throw new BusinessRuleException("Choose a material type.", "materials");
         material.Title = input.Title.Trim();
         material.MaterialTypeId = type.Id;
-        // An empty link leaves a file material without a file until one is uploaded.
-        material.ExternalUrl = string.IsNullOrWhiteSpace(input.Url) ? null : input.Url.Trim();
+        // The request is the full state: an upload, a link, or (for a file material) nothing yet.
+        material.MediaAssetId = input.MediaAssetId is { } fileId && files.ContainsKey(fileId) ? fileId : null;
+        material.ExternalUrl = material.MediaAssetId is null && !string.IsNullOrWhiteSpace(input.Url) ? input.Url.Trim() : null;
         material.SortOrder = index + 1;
     }
 
-    private async Task SyncMaterialsAsync(Course course, IReadOnlyList<MaterialInput> inputs, CancellationToken ct)
+    private async Task SyncMaterialsAsync(Course course, IReadOnlyList<MaterialInput> inputs, IReadOnlySet<int> heldBefore, CancellationToken ct)
     {
+        var files = await LoadAttachableAsync(course.Id,
+            inputs.Where(m => m.MediaAssetId is not null).Select(m => (m.MediaAssetId!.Value, MediaKindCodes.Document)).ToList(), heldBefore, ct);
         var existing = course.Materials.ToDictionary(m => m.Id);
         var kept = new HashSet<int>();
         for (var i = 0; i < inputs.Count; i++)
@@ -225,14 +249,63 @@ public sealed class CourseAdminService(
             if (input.Id is { } id)
             {
                 if (!existing.TryGetValue(id, out var material) || !kept.Add(id)) throw new BusinessRuleException(StaleMessage);
-                await ApplyMaterialAsync(material, input, i, ct);
+                await ApplyMaterialAsync(material, input, i, files, ct);
             }
             else
             {
-                course.Materials.Add(await NewMaterialAsync(input, i, ct));
+                course.Materials.Add(await NewMaterialAsync(input, i, files, ct));
             }
         }
         foreach (var removed in existing.Values.Where(m => !kept.Contains(m.Id))) materials.Remove(removed);
+    }
+
+    // ── Uploaded files ──────────────────────────────────────────
+
+    /// <summary>
+    /// The uploaded files a save attaches, checked: each belongs to this course, has the right kind, has been
+    /// uploaded and not failed or deleted, is used once, and is not already used outside the items being saved
+    /// (<paramref name="heldInScope"/>).
+    /// </summary>
+    private async Task<Dictionary<int, MediaAsset>> LoadAttachableAsync(
+        int courseId, IReadOnlyList<(int Id, string Kind)> wanted, IReadOnlySet<int> heldInScope, CancellationToken ct)
+    {
+        if (wanted.Count == 0) return [];
+        var ids = wanted.Select(w => w.Id).ToList();
+        if (ids.Distinct().Count() != ids.Count) throw new BusinessRuleException("The same uploaded file is used twice. Upload it again for the second item.");
+
+        var found = (await mediaAssets.ListByIdsAsync(ids, ct)).ToDictionary(a => a.Id);
+        var usedElsewhere = await mediaAssets.ReferencedIdsAsync(ids, ct);
+        usedElsewhere.ExceptWith(heldInScope);
+        foreach (var (id, kind) in wanted)
+        {
+            if (!found.TryGetValue(id, out var file) || file.CourseId != courseId) throw new BusinessRuleException(FileMissingMessage);
+            if (MediaKindCodes.Code(file.MediaKindId) != kind)
+            {
+                throw new BusinessRuleException(kind == MediaKindCodes.Video ? "Upload a video file for a video." : "Upload a PDF, DOCX or PPTX file here.");
+            }
+            var status = MediaStatusCodes.Code(file.MediaAssetStatusId);
+            if (status == MediaStatusCodes.Failed) throw new BusinessRuleException($"\"{file.FileName}\" could not be processed. Upload it again.");
+            if (status == MediaStatusCodes.PendingUpload || MediaStatusCodes.Removed(status)) throw new BusinessRuleException(FileMissingMessage);
+            if (usedElsewhere.Contains(id)) throw new BusinessRuleException($"\"{file.FileName}\" is already used elsewhere in this course.");
+        }
+        return found;
+    }
+
+    /// <summary>
+    /// Marks files that a save detached and that nothing uses any more for deletion from Streaming. The caller saves
+    /// and wakes the deletion worker. Returns whether anything was released.
+    /// </summary>
+    private async Task<bool> ReleaseUnusedAsync(IReadOnlyCollection<int> heldBefore, CancellationToken ct)
+    {
+        if (heldBefore.Count == 0) return false;
+        var stillUsed = await mediaAssets.ReferencedIdsAsync(heldBefore, ct);
+        var released = heldBefore.Where(id => !stillUsed.Contains(id)).ToList();
+        if (released.Count == 0) return false;
+        foreach (var file in await mediaAssets.ListByIdsAsync(released, ct))
+        {
+            if (!MediaStatusCodes.Removed(MediaStatusCodes.Code(file.MediaAssetStatusId))) file.MediaAssetStatusId = MediaStatusCodes.Id(MediaStatusCodes.Deleting);
+        }
+        return true;
     }
 
     /// <summary>A published course must have lessons, and Live or Hybrid courses a live session (BR-CMS-04, 05).</summary>
@@ -262,19 +335,29 @@ public sealed class CourseAdminService(
         }
         if (error is not null) throw new BusinessRuleException(error);
 
-        await unitOfWork.ExecuteInTransactionAsync(async token =>
-        {
-            await ApplyCurriculumAsync(courseId, request, documentTypes, token);
-            return true;
-        }, ct);
+        var released = await unitOfWork.ExecuteInTransactionAsync(
+            token => ApplyCurriculumAsync(courseId, request, documentTypes, token), ct);
+        if (released) mediaDeletions.Notify();
         return await LoadDetailAsync(courseId, ct);
+    }
+
+    /// <summary>Every uploaded file the request attaches to a video or document, with the kind it must be.</summary>
+    private static IEnumerable<(int Id, string Kind)> WantedFiles(IEnumerable<SectionInput> sections)
+    {
+        foreach (var section in sections)
+        {
+            foreach (var video in section.Videos ?? []) if (video.MediaAssetId is { } id) yield return (id, MediaKindCodes.Video);
+            foreach (var document in section.Documents ?? []) if (document.MediaAssetId is { } id) yield return (id, MediaKindCodes.Document);
+            foreach (var file in WantedFiles(section.Topics ?? [])) yield return file;
+        }
     }
 
     /// <summary>
     /// Updates items the request mentions by id, creates the ones without id and soft-deletes the rest.
     /// Saved level by level so new parents have ids before their children point at them.
+    /// Returns whether uploaded files were released (and marked for deletion).
     /// </summary>
-    private async Task ApplyCurriculumAsync(int courseId, CurriculumRequest request, IReadOnlyDictionary<string, DocumentType> documentTypes, CancellationToken ct)
+    private async Task<bool> ApplyCurriculumAsync(int courseId, CurriculumRequest request, IReadOnlyDictionary<string, DocumentType> documentTypes, CancellationToken ct)
     {
         var course = await LoadTrackedAsync(courseId, ct);
         var allSections = await courses.ListSectionsAsync([courseId], tracking: true, ct);
@@ -283,6 +366,10 @@ public sealed class CourseAdminService(
         var sectionById = allSections.ToDictionary(s => s.Id);
         var videoById = allSections.SelectMany(s => s.Videos).ToDictionary(v => v.Id);
         var documentById = allSections.SelectMany(s => s.Documents).ToDictionary(d => d.Id);
+        var heldBefore = videoById.Values.Select(v => v.MediaAssetId).Concat(documentById.Values.Select(d => d.MediaAssetId))
+            .OfType<int>().ToHashSet();
+        var files = await LoadAttachableAsync(courseId,
+            WantedFiles(request.Modules.SelectMany(m => m.Submodules ?? []).SelectMany(s => s.Sections ?? [])).ToList(), heldBefore, ct);
         var kept = (Modules: new HashSet<int>(), Submodules: new HashSet<int>(), Sections: new HashSet<int>(), Videos: new HashSet<int>(), Documents: new HashSet<int>());
 
         static T Existing<T>(Dictionary<int, T> all, HashSet<int> keptIds, int id) =>
@@ -363,11 +450,16 @@ public sealed class CourseAdminService(
                 video.Minutes = v.Minutes;
                 video.IsPreview = v.IsPreview;
                 video.SortOrder = i + 1;
-                // A link replaces the stored media; no link keeps it (the rules make new videos bring a link).
-                if (!string.IsNullOrWhiteSpace(v.Url))
+                // An upload replaces the stored media. An older video may keep its link but not change it;
+                // sending neither keeps the stored media (the rules make new videos bring an upload).
+                if (v.MediaAssetId is { } fileId)
                 {
-                    video.ExternalUrl = v.Url.Trim();
-                    video.AssetId = null;
+                    video.MediaAssetId = fileId;
+                    video.ExternalUrl = null;
+                }
+                else if (!string.IsNullOrWhiteSpace(v.Url) && video.ExternalUrl != v.Url.Trim())
+                {
+                    throw new BusinessRuleException(ReplaceLinkMessage);
                 }
                 if (video.Id == 0) await videos.AddAsync(video, ct);
                 if (!string.IsNullOrEmpty(v.TempKey)) videoKeys[(section.Id, v.TempKey)] = video;
@@ -384,10 +476,17 @@ public sealed class CourseAdminService(
                 var d = inputs[i];
                 var document = d.Id is { } id ? Existing(documentById, kept.Documents, id) : new SectionDocument();
                 document.SectionId = section.Id;
+                var type = documentTypes[d.TypeCode];
                 document.Title = d.Title.Trim();
-                document.DocumentTypeId = documentTypes[d.TypeCode].Id;
+                document.DocumentTypeId = type.Id;
                 document.SortOrder = i + 1;
-                document.ExternalUrl = string.IsNullOrWhiteSpace(d.Url) ? null : d.Url.Trim();
+                // The request is the full state: an upload, a link, or nothing yet.
+                if (d.MediaAssetId is { } fileId && MediaRules.DocumentExtensions.GetValueOrDefault(files[fileId].MimeType) != type.FileExtension)
+                {
+                    throw new BusinessRuleException($"\"{files[fileId].FileName}\" must be a {type.FileExtension} file to match the document type.");
+                }
+                document.MediaAssetId = d.MediaAssetId;
+                document.ExternalUrl = d.MediaAssetId is null && !string.IsNullOrWhiteSpace(d.Url) ? d.Url.Trim() : null;
                 document.SectionVideoId =
                     d.VideoTempKey is { Length: > 0 } key && videoKeys.TryGetValue((section.Id, key), out var byKey) ? byKey.Id :
                     d.VideoId is { } videoId && videoById.TryGetValue(videoId, out var byId) && byId.SectionId == section.Id ? byId.Id :
@@ -403,6 +502,10 @@ public sealed class CourseAdminService(
         foreach (var s in sectionById.Values.Where(s => !kept.Sections.Contains(s.Id))) sectionRepository.Remove(s);
         foreach (var s in submoduleById.Values.Where(s => !kept.Submodules.Contains(s.Id))) submodules.Remove(s);
         foreach (var m in moduleById.Values.Where(m => !kept.Modules.Contains(m.Id))) modules.Remove(m);
+
+        // 7. Files the curriculum no longer uses are deleted from Streaming.
+        await unitOfWork.SaveChangesAsync(ct);
+        return await ReleaseUnusedAsync(heldBefore, ct);
     }
 
     // ── Loading ─────────────────────────────────────────────────
@@ -477,7 +580,10 @@ public static class CurriculumRules
                 if (video.Minutes < 1) return "A video needs 1 minute or more.";
                 if (!unique("video", video.Id)) return "The curriculum lists an item twice. Reload the page and try again.";
                 if (!string.IsNullOrWhiteSpace(video.Url) && !CatalogPatterns.IsUrl(video.Url)) return "Enter a valid http(s) link for every video.";
-                if (video.Id is null && string.IsNullOrWhiteSpace(video.Url)) return "Add a link for every new video.";
+                if (video.MediaAssetId is not null && !string.IsNullOrWhiteSpace(video.Url)) return "A video has either an uploaded file or its old link, not both.";
+                // New videos are uploaded; links stay only on older videos.
+                if (video.Id is null && !string.IsNullOrWhiteSpace(video.Url)) return "New videos can't be added as links. Upload the video file.";
+                if (video.Id is null && video.MediaAssetId is null) return "Upload a file for every new video.";
                 if (video.Id is { } id) ids.Add(id);
                 if (!string.IsNullOrEmpty(video.TempKey)) keys.Add(video.TempKey);
             }
@@ -487,6 +593,7 @@ public static class CurriculumRules
                 if (document.Title.Trim().Length > MaxTitle) return "Titles can be up to 200 characters.";
                 if (!unique("document", document.Id)) return "The curriculum lists an item twice. Reload the page and try again.";
                 if (!types.TryGetValue(document.TypeCode ?? string.Empty, out var type)) return "Choose a document type.";
+                if (document.MediaAssetId is not null && !string.IsNullOrWhiteSpace(document.Url)) return "A document has either an uploaded file or a link, not both.";
                 if (!string.IsNullOrWhiteSpace(document.Url))
                 {
                     if (!CatalogPatterns.IsUrl(document.Url)) return "Enter a valid http(s) link for every document.";

@@ -21,7 +21,7 @@ No own entity. Reads Course, User, Enrollment, PaymentTransaction.
 - **BR-ADM-01** "Courses" = all courses (incl. drafts); label shows published count.
 - **BR-ADM-02** "Student accounts" = users with role `user` (Student) only.
 - **BR-ADM-03** "Active enrollments" = enrollments with status `active`.
-- **BR-ADM-04** "Demo payments collected" = Σ amount of transactions with status `success` (refunded excluded).
+- **BR-ADM-04** "Demo payments collected" (API mode: "Payments collected") = Σ amount of transactions with status `success` (refunded excluded).
 - **BR-ADM-05** Recent payments = 5 newest transactions by createdAt (any status).
 - **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo-only, must not exist in production.
 - **BR-ADM-07** If stored data can't be read on start-up, defaults are restored and a toast says so (demo-only).
@@ -39,9 +39,10 @@ None.
 - Collected = Σ `amount` where status = success.
 
 ## 8. Data Source
-| Current | Future endpoint |
+**Done in API mode (backend Step 5):** the server counts; the page no longer needs every record. Demo mode still adds up the browser stores.
+| Current | Endpoint |
 |---|---|
-| Client aggregation over all stores | `GET /api/admin/overview` → `{courseCount, publishedCount, studentCount, activeEnrollments, collectedBdt, recentTransactions[5]}` |
+| `AdminOverview` totals + recent payments | `GET /api/v1/admin/overview` → `{courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions[5]}` |
 | `DemoDataService.reset()` | none (dev-only seed script) |
 
 ## 9. Open Questions / Assumptions
@@ -51,3 +52,4 @@ None.
 ## 10. Source Files
 - `src/app/pages/admin/admin-overview.ts`
 - `src/app/core/services/demo-data.service.ts`
+- API: `Services/OverviewService.cs`, `Repositories/LearningRepositories.cs` (`OverviewRepository`), `Controllers/LearningControllers.cs`

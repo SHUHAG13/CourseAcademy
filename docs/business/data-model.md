@@ -9,7 +9,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
-| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission, ProgressSection and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
+| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
 | Foreign keys | `ON DELETE NO ACTION` everywhere (soft delete means no physical cascades) |
 | Unique keys | Filtered unique indexes `WHERE IsDeleted = 0`, so a soft-deleted row doesn't block re-use |
 | Audit | Every table has `CreatedAt` and `UpdatedAt` (UTC, set automatically on save). No `CreatedBy`/`UpdatedBy`; columns that record a person exist only where a business rule needs them (e.g. `ReviewedByUserId`) |
@@ -30,10 +30,11 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 ## 2. Tables overview
 | Area | Tables |
 |---|---|
-| Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, CertificationMode, ExamType, SubmissionStatus |
+| Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, MediaKind, MediaAssetStatus, CertificationMode, ExamType, SubmissionStatus |
 | Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
-| Commerce & learning | Enrollment, PaymentTransaction, Progress, ProgressSection |
+| Media | MediaAsset, StreamingWebhookEvent |
+| Commerce & learning | Enrollment, PaymentTransaction, LessonProgress |
 | Certification | CertificationRule, ExamSubmission, Certificate |
 | Community | Post, Comment |
 
@@ -69,6 +70,8 @@ All lookup tables share this shape (+ std):
 | EnrollmentStatus | — | `active`, `revoked` |
 | PaymentStatus | — | `pending`, `success`, `failed`, `cancelled`, `refunded` |
 | Currency | — | `BDT` |
+| MediaKind | — | `video`, `document` |
+| MediaAssetStatus | — | `pending_upload`, `uploaded`, `queued`, `processing`, `ready`, `failed`, `deleting`, `deleted` (streaming spec section 3) |
 | CertificationMode | — | `completion`, `exam` |
 | ExamType | — | `project`, `presentation` |
 | SubmissionStatus | — | `submitted`, `passed`, `failed` |
@@ -232,12 +235,12 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | Id | int IDENTITY | NOT NULL | | PK | |
 | SectionId | int | NOT NULL | | FK Section | |
 | Title | nvarchar(200) | NOT NULL | | | |
-| ExternalUrl | nvarchar(2048) | NULL | | | seeded videos, and new videos until uploads exist (BR-CMS-19) |
-| AssetId | nvarchar(100) | NULL | | filtered index | Streaming asset of an uploaded video (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | | | older (e.g. seeded) videos only; cannot be changed (BR-CMS-24) |
+| MediaAssetId | int | NULL | | FK MediaAsset; filtered index | uploaded video (Step 6); new videos must have one; replaces ExternalUrl when set |
 | Minutes | int | NOT NULL | 10 | CHECK ≥ 1 | |
 | IsPreview | bit | NOT NULL | 0 | | |
 | SortOrder | int | NOT NULL | | | |
-A video with neither link nor asset is hidden from students (BR-CAT-21).
+A video with neither a link nor a `ready` upload is hidden from students (BR-CAT-21).
 
 ### SectionDocument (+ std)
 | Column | Type | Null | Key / Constraint | Notes |
@@ -247,8 +250,8 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when its video is removed (BR-CMS-09) |
 | DocumentTypeId | int | NOT NULL | FK DocumentType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | temporary link until uploads exist; seeded documents have none |
-| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | a link; seeded documents have none |
+| MediaAssetId | int | NULL | FK MediaAsset; filtered index | uploaded document whose file type matches DocumentType (app); either this or ExternalUrl |
 | SortOrder | int | NOT NULL | | |
 
 ### LiveSession (+ std)
@@ -269,9 +272,42 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | CourseId | int | NOT NULL | FK Course | |
 | MaterialTypeId | int | NOT NULL | FK MaterialType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; temporary link for files until uploads exist |
-| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset of a file material (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; file materials may use a link |
+| MediaAssetId | int | NULL | FK MediaAsset; filtered index | uploaded document of a file material (not for Link); either this or ExternalUrl |
 | SortOrder | int | NOT NULL | | |
+
+### MediaAsset (+ std) — built in backend Step 6
+A file kept by the Streaming service. The Main App stores only Streaming's asset id and a copy of its status, never a file URL.
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | sent to Streaming as `externalRef` |
+| AssetId | nvarchar(100) | NULL | | UQ filtered (not null, not deleted) | Streaming's id; NULL until Streaming created the upload |
+| MediaKindId | int | NOT NULL | | FK MediaKind | video / document |
+| MediaAssetStatusId | int | NOT NULL | | FK MediaAssetStatus; index (MediaAssetStatusId, DeleteRequestedAt) | |
+| CourseId | int | NOT NULL | | FK Course; index | the file can only be used in this course (BR-CMS-23) |
+| UploadedByUserId | int | NOT NULL | | FK User | |
+| FileName | nvarchar(255) | NOT NULL | | | name only, no path |
+| MimeType | nvarchar(100) | NOT NULL | | | lower-case; allowed types BR-CMS-21 |
+| SizeBytes | bigint | NOT NULL | | CHECK > 0 | ≤ 2 GB video, ≤ 50 MB document |
+| DurationSeconds | int | NULL | | CHECK ≥ 0 | from Streaming (videos) |
+| ErrorCode / ErrorMessage | nvarchar(100) / nvarchar(500) | NULL | | | when processing failed |
+| LastSequence | bigint | NOT NULL | 0 | CHECK ≥ 0; concurrency token | sequence of the last webhook applied; older events are ignored |
+| UploadExpiresAt | datetime2(3) | NULL | | | upload link expiry (15 min) |
+| ReadyAt | datetime2(3) | NULL | | | |
+| DeleteRequestedAt | datetime2(3) | NULL | | | when the delete request reached Streaming; NULL while still to be sent |
+
+### StreamingWebhookEvent (+ std) — built in backend Step 6
+Every signed webhook from Streaming, stored before it is acted on (streaming spec section 6).
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| EventId | nvarchar(100) | NOT NULL | UQ (not filtered) | a repeated event is acknowledged and not applied again |
+| Type | nvarchar(50) | NOT NULL | | `asset.queued`, `asset.processing`, `asset.ready`, `asset.failed`, `asset.deleted` |
+| AssetId | nvarchar(100) | NOT NULL | index | Streaming asset id |
+| Sequence | bigint | NOT NULL | | |
+| OccurredAt | datetime2(3) | NOT NULL | | |
+| Outcome | nvarchar(20) | NOT NULL | | `applied`, `stale` (older than the last applied), `ignored`, `unknown_asset` |
+| Payload | nvarchar(max) | NOT NULL | | raw body, for support |
 
 ## 7. Commerce & learning
 ### Enrollment (+ std) — built in backend Step 4
@@ -308,16 +344,21 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | ExpiresAt | datetime2(3) | NOT NULL | | index (PaymentStatusId, ExpiresAt) | created + Payments:PendingMinutes (30) (BR-PAY-20) |
 | FulfilledAt | datetime2(3) | NULL | | | access granted once (BR-PAY-08) |
 
-### Progress (+ std)
-Id PK · UserId int NOT NULL FK User · CourseId int NOT NULL FK Course · UQ (UserId, CourseId) filtered. (`UpdatedAt` from std = last change.)
-
-### ProgressSection (+ std)
-| Column | Type | Null | Key | Notes |
-|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | PK | |
-| ProgressId | int | NOT NULL | FK Progress; UQ (ProgressId, SectionId) filtered | |
-| SectionId | int | NOT NULL | FK Section | deleted sections don't count (BR-LRN-05) |
-Undo completion (BR-LRN-03) = soft-delete the row. `CreatedAt` = completed at.
+### LessonProgress (+ std) — built in backend Step 5
+One row per user and lesson. A lesson is a video, or a section that has no videos (BR-LRN-15).
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| UserId | int | NOT NULL | | FK User; UQ (UserId, SectionId, SectionVideoId) filtered | |
+| CourseId | int | NOT NULL | | FK Course; index (UserId, CourseId) | copied from the section, for per-course queries |
+| SectionId | int | NOT NULL | | FK Section | |
+| SectionVideoId | int | NULL | | FK SectionVideo; index | NULL = the section's own completion (section without videos) |
+| PositionSeconds | int | NOT NULL | 0 | CHECK ≥ 0 | where to resume; only for video files/uploads (BR-LRN-17) |
+| MaxWatchedSeconds | int | NOT NULL | 0 | CHECK ≥ 0 | furthest point reached |
+| DurationSeconds | int | NULL | | CHECK > 0 | video length as reported by the player |
+| IsCompleted | bit | NOT NULL | 0 | | undo (BR-LRN-03) sets it back to 0; rows are not deleted |
+| CompletedAt | datetime2(3) | NULL | | | NULL when not completed |
+Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server treats NULLs as equal in a unique index, so a section without videos also has one row per user.
 
 ## 8. Certification
 ### CertificationRule (+ std) — 0..1 per course
@@ -418,8 +459,9 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | User / Course | Enrollment | N–N | |
 | PaymentTransaction | Enrollment | 1–0..1 | PaymentTransactionId |
 | User, Course, PaymentMethod, PaymentStatus | PaymentTransaction | 1–N | |
-| User / Course | Progress | 1 per pair | |
-| Progress / Section | ProgressSection | N–N | |
+| User / Section / SectionVideo | LessonProgress | 1 per user and lesson | UserId, SectionId, SectionVideoId (NULL for a section without videos) |
+| Course, User, MediaKind, MediaAssetStatus | MediaAsset | 1–N | CourseId, UploadedByUserId |
+| MediaAsset | SectionVideo, SectionDocument, Material | 1–0..1 (one item per file, app rule) | MediaAssetId |
 | User / Course | ExamSubmission, Certificate | 1–N | |
 | Course | Post → Comment → Comment (reply) | 1–N chain | |
 
@@ -437,8 +479,10 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | LiveSession | (CourseId, StartsAtUtc) |
 | Enrollment | UQ (UserId, CourseId); (CourseId, EnrollmentStatusId); PaymentTransactionId |
 | PaymentTransaction | UQ TransactionNo; (UserId, CreatedAt DESC); PaymentStatusId; CourseId; CreatedAt; PaymentMethodId |
-| Progress | UQ (UserId, CourseId) |
-| ProgressSection | UQ (ProgressId, SectionId) |
+| LessonProgress | UQ (UserId, SectionId, SectionVideoId); (UserId, CourseId); SectionVideoId |
+| SectionVideo / SectionDocument / Material | MediaAssetId (not null) |
+| MediaAsset | UQ AssetId (not null); CourseId; (MediaAssetStatusId, DeleteRequestedAt) |
+| StreamingWebhookEvent | UQ EventId (unfiltered); AssetId |
 | CertificationRule | UQ CourseId |
 | ExamSubmission | (CourseId, SubmissionStatusId, SubmittedAt DESC); (UserId, CourseId) |
 | Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0 |
@@ -486,10 +530,13 @@ erDiagram
   PAYMENT_TRANSACTION |o--o| ENROLLMENT : grants
   USER ||--o{ PAYMENT_TRANSACTION : pays
   PAYMENT_METHOD ||--o{ PAYMENT_TRANSACTION : via
-  USER ||--o{ PROGRESS : tracks
-  COURSE ||--o{ PROGRESS : for
-  PROGRESS ||--o{ PROGRESS_SECTION : completes
-  SECTION ||--o{ PROGRESS_SECTION : completed
+  COURSE ||--o{ MEDIA_ASSET : "uploaded for"
+  MEDIA_ASSET |o--o| SECTION_VIDEO : "file of"
+  MEDIA_ASSET |o--o| SECTION_DOCUMENT : "file of"
+  MEDIA_ASSET |o--o| MATERIAL : "file of"
+  USER ||--o{ LESSON_PROGRESS : tracks
+  SECTION ||--o{ LESSON_PROGRESS : "lesson (no videos)"
+  SECTION_VIDEO |o--o{ LESSON_PROGRESS : "lesson (video)"
   COURSE ||--o| CERTIFICATION_RULE : configures
   USER ||--o{ EXAM_SUBMISSION : submits
   COURSE ||--o{ EXAM_SUBMISSION : for

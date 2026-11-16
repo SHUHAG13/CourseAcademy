@@ -14,10 +14,11 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             await next(context);
         }
-        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        catch (Exception exception) when (context.RequestAborted.IsCancellationRequested)
         {
-            // The client went away; there is no one to answer.
-            logger.LogDebug("Request {Method} {Path} was cancelled by the client.", context.Request.Method, context.Request.Path);
+            // The client went away (e.g. the user left the page); there is no one to answer. The database driver
+            // reports a cancelled command as a SqlException rather than an OperationCanceledException, so any type counts.
+            logger.LogDebug(exception, "Request {Method} {Path} was cancelled by the client.", context.Request.Method, context.Request.Path);
         }
         catch (Exception exception)
         {

@@ -8,8 +8,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 |---|---|---|
 | `/admin/courses` | `AdminCourses` | Table of courses the user can view (search by title, filter by format): title, instructor, format, price + discount, sections/live/materials counts, active enrollments, Published/Draft. Actions: publish/unpublish, view page, certification, curriculum, edit, delete. "New course" button. |
 | `/admin/courses/new` | `CourseForm` | Create course. Guard `courses.create`. |
-| `/admin/courses/:id` | `CourseForm` | Edit course details, live sessions, materials. Guard `courses.edit` (global or on course). |
-| `/admin/courses/:id/curriculum` | `CurriculumEditor` | Nested editor: add/remove/reorder modules, submodules, sections, topics, videos, documents; collapse modules. Guard `courses.edit` on course. |
+| `/admin/courses/:id` | `CourseForm` | Edit course details, live sessions, materials. Guard `courses.edit` (global or on course). API mode: file materials have "Upload file / Replace file / Remove file" with progress and processing status (saved courses only: "Save the course first to upload files."). |
+| `/admin/courses/:id/curriculum` | `CurriculumEditor` | Nested editor: add/remove/reorder modules, submodules, sections, topics, videos, documents; collapse modules. Guard `courses.edit` on course. API mode: each video has "Upload file / Replace file" (an older video shows its link read-only); each document has a link field or an uploaded file; upload progress %, then "Processing… / Ready / Processing failed". |
 | `/admin/instructors` | `AdminInstructors` | Instructor cards (name, title, bio, years, assigned course count). Inline create/edit form, delete. |
 
 ## 3. Entities & Fields
@@ -61,7 +61,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 |---|---|---|---|---|---|
 | id | string | yes | — | `video-…` | |
 | title | string | yes | trimmed | — | |
-| url | string | yes | `^https?:\/\/[^\s.]+\.[^\s]{2,}$` | — | See BR-CAT-20 for playable formats |
+| url | string | demo: yes; API: older videos only | `^https?:\/\/[^\s.]+\.[^\s]{2,}$` | — | See BR-CAT-20 for playable formats. API: read-only, cannot be changed (BR-CMS-24) |
+| mediaId | number | API: new videos | uploaded video of this course (BR-CMS-23) | — | Replaces the link when set |
 | minutes | number | yes | ≥ 1 | 10 | |
 | preview | bool | no | — | false | Free preview for non-enrolled |
 
@@ -71,7 +72,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 | id | string | yes | — | `document-…` | |
 | title | string | yes | — | — | |
 | type | DocumentType | yes | PDF / DOCX / PPTX | PDF | |
-| url | string | yes | URL pattern; path must end in `.pdf`/`.docx`/`.pptx` matching type (ignoring `?query`/`#hash`) | — | |
+| url | string | no | URL pattern; path must end in `.pdf`/`.docx`/`.pptx` matching type (ignoring `?query`/`#hash`) | — | Empty = no file yet (BR-CMS-19) |
+| mediaId | number | no | API: uploaded document of this course whose file type matches `type` | — | Either `url` or `mediaId` |
 | videoId | string | no | must reference a video in the same section | first video of section | Empty = document for whole section |
 
 **LiveSession**
@@ -89,7 +91,18 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 | id | string | yes | — | `material-…` | |
 | title | string | yes | — | — | |
 | type | MaterialType | yes | PDF / Slides / Worksheet / Link | PDF | |
-| url | string | yes | URL pattern | `https://example.com/demo-materials/file` | |
+| url | string | Link: yes | URL pattern | demo: `https://example.com/demo-materials/file`; API: empty | File materials may have no file yet |
+| mediaId | number | no | API: uploaded document (PDF/DOCX/PPTX) of this course; not for Link | — | Either `url` or `mediaId` |
+
+**MediaFile** (API mode, uploaded file; stored as `MediaAsset`, see data-model.md)
+| Field | Type | Required | Validation | Default | Notes |
+|---|---|---|---|---|---|
+| id | number | yes | — | — | Main App id; the Streaming id is never sent to the browser |
+| kind | video / document | yes | — | — | |
+| status | pending_upload / uploaded / queued / processing / ready / failed / deleting / deleted | yes | — | pending_upload | Only `ready` files are shown to students |
+| fileName, mimeType, sizeBytes | string, string, number | yes | BR-CMS-21 | — | |
+| durationSeconds | number | no | — | — | Video length, from Streaming |
+| errorMessage | string | no | — | — | When processing failed |
 
 **Instructor**
 | Field | Type | Required | Validation | Default | Notes |
@@ -122,12 +135,21 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
 - **BR-CMS-17** Text fields are trimmed on save; outcomes/requirements split by line, blank lines removed.
 - **BR-CMS-18** Rows (sessions, materials, modules, submodules, sections, topics, videos, documents) can be reordered up/down; array order = display order.
-- **BR-CMS-19** Until uploads exist (backend Step 6) a new video must have a link ("Add a link for every new video."). Documents and file materials may be saved without a link ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file.
+- **BR-CMS-19** Documents and file materials may be saved without a file ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file. Demo mode: a new video needs a link. (API: see BR-CMS-24; changed 2026-11-16, before uploads a new video needed a link.)
 - **BR-CMS-20** (API) Curriculum save keeps the ids of items it is sent and removes (soft-deletes) items it is not sent; ids that do not belong to the course are refused ("Something in this course changed in the meantime. Reload the page and try again.").
+- **BR-CMS-21** (API) Files are uploaded for a saved course by people with `courses.edit` on it. Limits: video ≤ 2 GB (MP4, WebM, MOV); document ≤ 50 MB (PDF, DOCX, PPTX). The API checks the user and the file first, then asks the Streaming service for an upload link (valid 15 minutes); the browser sends the bytes straight to that link, then tells the API the upload is complete.
+- **BR-CMS-22** (API) After an upload, Streaming processes the file: `uploaded → queued → processing → ready`, or `failed`. The editor checks the status every 3 seconds. A video, document or material whose file is not `ready` is hidden from students (media rule B); managers see it with its status.
+- **BR-CMS-23** (API) A file can only be attached in the course it was uploaded for, to one item, and with the right kind: a video file for a video, a document for a document or file material; a section document's file must match its type (.pdf/.docx/.pptx). Files that failed, are not uploaded yet, or are being deleted are refused.
+- **BR-CMS-24** (API) A new video must be an uploaded file ("Upload a file for every new video."; a link is refused: "New videos can't be added as links."). Older videos (such as the seeded demo videos) keep their link, which can't be changed ("A video link can no longer be changed. Upload the video file instead."); uploading a file replaces it.
+- **BR-CMS-25** (API) A file that no item uses any more (its video, document or material was removed, or given another file, or the course was deleted) is deleted from the Streaming service straight away; a failed request is retried every minute. An upload that is replaced or removed in the editor before saving is deleted at once. A file still in use cannot be deleted ("This file is still used in the course.").
+- **BR-CMS-26** (API) A document or file material holds an uploaded file, a link, or nothing yet; a Link material cannot hold a file. Save waits until running uploads have finished ("Wait until the uploads have finished, then save.").
+- **BR-CMS-27** (API) After a curriculum save the editor reloads the saved curriculum, so new rows get their server ids and a second save updates them instead of adding them again. (Fixed 2026-11-16: before, a second save without reloading the page removed and re-created the new rows.)
 
 ## 5. Workflows & Status Transitions
 Course publish state: `Draft (published=false) → Published (published=true) → Draft` — triggered by Admin or instructor with `courses.edit` on the course.
-Typical flow: Create course as Draft (details) → Save → open Curriculum → add modules/sections → Save → (Live/Hybrid) add sessions → tick Published → Save.
+Typical flow: Create course as Draft (details) → Save → open Curriculum → add modules/sections → upload videos/documents (API) → Save → (Live/Hybrid) add sessions → tick Published → Save.
+
+Uploaded file (API): `pending_upload` (browser sending) → `uploaded` (complete) → `queued` → `processing` → `ready` | `failed` — reported by Streaming webhooks. `ready | failed → deleting` (no longer used, BR-CMS-25) `→ deleted` (Streaming confirms).
 
 ## 6. Permissions
 | Action | Student | Instructor (granted course) | Admin |
@@ -158,6 +180,9 @@ Typical flow: Create course as Draft (details) → Save → open Curriculum → 
 | `CourseService.instructors` (`ca-instructors`) | `GET /api/instructors` |
 | `saveInstructor` | `POST /api/instructors`, `PUT /api/instructors/{id}` |
 | `removeInstructor` | `DELETE /api/instructors/{id}` |
+| `MediaService.upload` (API, Step 6) | `POST /api/v1/media/uploads` → PUT bytes to the returned link → `POST /api/v1/media/uploads/{id}/complete` |
+| `MediaService.status` (editor polling) | `GET /api/v1/media/assets/{id}` |
+| `MediaService.remove` (unsaved upload replaced/removed) | `DELETE /api/v1/media/assets/{id}` |
 
 ## 9. Open Questions / Assumptions
 - Deleting a course does **not** remove progress, certification rule, exam submissions or certificates for it. Keep (as history) or delete?
@@ -165,8 +190,10 @@ Typical flow: Create course as Draft (details) → Save → open Curriculum → 
 - Publish toggle in list skips "needs sections / needs sessions" checks; a course with no sessions can be published from the list. Intended?
 - `language` is free text; should it be an enum (Bangla/English)?
 - `coverIcon` is free text; no validation it is a real icon.
-- Video/document/material URLs are external links; is file upload/hosting needed (e.g. blob storage, private video hosting)?
-- Non-preview video URLs are sent to the browser for anyone loading the course (demo). Backend must hide them from non-enrolled users.
+- Answered 2026-11-16: files are uploaded to the separate Streaming service; new videos are upload-only; removed or replaced files are deleted at once; the spec's limits (2 GB / 50 MB, 15-minute upload link, 10-minute play/download link, 5-minute webhook window) apply.
+- An upload that is never saved into the curriculum (e.g. the editor is closed before saving) stays at Streaming as an unused file. Should unused uploads be deleted automatically after some time (e.g. 24 hours)?
+- A video up to 2 GB is sent in one request; a dropped connection means starting again. Are resumable (chunked) uploads needed?
+- Documents and file materials can still be links. Should they become upload-only like videos?
 - Sections may end up with zero videos (removable). Allowed?
 - `durationHours` is entered manually, not computed from video minutes. OK?
 - Instructor `students`/`rating` are manual/static. Should they be computed?
@@ -178,3 +205,5 @@ Typical flow: Create course as Draft (details) → Save → open Curriculum → 
 - `src/app/pages/admin/admin-courses.ts`, `admin-instructors.ts`
 - `src/app/pages/admin/course-form/course-form.ts` / `.html`
 - `src/app/pages/admin/curriculum-editor/curriculum-editor.ts` / `.html`
+- `src/app/core/services/media.service.ts` (uploads, status, links)
+- API: `Services/CourseAdminService.cs` (attach/release files), `Services/Media/*` (MediaService, StreamingWebhookService, clients, deletion worker), `Controllers/MediaControllers.cs`

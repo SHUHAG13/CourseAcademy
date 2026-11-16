@@ -89,6 +89,19 @@ The JWT signing key is a secret and is not in the repository. Set one once (any 
 dotnet user-secrets set "Jwt:SigningKey" "<random 64-character string>" --project CourseAcademy.Api
 ```
 
+## Progress (Step 5)
+- Progress is stored per lesson in `LessonProgress`: each video is a lesson, and so is a section without videos. Course % = completed lessons ÷ all lessons still in the course (`LessonRules` in `Services/ProgressService.cs`).
+- `GET /api/v1/progress/mine` (dashboard), `GET /progress/courses/{slug}`, `PUT /progress/videos/{id}/complete`, `PUT /progress/sections/{id}/complete`, `PUT /progress/videos/{id}/position`.
+- Only video files (direct .mp4/.webm links, later uploads) send positions; the first time 90% is watched the video completes itself. YouTube/Vimeo videos are completed with the button.
+- `GET /api/v1/admin/overview` (`reports.view`) returns the admin overview totals and the 5 newest payments.
+
+## Media (Step 6)
+Course files (videos, documents, materials) are kept by a separate **Streaming service** (NestJS), as described in `docs/integration/streaming-integration.md`. This API decides who may upload, watch or download, stores only Streaming's asset id and status (`MediaAsset`), and never stores or proxies file bytes.
+- Endpoints: `/api/v1/media/uploads`, `/uploads/{id}/complete`, `/assets/{id}` (status, delete), `/videos/{id}/playback`, `/documents/{id}/download`, `/materials/{id}/download`; webhooks at `/api/v1/internal/streaming/webhooks` (HMAC-SHA256 signed, de-duplicated by event id, applied in sequence order).
+- `Streaming:Mode = Fake` (Development default): a built-in stand-in stores files in `CourseAcademy.Api/App_Data/fake-streaming`, "processes" them in a few seconds and sends real signed webhooks to itself. Videos play as plain files. Refused outside Development.
+- `Streaming:Mode = Http`: the real service at `Streaming:BaseUrl`, called with an `X-Api-Key` header and a resilience handler (retries for safe calls, timeouts, circuit breaker).
+- Files no lesson or material uses any more are deleted from Streaming by a background worker (`MediaDeletionService`), at once and retried every minute.
+
 ## Configuration (production)
 Secrets never go in `appsettings.json`. Set them as environment variables or user secrets:
 
@@ -97,5 +110,8 @@ Secrets never go in `appsettings.json`. Set them as environment variables or use
 | Database connection | `ConnectionStrings__Default` |
 | Allowed browser origins | `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, … |
 | JWT signing key (≥ 32 chars, random) | `Jwt__SigningKey` |
+| Streaming mode and address | `Streaming__Mode` = `Http`, `Streaming__BaseUrl` |
+| Streaming API key (≥ 16 chars) | `Streaming__ApiKey` |
+| Streaming webhook secret (≥ 32 chars, shared with Streaming) | `Streaming__WebhookSecret` |
 
 The API refuses to start without a connection string, at least one allowed origin, or a valid signing key. `Database:SeedDemoData` is refused outside Development.

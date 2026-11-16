@@ -74,6 +74,25 @@ public static class LookupSeed
         Row<Currency>(1, "BDT", "Bangladeshi Taka"),
     ];
 
+    public static readonly MediaKind[] MediaKinds =
+    [
+        Row<MediaKind>(1, "video", "Video"),
+        Row<MediaKind>(2, "document", "Document"),
+    ];
+
+    /// <summary>Statuses of the streaming spec, plus pending_upload (Main App only: bytes not received yet).</summary>
+    public static readonly MediaAssetStatus[] MediaAssetStatuses =
+    [
+        Row<MediaAssetStatus>(1, "pending_upload", "Waiting for upload"),
+        Row<MediaAssetStatus>(2, "uploaded", "Uploaded"),
+        Row<MediaAssetStatus>(3, "queued", "Queued"),
+        Row<MediaAssetStatus>(4, "processing", "Processing"),
+        Row<MediaAssetStatus>(5, "ready", "Ready"),
+        Row<MediaAssetStatus>(6, "failed", "Failed"),
+        Row<MediaAssetStatus>(7, "deleting", "Deleting"),
+        Row<MediaAssetStatus>(8, "deleted", "Deleted"),
+    ];
+
     public static readonly Category[] Categories =
     [
         Row<Category>(1, "video-editing", "Video Editing", c =>

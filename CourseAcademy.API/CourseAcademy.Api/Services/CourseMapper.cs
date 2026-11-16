@@ -1,6 +1,7 @@
 using CourseAcademy.Api.Common;
 using CourseAcademy.Api.Dtos;
 using CourseAcademy.Api.Entities;
+using CourseAcademy.Api.Services.Media;
 
 namespace CourseAcademy.Api.Services;
 
@@ -43,7 +44,7 @@ public static class CourseMapper
                 videos.Select(v =>
                 {
                     var locked = !(v.IsPreview || viewer.HasContentAccess);
-                    return new VideoDto(v.Id, v.Title, v.Minutes, v.IsPreview, SourceOf(v), locked ? null : v.ExternalUrl, HasMedia(v), locked);
+                    return new VideoDto(v.Id, v.Title, v.Minutes, v.IsPreview, SourceOf(v), locked ? null : LinkOf(v), HasMedia(v), locked, MediaOf(v, viewer));
                 }).ToList(),
                 s.Documents.OrderBy(d => d.SortOrder).ThenBy(d => d.Id)
                     .Where(d => viewer.CanManage || HasMedia(d))
@@ -52,7 +53,7 @@ public static class CourseMapper
                         // A document of a free preview video is open to everyone (BR-CAT-13).
                         var locked = !(viewer.HasContentAccess || (d.SectionVideoId is { } vid && previewVideoIds.Contains(vid)));
                         var videoId = d.SectionVideoId is { } id && visibleVideoIds.Contains(id) ? id : (int?)null;
-                        return new DocumentDto(d.Id, d.Title, d.DocumentType.Code, videoId, locked ? null : d.ExternalUrl, HasMedia(d), locked);
+                        return new DocumentDto(d.Id, d.Title, d.DocumentType.Code, videoId, SourceOf(d), locked ? null : LinkOf(d), HasMedia(d), locked, MediaOf(d, viewer));
                     }).ToList(),
                 byParent[s.Id].OrderBy(t => t.SortOrder).ThenBy(t => t.Id).Select(Map).ToList());
         }
@@ -65,8 +66,8 @@ public static class CourseMapper
 
         var materials = c.Materials.OrderBy(m => m.SortOrder).ThenBy(m => m.Id)
             .Where(m => viewer.CanManage || HasMedia(m))
-            .Select(m => new MaterialDto(m.Id, m.Title, m.MaterialType.Code,
-                viewer.HasContentAccess ? m.ExternalUrl : null, HasMedia(m), !viewer.HasContentAccess))
+            .Select(m => new MaterialDto(m.Id, m.Title, m.MaterialType.Code, SourceOf(m),
+                viewer.HasContentAccess ? LinkOf(m) : null, HasMedia(m), !viewer.HasContentAccess, MediaOf(m, viewer)))
             .ToList();
 
         return new CourseDetailDto(
@@ -88,11 +89,18 @@ public static class CourseMapper
     }
 
     /// <summary>
-    /// Whether a link or an uploaded file is attached. Upload status checks (asset "ready") are added with the
-    /// media module; until then an attached asset counts as present.
+    /// Whether students can open the item: it has a link, or an uploaded file that is ready (media rule B: files
+    /// still processing, or failed, are hidden). Needs <see cref="IMediaItem.Asset"/> loaded.
     /// </summary>
-    public static bool HasMedia(IMediaItem item) => item.ExternalUrl is not null || item.AssetId is not null;
+    public static bool HasMedia(IMediaItem item) =>
+        item.MediaAssetId is null ? item.ExternalUrl is not null : item.Asset?.MediaAssetStatusId == MediaStatusCodes.Id(MediaStatusCodes.Ready);
 
     private static string? SourceOf(IMediaItem item) =>
-        item.AssetId is not null ? MediaSources.Upload : item.ExternalUrl is not null ? MediaSources.External : null;
+        item.MediaAssetId is not null ? MediaSources.Upload : item.ExternalUrl is not null ? MediaSources.External : null;
+
+    /// <summary>Uploads are never sent as URLs; they are opened through the media endpoints.</summary>
+    private static string? LinkOf(IMediaItem item) => item.MediaAssetId is null ? item.ExternalUrl : null;
+
+    private static MediaAssetDto? MediaOf(IMediaItem item, CourseViewer viewer) =>
+        viewer.CanManage && item.Asset is not null ? MediaService.ToDto(item.Asset) : null;
 }

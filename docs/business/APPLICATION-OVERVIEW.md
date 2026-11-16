@@ -73,14 +73,14 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 |---|---|---|---|
 | 1 | Accounts & Auth | Partial | People sign up and log in through the server (secure tokens). Sign-up always creates a Student. No password reset or profile editing yet. |
 | 2 | Access Control | Done (server) | Admin decides which screens each user can open, using roles, a personal screen list per user, and per-course rights for instructors. The server checks every action. |
-| 3 | Course Catalog | Done (server; reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. |
-| 4 | Course Management | Done (server; file uploads come later) | Admin/instructor creates and edits courses, builds the curriculum, schedules live classes, adds materials, publishes, and manages instructor profiles. |
+| 3 | Course Catalog | Done (server; reviews fake) | Visitors browse, search and filter courses, open a course page, watch free previews and see price, curriculum and instructor. Uploaded videos and files open only through short-lived links after an access check. |
+| 4 | Course Management | Done (server, with file uploads) | Admin/instructor creates and edits courses, builds the curriculum, uploads lesson videos and documents (kept by a separate video service, processed before students see them), schedules live classes, adds materials, publishes, and manages instructor profiles. |
 | 5 | Checkout & Payments | Done on the server (demo gateway; real gateways plug in later) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
 | 6 | Enrollments | Done (server) | Records who has access to which course. Admin can revoke or restore access. |
-| 7 | Learning & Progress | Partial (Live progress missing) | Enrolled students watch lessons, open documents, join live classes and mark sections complete. Dashboard shows courses, certificates, upcoming classes, payments. |
+| 7 | Learning & Progress | Done (server; certificates come later) | Enrolled students watch lessons, open documents, join live classes and mark lessons complete (every course format, Live included). On the server each video is a lesson; video files remember where the student stopped and complete themselves at 90% watched. Dashboard shows courses with progress, upcoming classes, payments. |
 | 8 | Certification | Done | Each course awards a certificate on completion or after an exam (project/presentation scored by instructor). Anyone can verify a certificate by code. |
 | 9 | Community | Done | Each course has a discussion board. Moderators can pin, lock, hide and delete. |
-| 10 | Admin Overview | Done | Summary numbers (courses, students, enrollments, money collected) and recent payments. |
+| 10 | Admin Overview | Done (server) | Summary numbers (courses, students, enrollments, money collected) and recent payments. |
 | 11 | Site Content | Partial (forms not stored) | About, sports media, career, contact, FAQ, testimonials, legal pages; Bangla/English switch. |
 
 ## A5. Main workflows
@@ -393,8 +393,9 @@ Course, Instructor, curriculum entities: see `course-management.md`.
 - **BR-CAT-17** "Play preview" opens the first module containing a preview video; if none: "This course has no free preview videos yet."
 - **BR-CAT-18** Instructor card course count = number of **published** courses by that instructor.
 - **BR-CAT-19** Format intro text: Pre-recorded = self-paced recorded; Live = instructor-led live classes; Hybrid = recorded + scheduled live.
-- **BR-CAT-21** (API) A video, document or material with no link or file yet is not shown to visitors or students; people who manage the course see it. Locked links are not sent to the browser at all (the API returns no URL).
+- **BR-CAT-21** (API) A video, document or material with no link or file yet, or with an uploaded file that is not `ready` (still processing, or failed), is not shown to visitors or students; people who manage the course see it with the file's status. Locked links are not sent to the browser at all (the API returns no URL).
 - **BR-CAT-20** Video URLs: YouTube (`youtu.be`, `youtube.com/watch|embed|shorts`), Vimeo (`vimeo.com/<id>`) or direct `https://…mp4|webm`; anything else shows a placeholder player.
+- **BR-CAT-22** (API) Uploaded files never have a URL in the course data. To play an uploaded video, or download an uploaded document or material, the browser asks the API, which checks access first (preview video and its documents: anyone; otherwise course access, BR-ENR-03; unpublished course: managers or enrolled only) and then returns a link valid for 10 minutes. Videos play as HLS (hls.js, loaded only when needed; Safari plays HLS itself). If the link runs out while a video plays, the player gets a new one and continues at the same point (once; a second failure within 15 seconds shows "This video can't be played right now."). Documents and materials download without leaving the page.
 
 ### 5. Workflows & Status Transitions
 Browse: Guest → `/courses` → filter/sort → open course → preview → Enroll Now → (login if needed) → checkout (see checkout-payments).
@@ -425,6 +426,8 @@ No status transitions in this module.
 | `CourseService.reviews()` / `ratingBreakdown()` (static demo) | `GET /api/courses/{id}/reviews` (planned) |
 | `CourseService.instructor()` | included in course detail response |
 | Simulated latency 350 ms | — |
+| Uploaded video playback (`VideoEmbed` with `uploadId`, API) | `POST /api/v1/media/videos/{id}/playback` → `{ url, format, expiresAt, durationSeconds }` |
+| Uploaded document / material download (API) | `POST /api/v1/media/documents/{id}/download`, `POST /api/v1/media/materials/{id}/download` → `{ url, expiresAt }` |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
@@ -435,7 +438,8 @@ See [Part C](#part-c--open-questions--likely-bugs).
 - `src/app/pages/course-detail/course-detail.ts` / `.html`
 - `src/app/pages/home/home.html`, `src/app/components/*`
 - `src/app/core/data/courses.data.ts`
-- `src/app/shared/components/video-embed/video-embed.ts`
+- `src/app/shared/components/video-embed/video-embed.ts` (links, files, uploads via HLS)
+- `src/app/shared/components/document-list/document-list.ts`, `src/app/core/services/media.service.ts`
 
 ## B4. Course Management
 
@@ -447,8 +451,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 |---|---|---|
 | `/admin/courses` | `AdminCourses` | Table of courses the user can view (search by title, filter by format): title, instructor, format, price + discount, sections/live/materials counts, active enrollments, Published/Draft. Actions: publish/unpublish, view page, certification, curriculum, edit, delete. "New course" button. |
 | `/admin/courses/new` | `CourseForm` | Create course. Guard `courses.create`. |
-| `/admin/courses/:id` | `CourseForm` | Edit course details, live sessions, materials. Guard `courses.edit` (global or on course). |
-| `/admin/courses/:id/curriculum` | `CurriculumEditor` | Nested editor: add/remove/reorder modules, submodules, sections, topics, videos, documents; collapse modules. Guard `courses.edit` on course. |
+| `/admin/courses/:id` | `CourseForm` | Edit course details, live sessions, materials. Guard `courses.edit` (global or on course). API mode: file materials have "Upload file / Replace file / Remove file" with progress and processing status (saved courses only: "Save the course first to upload files."). |
+| `/admin/courses/:id/curriculum` | `CurriculumEditor` | Nested editor: add/remove/reorder modules, submodules, sections, topics, videos, documents; collapse modules. Guard `courses.edit` on course. API mode: each video has "Upload file / Replace file" (an older video shows its link read-only); each document has a link field or an uploaded file; upload progress %, then "Processing… / Ready / Processing failed". |
 | `/admin/instructors` | `AdminInstructors` | Instructor cards (name, title, bio, years, assigned course count). Inline create/edit form, delete. |
 
 ### 3. Entities & Fields
@@ -500,7 +504,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 |---|---|---|---|---|---|
 | id | string | yes | — | `video-…` | |
 | title | string | yes | trimmed | — | |
-| url | string | yes | `^https?:\/\/[^\s.]+\.[^\s]{2,}$` | — | See BR-CAT-20 for playable formats |
+| url | string | demo: yes; API: older videos only | `^https?:\/\/[^\s.]+\.[^\s]{2,}$` | — | See BR-CAT-20 for playable formats. API: read-only, cannot be changed (BR-CMS-24) |
+| mediaId | number | API: new videos | uploaded video of this course (BR-CMS-23) | — | Replaces the link when set |
 | minutes | number | yes | ≥ 1 | 10 | |
 | preview | bool | no | — | false | Free preview for non-enrolled |
 
@@ -510,7 +515,8 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 | id | string | yes | — | `document-…` | |
 | title | string | yes | — | — | |
 | type | DocumentType | yes | PDF / DOCX / PPTX | PDF | |
-| url | string | yes | URL pattern; path must end in `.pdf`/`.docx`/`.pptx` matching type (ignoring `?query`/`#hash`) | — | |
+| url | string | no | URL pattern; path must end in `.pdf`/`.docx`/`.pptx` matching type (ignoring `?query`/`#hash`) | — | Empty = no file yet (BR-CMS-19) |
+| mediaId | number | no | API: uploaded document of this course whose file type matches `type` | — | Either `url` or `mediaId` |
 | videoId | string | no | must reference a video in the same section | first video of section | Empty = document for whole section |
 
 **LiveSession**
@@ -528,7 +534,18 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 | id | string | yes | — | `material-…` | |
 | title | string | yes | — | — | |
 | type | MaterialType | yes | PDF / Slides / Worksheet / Link | PDF | |
-| url | string | yes | URL pattern | `https://example.com/demo-materials/file` | |
+| url | string | Link: yes | URL pattern | demo: `https://example.com/demo-materials/file`; API: empty | File materials may have no file yet |
+| mediaId | number | no | API: uploaded document (PDF/DOCX/PPTX) of this course; not for Link | — | Either `url` or `mediaId` |
+
+**MediaFile** (API mode, uploaded file; stored as `MediaAsset`, see data-model.md)
+| Field | Type | Required | Validation | Default | Notes |
+|---|---|---|---|---|---|
+| id | number | yes | — | — | Main App id; the Streaming id is never sent to the browser |
+| kind | video / document | yes | — | — | |
+| status | pending_upload / uploaded / queued / processing / ready / failed / deleting / deleted | yes | — | pending_upload | Only `ready` files are shown to students |
+| fileName, mimeType, sizeBytes | string, string, number | yes | BR-CMS-21 | — | |
+| durationSeconds | number | no | — | — | Video length, from Streaming |
+| errorMessage | string | no | — | — | When processing failed |
 
 **Instructor**
 | Field | Type | Required | Validation | Default | Notes |
@@ -561,12 +578,21 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
 - **BR-CMS-17** Text fields are trimmed on save; outcomes/requirements split by line, blank lines removed.
 - **BR-CMS-18** Rows (sessions, materials, modules, submodules, sections, topics, videos, documents) can be reordered up/down; array order = display order.
-- **BR-CMS-19** Until uploads exist (backend Step 6) a new video must have a link ("Add a link for every new video."). Documents and file materials may be saved without a link ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file.
+- **BR-CMS-19** Documents and file materials may be saved without a file ("no file yet"); a Link material always needs a link. Seeded demo documents and file materials have no file. Demo mode: a new video needs a link. (API: see BR-CMS-24; changed 2026-11-16, before uploads a new video needed a link.)
 - **BR-CMS-20** (API) Curriculum save keeps the ids of items it is sent and removes (soft-deletes) items it is not sent; ids that do not belong to the course are refused ("Something in this course changed in the meantime. Reload the page and try again.").
+- **BR-CMS-21** (API) Files are uploaded for a saved course by people with `courses.edit` on it. Limits: video ≤ 2 GB (MP4, WebM, MOV); document ≤ 50 MB (PDF, DOCX, PPTX). The API checks the user and the file first, then asks the Streaming service for an upload link (valid 15 minutes); the browser sends the bytes straight to that link, then tells the API the upload is complete.
+- **BR-CMS-22** (API) After an upload, Streaming processes the file: `uploaded → queued → processing → ready`, or `failed`. The editor checks the status every 3 seconds. A video, document or material whose file is not `ready` is hidden from students (media rule B); managers see it with its status.
+- **BR-CMS-23** (API) A file can only be attached in the course it was uploaded for, to one item, and with the right kind: a video file for a video, a document for a document or file material; a section document's file must match its type (.pdf/.docx/.pptx). Files that failed, are not uploaded yet, or are being deleted are refused.
+- **BR-CMS-24** (API) A new video must be an uploaded file ("Upload a file for every new video."; a link is refused: "New videos can't be added as links."). Older videos (such as the seeded demo videos) keep their link, which can't be changed ("A video link can no longer be changed. Upload the video file instead."); uploading a file replaces it.
+- **BR-CMS-25** (API) A file that no item uses any more (its video, document or material was removed, or given another file, or the course was deleted) is deleted from the Streaming service straight away; a failed request is retried every minute. An upload that is replaced or removed in the editor before saving is deleted at once. A file still in use cannot be deleted ("This file is still used in the course.").
+- **BR-CMS-26** (API) A document or file material holds an uploaded file, a link, or nothing yet; a Link material cannot hold a file. Save waits until running uploads have finished ("Wait until the uploads have finished, then save.").
+- **BR-CMS-27** (API) After a curriculum save the editor reloads the saved curriculum, so new rows get their server ids and a second save updates them instead of adding them again. (Fixed 2026-11-16: before, a second save without reloading the page removed and re-created the new rows.)
 
 ### 5. Workflows & Status Transitions
 Course publish state: `Draft (published=false) → Published (published=true) → Draft` — triggered by Admin or instructor with `courses.edit` on the course.
-Typical flow: Create course as Draft (details) → Save → open Curriculum → add modules/sections → Save → (Live/Hybrid) add sessions → tick Published → Save.
+Typical flow: Create course as Draft (details) → Save → open Curriculum → add modules/sections → upload videos/documents (API) → Save → (Live/Hybrid) add sessions → tick Published → Save.
+
+Uploaded file (API): `pending_upload` (browser sending) → `uploaded` (complete) → `queued` → `processing` → `ready` | `failed` — reported by Streaming webhooks. `ready | failed → deleting` (no longer used, BR-CMS-25) `→ deleted` (Streaming confirms).
 
 ### 6. Permissions
 | Action | Student | Instructor (granted course) | Admin |
@@ -597,6 +623,9 @@ Typical flow: Create course as Draft (details) → Save → open Curriculum → 
 | `CourseService.instructors` (`ca-instructors`) | `GET /api/instructors` |
 | `saveInstructor` | `POST /api/instructors`, `PUT /api/instructors/{id}` |
 | `removeInstructor` | `DELETE /api/instructors/{id}` |
+| `MediaService.upload` (API, Step 6) | `POST /api/v1/media/uploads` → PUT bytes to the returned link → `POST /api/v1/media/uploads/{id}/complete` |
+| `MediaService.status` (editor polling) | `GET /api/v1/media/assets/{id}` |
+| `MediaService.remove` (unsaved upload replaced/removed) | `DELETE /api/v1/media/assets/{id}` |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
@@ -607,6 +636,8 @@ See [Part C](#part-c--open-questions--likely-bugs).
 - `src/app/pages/admin/admin-courses.ts`, `admin-instructors.ts`
 - `src/app/pages/admin/course-form/course-form.ts` / `.html`
 - `src/app/pages/admin/curriculum-editor/curriculum-editor.ts` / `.html`
+- `src/app/core/services/media.service.ts` (uploads, status, links)
+- API: `Services/CourseAdminService.cs` (attach/release files), `Services/Media/*` (MediaService, StreamingWebhookService, clients, deletion worker), `Controllers/MediaControllers.cs`
 
 ## B5. Checkout & Payments
 
@@ -810,10 +841,20 @@ Gives enrolled users a place to watch lessons, open documents and materials, joi
 | Route | Component | What the user sees / does |
 |---|---|---|
 | `/dashboard` | `Dashboard` | Guards: auth + `dashboard.view`. Sections: My courses (progress bar, revoked tag, Continue learning), My certificates (download PDF, verify), Upcoming live classes (max 5), Payment history (View receipt). |
-| `/learn/:slug` | `Learn` | Guards: auth + `learn.view`. Without access: "enrolled students only" message. With access: progress (x of y sections), outline sidebar (sections + nested topics, ✓ when complete), player, breadcrumb trail, video switcher, documents per video and per section, topic shortcuts, "Mark as complete" toggle, certificate box, live classes with links, materials, link to community. |
+| `/learn/:slug` | `Learn` | Guards: auth + `learn.view`. Without access: "enrolled students only" message. With access: progress (x of y sections; API mode: x of y lessons), outline sidebar (sections + nested topics, ✓ when complete), player, breadcrumb trail, video switcher (API mode: ✓ per finished video), documents per video and per section, topic shortcuts, "Mark as complete" toggle (API mode: for the current video, or for the section when it has no videos), certificate box, live classes with links, materials, link to community. Same for every course format, Live included (BR-LRN-08). |
 
 ### 3. Entities & Fields
-**Progress**
+**LessonProgress** (API mode, backend Step 5) — one per user and lesson; see data-model.md
+| Field | Type | Required | Validation | Default | Notes |
+|---|---|---|---|---|---|
+| userId, courseId, sectionId | int | yes | FK | — | |
+| sectionVideoId | int | no | FK SectionVideo | null | null = a section without videos |
+| positionSeconds | int | yes | 0–86400 | 0 | resume point (video files only) |
+| maxWatchedSeconds | int | yes | ≥ 0 | 0 | furthest point reached |
+| durationSeconds | int | no | 1–86400 | — | reported by the player |
+| isCompleted / completedAt | bool / datetime | yes / no | — | false / null | |
+
+**Progress** (demo mode, browser storage)
 | Field | Type | Required | Validation | Default | Notes |
 |---|---|---|---|---|---|
 | id | string | yes | `userId:courseId` | — | PK; one per user+course |
@@ -830,17 +871,23 @@ Gives enrolled users a place to watch lessons, open documents and materials, joi
 - **BR-LRN-05** Only completed ids that still exist in the course count (removed sections don't count).
 - **BR-LRN-06** Reaching 100% shows "You have completed every section of {course}!".
 - **BR-LRN-07** After each completion, a completion-mode certificate is evaluated and issued if the rule is met (BR-CERT-04).
-- **BR-LRN-08** For **Live** format courses the player and "Mark as complete" are not shown; the outline is static (see Open Questions).
+- **BR-LRN-08** **Live** format courses work like the others: player, "Mark as complete" and a clickable outline, so their progress can move. (Changed 2026-11-16; before, Live courses showed a static outline only.)
 - **BR-LRN-09** Documents attached to a video show under that video; documents without `videoId` show for the whole section.
 - **BR-LRN-10** Live sessions are "past" when `startsAt + durationMinutes` < now.
 - **BR-LRN-11** Dashboard "Upcoming live classes" = sessions of courses with **active** enrollments that have not ended, sorted by start, max 5.
 - **BR-LRN-12** Dashboard hides enrollments whose course was deleted.
 - **BR-LRN-13** If an admin edits the curriculum while a student is on the page, the current section/video is kept if it still exists, otherwise the first is selected.
 - **BR-LRN-14** Dashboard payment history = own transactions, newest first.
+- **BR-LRN-15** (API) Progress counts **lessons**: each video students can see is one lesson (a video with no file yet, or an upload that is not ready, does not count), and a section with no such videos (only documents, or empty) is one lesson. Topics are sections of their own. A section is ✓ when all its lessons are done. Demo mode keeps counting sections (BR-LRN-04).
+- **BR-LRN-16** (API) Progress is stored on the server per user and lesson, so it is the same on every device. The dashboard shows it for every enrolled course. A revoked learner keeps their progress but cannot change it ("Enroll in this course to track your progress."); people who manage the course (`courses.view`) can record progress without an enrollment.
+- **BR-LRN-17** (API) Only video files (direct https `.mp4`/`.webm` links, and uploaded videos) can report where the learner is: every 15 seconds while playing, on pause and at the end (a pause and an end at the same moment send one report). Opening the video again resumes there, unless it was within the last 5 seconds. YouTube/Vimeo embeds cannot report, so they are completed with the button only. For uploaded videos the length measured by Streaming counts, not the length the browser reports.
+- **BR-LRN-18** (API) A video file completes itself the first time the furthest point watched reaches 90% of its length; the button stays available. If the learner later marks it as not done, watching it again does not complete it automatically.
+- **BR-LRN-19** (API) After marking a video complete, the next video of the section is selected; after the last one (or a section without videos), the next section (extends BR-LRN-03).
 
 ### 5. Workflows & Status Transitions
 Learn: Dashboard → Continue learning → pick section → watch → Mark as complete → auto-advance → … → 100% → certificate (completion mode) or exam hand-in (exam mode).
-Section state per user: `Not completed ⇄ Completed` (student toggles).
+Section state per user (demo): `Not completed ⇄ Completed` (student toggles).
+Lesson state per user (API): `Not completed ⇄ Completed` (student toggles); a video file also moves to `Completed` by itself at 90% watched (once).
 
 ### 6. Permissions
 | Action | Student | Instructor | Admin |
@@ -850,24 +897,31 @@ Section state per user: `Not completed ⇄ Completed` (student toggles).
 | Mark complete | if enrolled | if access | ✓ |
 
 ### 7. Calculations
-- `percent = total > 0 ? round(completedStillInCourse / totalSections × 100) : 0` (totalSections includes topics).
+- Demo: `percent = total > 0 ? round(completedStillInCourse / totalSections × 100) : 0` (totalSections includes topics).
+- API: `totalLessons = Σ over sections and topics of max(1, videoCount)`; `percent = totalLessons > 0 ? round(completedLessons / totalLessons × 100) : 0` (half rounds up). Only lessons still in the course count.
+- Automatic completion: `maxWatchedSeconds ≥ ceil(durationSeconds × 0.9)`; a reported position past the end is stored as the end.
 - Session end = `startsAt + durationMinutes × 60 000 ms`.
 
 ### 8. Data Source
-| Current | Future endpoint |
+**Done in API mode (backend Step 5).** Demo mode keeps browser storage (`ca-progress`, section-based).
+| Current | Endpoint |
 |---|---|
-| `ProgressService` (`ca-progress`) | `GET /api/me/courses/{courseId}/progress` |
-| `setComplete(course, sectionId, bool)` | `PUT /api/me/courses/{courseId}/progress/sections/{sectionId}` `{completed}` |
-| `percentFor(userId, course)` | server-side (certificate checks) |
-| Dashboard aggregate | `GET /api/me/dashboard` (or the individual `/api/me/*` endpoints) |
-| `CourseService.bySlug` (learn) | `GET /api/learn/{slug}` (full curriculum incl. non-preview URLs, access-checked) |
+| `ProgressService.loadMine` (dashboard %) | `GET /api/v1/progress/mine` |
+| `ProgressService.loadCourse` (learning page) | `GET /api/v1/progress/courses/{slug}` |
+| `setVideoComplete(course, videoId, bool)` | `PUT /api/v1/progress/videos/{id}/complete` `{completed}` |
+| `setComplete(course, sectionId, bool)` (section without videos) | `PUT /api/v1/progress/sections/{id}/complete` `{completed}` |
+| `savePosition(...)` (player) | `PUT /api/v1/progress/videos/{id}/position` `{positionSeconds, durationSeconds}` |
+| `percentFor(userId, course)` | demo only (certificate checks); certificates move to the API later |
+| `CourseService.bySlug` (learn) | `GET /api/v1/courses/{slug}` (lesson links included with course access) |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
 
 ### 10. Source Files
-- `src/app/core/services/progress.service.ts`
+- `src/app/core/services/progress.service.ts`, `src/app/core/api/learning.models.ts`
 - `src/app/core/models/progress.model.ts`
+- `src/app/shared/components/video-embed/video-embed.ts` (resume + position reports)
+- API: `Services/ProgressService.cs`, `Controllers/LearningControllers.cs`, `Entities/Learning.cs`, `Repositories/LearningRepositories.cs`
 - `src/app/pages/learn/learn.ts` / `.html`
 - `src/app/pages/dashboard/dashboard.ts` / `.html`
 - `src/app/shared/components/session-list/session-list.ts`, `document-list/document-list.ts`
@@ -1121,7 +1175,7 @@ No own entity. Reads Course, User, Enrollment, PaymentTransaction.
 - **BR-ADM-01** "Courses" = all courses (incl. drafts); label shows published count.
 - **BR-ADM-02** "Student accounts" = users with role `user` (Student) only.
 - **BR-ADM-03** "Active enrollments" = enrollments with status `active`.
-- **BR-ADM-04** "Demo payments collected" = Σ amount of transactions with status `success` (refunded excluded).
+- **BR-ADM-04** "Demo payments collected" (API mode: "Payments collected") = Σ amount of transactions with status `success` (refunded excluded).
 - **BR-ADM-05** Recent payments = 5 newest transactions by createdAt (any status).
 - **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo-only, must not exist in production.
 - **BR-ADM-07** If stored data can't be read on start-up, defaults are restored and a toast says so (demo-only).
@@ -1139,9 +1193,10 @@ None.
 - Collected = Σ `amount` where status = success.
 
 ### 8. Data Source
-| Current | Future endpoint |
+**Done in API mode (backend Step 5):** the server counts; the page no longer needs every record. Demo mode still adds up the browser stores.
+| Current | Endpoint |
 |---|---|
-| Client aggregation over all stores | `GET /api/admin/overview` → `{courseCount, publishedCount, studentCount, activeEnrollments, collectedBdt, recentTransactions[5]}` |
+| `AdminOverview` totals + recent payments | `GET /api/v1/admin/overview` → `{courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions[5]}` |
 | `DemoDataService.reset()` | none (dev-only seed script) |
 
 ### 9. Open Questions / Assumptions
@@ -1150,6 +1205,7 @@ See [Part C](#part-c--open-questions--likely-bugs).
 ### 10. Source Files
 - `src/app/pages/admin/admin-overview.ts`
 - `src/app/core/services/demo-data.service.ts`
+- API: `Services/OverviewService.cs`, `Repositories/LearningRepositories.cs` (`OverviewRepository`), `Controllers/LearningControllers.cs`
 
 ## B11. Site Content, Contact, Career & Language
 
@@ -1246,7 +1302,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
-| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission, ProgressSection and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
+| Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
 | Foreign keys | `ON DELETE NO ACTION` everywhere (soft delete means no physical cascades) |
 | Unique keys | Filtered unique indexes `WHERE IsDeleted = 0`, so a soft-deleted row doesn't block re-use |
 | Audit | Every table has `CreatedAt` and `UpdatedAt` (UTC, set automatically on save). No `CreatedBy`/`UpdatedBy`; columns that record a person exist only where a business rule needs them (e.g. `ReviewedByUserId`) |
@@ -1267,10 +1323,11 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 ### 2. Tables overview
 | Area | Tables |
 |---|---|
-| Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, CertificationMode, ExamType, SubmissionStatus |
+| Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, MediaKind, MediaAssetStatus, CertificationMode, ExamType, SubmissionStatus |
 | Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
-| Commerce & learning | Enrollment, PaymentTransaction, Progress, ProgressSection |
+| Media | MediaAsset, StreamingWebhookEvent |
+| Commerce & learning | Enrollment, PaymentTransaction, LessonProgress |
 | Certification | CertificationRule, ExamSubmission, Certificate |
 | Community | Post, Comment |
 
@@ -1306,6 +1363,8 @@ All lookup tables share this shape (+ std):
 | EnrollmentStatus | — | `active`, `revoked` |
 | PaymentStatus | — | `pending`, `success`, `failed`, `cancelled`, `refunded` |
 | Currency | — | `BDT` |
+| MediaKind | — | `video`, `document` |
+| MediaAssetStatus | — | `pending_upload`, `uploaded`, `queued`, `processing`, `ready`, `failed`, `deleting`, `deleted` (streaming spec section 3) |
 | CertificationMode | — | `completion`, `exam` |
 | ExamType | — | `project`, `presentation` |
 | SubmissionStatus | — | `submitted`, `passed`, `failed` |
@@ -1469,12 +1528,12 @@ Id PK · CourseModuleId int NOT NULL FK CourseModule · Title nvarchar(200) NOT 
 | Id | int IDENTITY | NOT NULL | | PK | |
 | SectionId | int | NOT NULL | | FK Section | |
 | Title | nvarchar(200) | NOT NULL | | | |
-| ExternalUrl | nvarchar(2048) | NULL | | | seeded videos, and new videos until uploads exist (BR-CMS-19) |
-| AssetId | nvarchar(100) | NULL | | filtered index | Streaming asset of an uploaded video (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | | | older (e.g. seeded) videos only; cannot be changed (BR-CMS-24) |
+| MediaAssetId | int | NULL | | FK MediaAsset; filtered index | uploaded video (Step 6); new videos must have one; replaces ExternalUrl when set |
 | Minutes | int | NOT NULL | 10 | CHECK ≥ 1 | |
 | IsPreview | bit | NOT NULL | 0 | | |
 | SortOrder | int | NOT NULL | | | |
-A video with neither link nor asset is hidden from students (BR-CAT-21).
+A video with neither a link nor a `ready` upload is hidden from students (BR-CAT-21).
 
 #### SectionDocument (+ std)
 | Column | Type | Null | Key / Constraint | Notes |
@@ -1484,8 +1543,8 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | SectionVideoId | int | NULL | FK SectionVideo (same section — app rule) | NULL = whole section; set NULL when its video is removed (BR-CMS-09) |
 | DocumentTypeId | int | NOT NULL | FK DocumentType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | temporary link until uploads exist; seeded documents have none |
-| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | when set, ends with the type's FileExtension (app) | a link; seeded documents have none |
+| MediaAssetId | int | NULL | FK MediaAsset; filtered index | uploaded document whose file type matches DocumentType (app); either this or ExternalUrl |
 | SortOrder | int | NOT NULL | | |
 
 #### LiveSession (+ std)
@@ -1506,9 +1565,42 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | CourseId | int | NOT NULL | FK Course | |
 | MaterialTypeId | int | NOT NULL | FK MaterialType | |
 | Title | nvarchar(200) | NOT NULL | | |
-| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; temporary link for files until uploads exist |
-| AssetId | nvarchar(100) | NULL | filtered index | Streaming asset of a file material (Step 6) |
+| ExternalUrl | nvarchar(2048) | NULL | | required for Link materials; file materials may use a link |
+| MediaAssetId | int | NULL | FK MediaAsset; filtered index | uploaded document of a file material (not for Link); either this or ExternalUrl |
 | SortOrder | int | NOT NULL | | |
+
+#### MediaAsset (+ std) — built in backend Step 6
+A file kept by the Streaming service. The Main App stores only Streaming's asset id and a copy of its status, never a file URL.
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | sent to Streaming as `externalRef` |
+| AssetId | nvarchar(100) | NULL | | UQ filtered (not null, not deleted) | Streaming's id; NULL until Streaming created the upload |
+| MediaKindId | int | NOT NULL | | FK MediaKind | video / document |
+| MediaAssetStatusId | int | NOT NULL | | FK MediaAssetStatus; index (MediaAssetStatusId, DeleteRequestedAt) | |
+| CourseId | int | NOT NULL | | FK Course; index | the file can only be used in this course (BR-CMS-23) |
+| UploadedByUserId | int | NOT NULL | | FK User | |
+| FileName | nvarchar(255) | NOT NULL | | | name only, no path |
+| MimeType | nvarchar(100) | NOT NULL | | | lower-case; allowed types BR-CMS-21 |
+| SizeBytes | bigint | NOT NULL | | CHECK > 0 | ≤ 2 GB video, ≤ 50 MB document |
+| DurationSeconds | int | NULL | | CHECK ≥ 0 | from Streaming (videos) |
+| ErrorCode / ErrorMessage | nvarchar(100) / nvarchar(500) | NULL | | | when processing failed |
+| LastSequence | bigint | NOT NULL | 0 | CHECK ≥ 0; concurrency token | sequence of the last webhook applied; older events are ignored |
+| UploadExpiresAt | datetime2(3) | NULL | | | upload link expiry (15 min) |
+| ReadyAt | datetime2(3) | NULL | | | |
+| DeleteRequestedAt | datetime2(3) | NULL | | | when the delete request reached Streaming; NULL while still to be sent |
+
+#### StreamingWebhookEvent (+ std) — built in backend Step 6
+Every signed webhook from Streaming, stored before it is acted on (streaming spec section 6).
+| Column | Type | Null | Key / Constraint | Notes |
+|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | PK | |
+| EventId | nvarchar(100) | NOT NULL | UQ (not filtered) | a repeated event is acknowledged and not applied again |
+| Type | nvarchar(50) | NOT NULL | | `asset.queued`, `asset.processing`, `asset.ready`, `asset.failed`, `asset.deleted` |
+| AssetId | nvarchar(100) | NOT NULL | index | Streaming asset id |
+| Sequence | bigint | NOT NULL | | |
+| OccurredAt | datetime2(3) | NOT NULL | | |
+| Outcome | nvarchar(20) | NOT NULL | | `applied`, `stale` (older than the last applied), `ignored`, `unknown_asset` |
+| Payload | nvarchar(max) | NOT NULL | | raw body, for support |
 
 ### 7. Commerce & learning
 #### Enrollment (+ std) — built in backend Step 4
@@ -1545,16 +1637,21 @@ A video with neither link nor asset is hidden from students (BR-CAT-21).
 | ExpiresAt | datetime2(3) | NOT NULL | | index (PaymentStatusId, ExpiresAt) | created + Payments:PendingMinutes (30) (BR-PAY-20) |
 | FulfilledAt | datetime2(3) | NULL | | | access granted once (BR-PAY-08) |
 
-#### Progress (+ std)
-Id PK · UserId int NOT NULL FK User · CourseId int NOT NULL FK Course · UQ (UserId, CourseId) filtered. (`UpdatedAt` from std = last change.)
-
-#### ProgressSection (+ std)
-| Column | Type | Null | Key | Notes |
-|---|---|---|---|---|
-| Id | int IDENTITY | NOT NULL | PK | |
-| ProgressId | int | NOT NULL | FK Progress; UQ (ProgressId, SectionId) filtered | |
-| SectionId | int | NOT NULL | FK Section | deleted sections don't count (BR-LRN-05) |
-Undo completion (BR-LRN-03) = soft-delete the row. `CreatedAt` = completed at.
+#### LessonProgress (+ std) — built in backend Step 5
+One row per user and lesson. A lesson is a video, or a section that has no videos (BR-LRN-15).
+| Column | Type | Null | Default | Key / Constraint | Notes |
+|---|---|---|---|---|---|
+| Id | int IDENTITY | NOT NULL | | PK | |
+| UserId | int | NOT NULL | | FK User; UQ (UserId, SectionId, SectionVideoId) filtered | |
+| CourseId | int | NOT NULL | | FK Course; index (UserId, CourseId) | copied from the section, for per-course queries |
+| SectionId | int | NOT NULL | | FK Section | |
+| SectionVideoId | int | NULL | | FK SectionVideo; index | NULL = the section's own completion (section without videos) |
+| PositionSeconds | int | NOT NULL | 0 | CHECK ≥ 0 | where to resume; only for video files/uploads (BR-LRN-17) |
+| MaxWatchedSeconds | int | NOT NULL | 0 | CHECK ≥ 0 | furthest point reached |
+| DurationSeconds | int | NULL | | CHECK > 0 | video length as reported by the player |
+| IsCompleted | bit | NOT NULL | 0 | | undo (BR-LRN-03) sets it back to 0; rows are not deleted |
+| CompletedAt | datetime2(3) | NULL | | | NULL when not completed |
+Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server treats NULLs as equal in a unique index, so a section without videos also has one row per user.
 
 ### 8. Certification
 #### CertificationRule (+ std) — 0..1 per course
@@ -1655,8 +1752,9 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | User / Course | Enrollment | N–N | |
 | PaymentTransaction | Enrollment | 1–0..1 | PaymentTransactionId |
 | User, Course, PaymentMethod, PaymentStatus | PaymentTransaction | 1–N | |
-| User / Course | Progress | 1 per pair | |
-| Progress / Section | ProgressSection | N–N | |
+| User / Section / SectionVideo | LessonProgress | 1 per user and lesson | UserId, SectionId, SectionVideoId (NULL for a section without videos) |
+| Course, User, MediaKind, MediaAssetStatus | MediaAsset | 1–N | CourseId, UploadedByUserId |
+| MediaAsset | SectionVideo, SectionDocument, Material | 1–0..1 (one item per file, app rule) | MediaAssetId |
 | User / Course | ExamSubmission, Certificate | 1–N | |
 | Course | Post → Comment → Comment (reply) | 1–N chain | |
 
@@ -1674,8 +1772,10 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | LiveSession | (CourseId, StartsAtUtc) |
 | Enrollment | UQ (UserId, CourseId); (CourseId, EnrollmentStatusId); PaymentTransactionId |
 | PaymentTransaction | UQ TransactionNo; (UserId, CreatedAt DESC); PaymentStatusId; CourseId; CreatedAt; PaymentMethodId |
-| Progress | UQ (UserId, CourseId) |
-| ProgressSection | UQ (ProgressId, SectionId) |
+| LessonProgress | UQ (UserId, SectionId, SectionVideoId); (UserId, CourseId); SectionVideoId |
+| SectionVideo / SectionDocument / Material | MediaAssetId (not null) |
+| MediaAsset | UQ AssetId (not null); CourseId; (MediaAssetStatusId, DeleteRequestedAt) |
+| StreamingWebhookEvent | UQ EventId (unfiltered); AssetId |
 | CertificationRule | UQ CourseId |
 | ExamSubmission | (CourseId, SubmissionStatusId, SubmittedAt DESC); (UserId, CourseId) |
 | Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0 |
@@ -1723,10 +1823,13 @@ erDiagram
   PAYMENT_TRANSACTION |o--o| ENROLLMENT : grants
   USER ||--o{ PAYMENT_TRANSACTION : pays
   PAYMENT_METHOD ||--o{ PAYMENT_TRANSACTION : via
-  USER ||--o{ PROGRESS : tracks
-  COURSE ||--o{ PROGRESS : for
-  PROGRESS ||--o{ PROGRESS_SECTION : completes
-  SECTION ||--o{ PROGRESS_SECTION : completed
+  COURSE ||--o{ MEDIA_ASSET : "uploaded for"
+  MEDIA_ASSET |o--o| SECTION_VIDEO : "file of"
+  MEDIA_ASSET |o--o| SECTION_DOCUMENT : "file of"
+  MEDIA_ASSET |o--o| MATERIAL : "file of"
+  USER ||--o{ LESSON_PROGRESS : tracks
+  SECTION ||--o{ LESSON_PROGRESS : "lesson (no videos)"
+  SECTION_VIDEO |o--o{ LESSON_PROGRESS : "lesson (video)"
   COURSE ||--o| CERTIFICATION_RULE : configures
   USER ||--o{ EXAM_SUBMISSION : submits
   COURSE ||--o{ EXAM_SUBMISSION : for
@@ -1802,13 +1905,13 @@ CourseCardDto       { id, slug, title, subtitle, categoryCode, formatCode, level
                       price:number, originalPrice:number, discountPercent:int, rating:number, ratingCount:int,
                       students:int, durationHours:int, coverLabel, coverIcon, imageUrl:string|null,
                       instructorName:string, sectionCount:int, contentUpdatedMonth:"YYYY-MM" }
-VideoDto            { id, title, minutes:int, isPreview:bool, url:string|null }   // url null when caller has no access and !isPreview
-DocumentDto         { id, title, typeCode, videoId:int|null, url:string|null, isLocked:bool }
+VideoDto            { id, title, minutes:int, isPreview:bool, sourceType, url:string|null, hasMedia, isLocked, media:MediaAssetDto|null }   // url null when locked or an upload (section 7a)
+DocumentDto         { id, title, typeCode, videoId:int|null, sourceType, url:string|null, hasMedia, isLocked:bool, media:MediaAssetDto|null }
 SectionDto          { id, title, depth:int, minutes:int, videos:VideoDto[], documents:DocumentDto[], topics:SectionDto[] }
 SubmoduleDto        { id, title, sections:SectionDto[] }
 ModuleDto           { id, title, minutes:int, sectionCount:int, submodules:SubmoduleDto[] }
 LiveSessionDto      { id, title, startsAt:datetime, durationMinutes:int, meetingUrl:string|null, isPast:bool }
-MaterialDto         { id, title, typeCode, url:string|null, isLocked:bool }
+MaterialDto         { id, title, typeCode, sourceType, url:string|null, hasMedia, isLocked:bool, media:MediaAssetDto|null }
 TransactionDto      { id, transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle,
                       methodCode, maskedAccount, originalAmount, discountAmount, amount, currency:"BDT",
                       statusCode, failureReason:string|null, fulfilledAt:datetime|null, createdAt, updatedAt,
@@ -1867,10 +1970,10 @@ Access is stored per **screen** (codes = frontend screen ids). A screen gives al
 ### 6. Catalogue (built in backend Step 3)
 Public endpoints. When a token is sent, people who manage a course (`courses.view` on it) also get its drafts, items without a file and every link.
 
-`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, url|null, hasMedia, isLocked }[], hasContentAccess }`
-`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked }[], documents:{ id, title, typeCode, videoId|null, url|null, hasMedia, isLocked }[], topics:SectionDto[] }`
+`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, sourceType, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], hasContentAccess }`
+`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], documents:{ id, title, typeCode, videoId|null, sourceType, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], topics:SectionDto[] }`
 `CourseCardDto` = `{ id, slug, title, subtitle, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, instructorName, price, originalPrice, discountPercent, rating, ratingCount, students, durationHours, language, coverLabel, coverIcon, imageUrl, contentUpdatedMonth, sectionCount }`
-`url` is null when the item is locked for the caller (BR-CAT-13 to 15). Items with no link or file are left out for everyone but managers (BR-CAT-21).
+`url` is null when the item is locked for the caller (BR-CAT-13 to 15) and always for uploads (`sourceType: "upload"`), which are opened through the media endpoints (section 7a, BR-CAT-22). `media` (the upload's details and status) is only sent to managers. Items with no link or no `ready` file are left out for everyone but managers (BR-CAT-21).
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
@@ -1882,8 +1985,8 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | — | Reviews | — | not built: reviews and rating breakdown stay demo data in the frontend (see Open Questions) | `CourseDetail` | BR-CAT-12 |
 
 ### 7. Course management (built in backend Step 3)
-`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
-`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs a link until uploads exist; `url: null` keeps an existing video's media. `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
+`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link), mediaAssetId? (uploaded document of this course; not for Link; not with url; not on a new course) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
+`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview, mediaAssetId? }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey?, mediaAssetId? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs `mediaAssetId` (an uploaded video of this course) and no `url`; an existing video may resend its unchanged `url`, or a `mediaAssetId` to replace its media; both null keep its media (BR-CMS-24). Documents send their full state: `url`, `mediaAssetId` or neither. Files are checked by BR-CMS-23; files the save releases are deleted (BR-CMS-25). `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
@@ -1896,6 +1999,26 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | POST | `/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio (≤4000), expertise[], experienceYears (≥0), students (≥0) }` | instructor (201) | `AdminInstructors` | BR-CMS-15 |
 | PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
 | DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
+
+### 7a. Media (built in backend Step 6)
+Follows `docs/integration/streaming-integration.md`. The API checks permissions and course access before every call to the Streaming service; 503 "The file service is not available right now…" when Streaming cannot be reached (retries, timeouts and a circuit breaker are applied first).
+```text
+MediaAssetDto  { id, courseId, kindCode:"video"|"document", statusCode, fileName, mimeType, sizeBytes, durationSeconds|null, errorMessage|null }
+MediaUploadDto { mediaAssetId, uploadUrl, uploadMethod:"PUT", headers:{}, expiresAt }   // the browser sends the bytes to uploadUrl directly
+PlaybackDto    { url, format:"hls"|"file", expiresAt, durationSeconds|null }           // 10-minute link
+DownloadDto    { url, expiresAt }                                                       // 10-minute link
+```
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| POST | `/media/uploads` 🔒 courses.edit (course) | `{ courseId, kind ("video"\|"document"), fileName (≤255), mimeType, sizeBytes }` | `MediaUploadDto` (201); 400 wrong type/size | `MediaService.upload` | BR-CMS-21 |
+| POST | `/media/uploads/{id}/complete` 🔒 courses.edit (course) | — | `MediaAssetDto` (409 link expired / bytes not received) | `MediaService.upload` | BR-CMS-21,22 |
+| GET | `/media/assets/{id}` 🔒 courses.edit (course) | — | `MediaAssetDto` (asks Streaming when stuck in progress > 30 s) | editor polling | BR-CMS-22 |
+| DELETE | `/media/assets/{id}` 🔒 courses.edit (course) | — | null (409 "This file is still used in the course…") | editor (unsaved upload replaced) | BR-CMS-25 |
+| POST | `/media/videos/{id}/playback` (anonymous allowed) | — | `PlaybackDto`; 401/403 without access; 409 still processing; 400 for link videos | `VideoEmbed` | BR-CAT-13,22 |
+| POST | `/media/documents/{id}/download` (anonymous allowed) | — | `DownloadDto` (same checks; documents of preview videos are open) | `DocumentList` | BR-CAT-13,14,22 |
+| POST | `/media/materials/{id}/download` (anonymous allowed) | — | `DownloadDto` (course access) | `Learn` | BR-CAT-14,22 |
+| POST | `/internal/streaming/webhooks` (Streaming only) | raw JSON event; headers `X-Streaming-Event-Id`, `X-Streaming-Timestamp`, `X-Streaming-Signature` | null; 401 bad/old signature; 400 unreadable; 5xx = Streaming retries | — | streaming spec §6 |
+| PUT/GET | `/dev/fake-streaming/uploads/{assetId}`, `/dev/fake-streaming/files/{assetId}` (Development, `Streaming:Mode = Fake` only; signed, expiring links) | bytes / — | stand-in for Streaming storage | — | streaming spec §8 |
 
 ### 8. Checkout & payments (built in backend Step 4)
 `TransactionDto` = `{ transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle, methodCode, maskedAccount, originalAmount, discountAmount, amount, currency, statusCode, failureReason, fulfilledAt, expiresAt, createdAt, updatedAt, allowedActions[] (admin only), canOpenCourse }`. Payments are addressed by their public `transactionNo`.
@@ -1912,7 +2035,7 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (expires an overdue pending payment; may ask the provider for its status) | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18,20 |
 | POST | `/payments/{transactionNo}/demo-outcome` 🔒 buyer, demo gateway only | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` (only a pending, unexpired payment changes) | `DemoGateway` | BR-PAY-06,07,21 |
 | GET | `/payments/mine` | — | `TransactionDto[]` (newest first) | `Dashboard` | BR-LRN-14 |
-| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions`, `AdminOverview` | BR-PAY-13,14 |
+| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions` | BR-PAY-13,14 |
 | PATCH | `/admin/transactions/{transactionNo}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if not allowed) | `AdminTransactions` | BR-PAY-10,11 |
 | DELETE | `/admin/transactions/{transactionNo}` 🔒 transactions.delete | — | null (409 if status = success; soft delete) | `AdminTransactions` | BR-PAY-12 |
 
@@ -1924,16 +2047,29 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/enrollments/mine` | — | `EnrollmentDto[]` (newest first, revoked included) | `Dashboard`, `EnrollmentService` | BR-ENR-10 |
-| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments`, `AdminOverview` | BR-ENR-09 |
+| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments` | BR-ENR-09 |
 | PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `EnrollmentDto` | `AdminEnrollments` | BR-ENR-05 |
 
-### 10. Learning & progress
+### 10. Learning & progress (built in backend Step 5)
+The learning page reads the course from `GET /courses/{slug}` (section 6): with course access it carries all lesson links (BR-ENR-03).
+A lesson is a video, or a section without videos (BR-LRN-15).
+```text
+VideoProgressDto          { videoId, positionSeconds:int, durationSeconds:int|null, isCompleted:bool }
+CourseProgressDto         { courseId, completedLessons:int, totalLessons:int, percent:int,
+                            completedSectionIds:int[],          // sections whose lessons are all done
+                            videos:VideoProgressDto[] }         // started videos only
+CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
+```
+🔒 below = `learn.view` + course access (active enrollment, or `courses.view` on the course); otherwise 403 "Enroll in this course to track your progress." (404 for an unpublished course on the GET).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/learn/{slug}` 🔒 learn.view + course access | — | `{ course:CourseCardDto, instructor:InstructorDto, modules:ModuleDto[] (all urls), schedule:LiveSessionDto[] (with meetingUrl), materials:MaterialDto[] (with url), canReadCommunity:bool }` | `Learn` | BR-LRN-01, BR-ENR-03 |
-| GET | `/me/courses/{courseId}/progress` | — | `{ completedSectionIds:int[], completedCount, totalSections, percent }` | `Learn` | BR-LRN-04,05 |
-| PUT | `/me/courses/{courseId}/progress/sections/{sectionId}` 🔒 learn.view + course access | `{ completed:bool }` | `{ completedCount, totalSections, percent, certificateIssued:CertificateDto\|null }` | `Learn` | BR-LRN-02,03,06,07 |
-| GET | `/me/upcoming-sessions` | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` | BR-LRN-11 |
+| GET | `/progress/mine` | — | `CourseProgressSummaryDto[]` (every course the user has an enrollment for, revoked included) | `Dashboard` | BR-LRN-16 |
+| GET | `/progress/courses/{slug}` 🔒 | — | `CourseProgressDto` | `Learn` | BR-LRN-05,15,16 |
+| PUT | `/progress/videos/{videoId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto` (404 "Video not found.") | `Learn` | BR-LRN-02,03 |
+| PUT | `/progress/videos/{videoId}/position` 🔒 | `{ positionSeconds (0–86400), durationSeconds (1–86400) }` | `CourseProgressDto`; 400 "This video's position can't be saved. Use Mark as complete." for YouTube/Vimeo | `Learn` (player, every 15 s, on pause and at the end) | BR-LRN-17,18 |
+| PUT | `/progress/sections/{sectionId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto`; 400 "Mark the videos of this section as complete instead." if the section has videos | `Learn` | BR-LRN-02,03,15 |
+| GET | `/me/upcoming-sessions` (not built) | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` (works it out from the catalogue for now) | BR-LRN-11 |
 
 ### 11. Certification
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -1968,10 +2104,10 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `PostDto` + `courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
 | GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `CommentDto` + `postTitle, courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
 
-### 13. Admin overview
+### 13. Admin overview (overview built in backend Step 5)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/admin/overview` 🔒 reports.view | — | `{ courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions:TransactionDto[5] }` | `AdminOverview` | BR-ADM-01–05 |
+| GET | `/admin/overview` 🔒 reports.view | — | `{ courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions:{ transactionNo, createdAt, userName, courseTitle, amount, statusCode }[5] }` | `AdminOverview` | BR-ADM-01–05 |
 | POST | `/dev/reset` 🔒 system.reset (development only) | — | null | `AdminOverview` | BR-ADM-06 |
 
 ### 14. Site content
@@ -2026,8 +2162,10 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 - Publish toggle in list skips "needs sections / needs sessions" checks; a course with no sessions can be published from the list. Intended?
 - `language` is free text; should it be an enum (Bangla/English)?
 - `coverIcon` is free text; no validation it is a real icon.
-- Video/document/material URLs are external links; is file upload/hosting needed (e.g. blob storage, private video hosting)?
-- Non-preview video URLs are sent to the browser for anyone loading the course (demo). Backend must hide them from non-enrolled users.
+- Answered 2026-11-16: files are uploaded to the separate Streaming service; new videos are upload-only; removed or replaced files are deleted at once; the spec's limits (2 GB / 50 MB, 15-minute upload link, 10-minute play/download link, 5-minute webhook window) apply. Non-preview links are no longer sent to non-enrolled users (fixed in Step 3).
+- An upload that is never saved into the curriculum (e.g. the editor is closed before saving) stays at Streaming as an unused file. Should unused uploads be deleted automatically after some time (e.g. 24 hours)?
+- A video up to 2 GB is sent in one request; a dropped connection means starting again. Are resumable (chunked) uploads needed?
+- Documents and file materials can still be links. Should they become upload-only like videos?
 - Sections may end up with zero videos (removable). Allowed?
 - `durationHours` is entered manually, not computed from video minutes. OK?
 - Instructor `students`/`rating` are manual/static. Should they be computed?
@@ -2056,9 +2194,11 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 
 
 ### Learning Area, Progress & Dashboard
-- **Live courses cannot record progress** (no "Mark as complete" UI). Demo course 2 (Live) has an exam rule needing 100% progress, so its certificate is unreachable. How should Live-course progress work (attendance? instructor marks?)
-- Is completion manual only, or should watching a video auto-complete?
-- Should there be per-video progress / resume position?
+- Answered 2026-11-16: Live courses show their lessons like other courses; progress is per video with resume and 90% auto-complete for video files; sections without videos count as one lesson.
+- Seeking to the end of a video file counts as watched (no check that every part was played). Is that acceptable?
+- Video length is reported by the browser until uploads (backend Step 6) give the real length.
+- When certificates move to the API, should the completion rule's minimum progress use the lesson percentage? (Not decided; not built yet.)
+- Demo mode still counts sections, so the same course can show a different % in demo and API mode.
 - Live meeting links are placeholders. Which provider (Zoom/Meet)? Attendance tracking?
 - `startsAt` has no timezone. Assume Asia/Dhaka?
 
@@ -2099,7 +2239,7 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-api): token lifetimes/rotation, exam score type, ContentUpdatedMonth, Language lookup, Bangla lookup names, collation, error item shape, message language.
 
 ## C2. Likely bugs & inconsistencies (found in the frontend code)
-1. **Live courses can never be completed** — the learning page hides "Mark as complete" for Live format. Demo course 2 (Live, exam rule needing 100%) can never award a certificate. (BR-LRN-08, BR-CERT-06)
+1. ~~**Live courses can never be completed**~~ — **fixed in backend Step 5** (Live courses show their lessons and "Mark as complete", in both modes). Original note: the learning page hid "Mark as complete" for Live format, so demo course 2 (Live, exam rule needing 100%) could never award a certificate. (BR-LRN-08, BR-CERT-06)
 2. **Revoked completion certificates come back** — the next section toggle or "Get my certificate" issues a new one, because a revoked certificate no longer counts. (BR-CERT-03, BR-CERT-04, BR-CERT-11)
 3. ~~**Successful payments can be deleted**~~ — **fixed in backend Step 4** (the server refuses it). Original note: only the button is disabled; `PaymentService.remove()` does not block it. Backend must enforce. (BR-PAY-12)
 4. ~~**Publish toggle skips validation**~~ — **fixed in backend Step 3** (server checks on every publish). Original note: publishing from the course list does not check "needs sections / needs live sessions". (BR-CMS-04, BR-CMS-05, BR-CMS-12)
@@ -2108,3 +2248,4 @@ See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-ap
 7. **Password rules disagree** — login checks min 6 characters, register requires min 8 + letter + digit. (BR-AUTH-01, BR-AUTH-07)
 8. **Exam input checks** — notes length is checked before trimming; review score may be a decimal while rule fields must be integers. (BR-CERT-08, BR-CERT-09)
 9. ~~**Free enrollment**~~ — **fixed in backend Step 4** (the server checks `checkout.view` and the price). Original note: `EnrollmentService.grant()` does not check `checkout.view`; only the route guard does. (BR-PAY-03, BR-ENR-04)
+10. ~~**Second curriculum save re-created new rows (API mode)**~~ — **fixed in backend Step 6** (the editor reloads the saved curriculum). Original note: after saving, new rows kept their temporary browser ids, so saving again without reloading removed and re-created them, losing their progress. (BR-CMS-20, BR-CMS-27)

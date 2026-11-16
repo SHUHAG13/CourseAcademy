@@ -1,3 +1,6 @@
+import { API_MODE } from '../../core/api/api-mode';
+import { ApiService } from '../../core/api/api.service';
+import { AdminOverviewDto } from '../../core/api/learning.models';
 import { LanguageService } from '../../core/i18n/language.service';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -88,35 +91,66 @@ export class AdminOverview {
   protected readonly permissions = inject(PermissionService);
 
   protected readonly resetting = signal(false);
+  /** API mode: the totals are counted by the server, so the page doesn't need every record. */
+  private readonly apiMode = inject(API_MODE);
+  private readonly overview = signal<AdminOverviewDto | null>(null);
+
+  constructor() {
+    if (this.apiMode) {
+      inject(ApiService)
+        .get<AdminOverviewDto>('admin/overview')
+        .then((o) => this.overview.set(o))
+        .catch((error: unknown) => this.toast.error(failureMessage(error, 'The overview could not be loaded. Please refresh the page.')));
+    }
+  }
+
+  private readonly totals = computed(() => {
+    if (this.apiMode) {
+      const o = this.overview();
+      return {
+        courses: o?.courseCount ?? 0,
+        published: o?.publishedCourseCount ?? 0,
+        students: o?.studentCount ?? 0,
+        activeEnrollments: o?.activeEnrollmentCount ?? 0,
+        collected: o?.collectedAmount ?? 0,
+      };
+    }
+    return {
+      courses: this.courses.courses().length,
+      published: this.courses.published().length,
+      students: this.auth.users().filter((u) => u.role === 'user').length,
+      activeEnrollments: this.enrollments.enrollments().filter((e) => e.status === 'active').length,
+      collected: this.payments.transactions().filter((t) => t.status === 'success').reduce((sum, t) => sum + t.amount, 0),
+    };
+  });
 
   protected readonly stats = computed(() => {
-    const paid = this.payments.transactions().filter((t) => t.status === 'success');
-    const collected = paid.reduce((sum, t) => sum + t.amount, 0);
+    const t = this.totals();
     return [
       {
-        label: this.language.t('Courses ({0} published)', [this.courses.published().length]),
-        value: this.language.number(this.courses.courses().length),
+        label: this.language.t('Courses ({0} published)', [t.published]),
+        value: this.language.number(t.courses),
         icon: 'bi-journal-text',
         tone: '',
         link: '/admin/courses',
       },
       {
         label: 'Student accounts',
-        value: this.language.number(this.auth.users().filter((u) => u.role === 'user').length),
+        value: this.language.number(t.students),
         icon: 'bi-people',
         tone: 'navy',
         link: '/admin/users',
       },
       {
         label: 'Active enrollments',
-        value: this.language.number(this.enrollments.enrollments().filter((e) => e.status === 'active').length),
+        value: this.language.number(t.activeEnrollments),
         icon: 'bi-card-checklist',
         tone: 'orange',
         link: '/admin/enrollments',
       },
       {
-        label: 'Demo payments collected',
-        value: `৳${this.language.number(collected)}`,
+        label: this.apiMode ? 'Payments collected' : 'Demo payments collected',
+        value: `৳${this.language.number(t.collected)}`,
         icon: 'bi-credit-card',
         tone: 'navy',
         link: '/admin/transactions',
@@ -124,9 +158,19 @@ export class AdminOverview {
     ];
   });
 
-  protected readonly recent = computed(() =>
-    [...this.payments.transactions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
-  );
+  protected readonly recent = computed(() => {
+    if (this.apiMode) {
+      return (this.overview()?.recentTransactions ?? []).map((t) => ({
+        id: t.transactionNo,
+        createdAt: t.createdAt,
+        userName: t.userName,
+        courseTitle: t.courseTitle,
+        amount: t.amount,
+        status: t.statusCode,
+      }));
+    }
+    return [...this.payments.transactions()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  });
 
   protected async reset(): Promise<void> {
     const confirmed = await this.confirm.ask({

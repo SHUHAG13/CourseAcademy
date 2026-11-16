@@ -54,6 +54,40 @@
   }
 }
 
+// API mode: the uploaded file of a material (name, status, upload button).
+.file-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  margin-top: 0.35rem;
+}
+
+.file-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--ca-muted);
+
+  &.ready i {
+    color: var(--ca-success, #198754);
+  }
+
+  &.failed {
+    color: var(--ca-danger, #dc3545);
+  }
+}
+
+.upload-btn {
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .save-bar {
   position: sticky;
   bottom: 12px;

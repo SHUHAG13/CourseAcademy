@@ -1179,6 +1179,74 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.ToTable("InstructorExpertise", (string)null);
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.LessonProgress", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("MaxWatchedSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PositionSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SectionVideoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("SectionId");
+
+                    b.HasIndex("SectionVideoId");
+
+                    b.HasIndex("UserId", "CourseId");
+
+                    b.HasIndex("UserId", "SectionId", "SectionVideoId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("LessonProgress", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LessonProgress_Seconds", "[PositionSeconds] >= 0 AND [MaxWatchedSeconds] >= 0 AND ([DurationSeconds] IS NULL OR [DurationSeconds] > 0)");
+                        });
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.LiveSession", b =>
                 {
                     b.Property<int>("Id")
@@ -1240,10 +1308,6 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AssetId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<int>("CourseId")
                         .HasColumnType("int");
 
@@ -1264,6 +1328,9 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.Property<int>("MaterialTypeId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MediaAssetId")
+                        .HasColumnType("int");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -1277,10 +1344,10 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssetId")
-                        .HasFilter("[AssetId] IS NOT NULL");
-
                     b.HasIndex("MaterialTypeId");
+
+                    b.HasIndex("MediaAssetId")
+                        .HasFilter("[MediaAssetId] IS NOT NULL");
 
                     b.HasIndex("CourseId", "SortOrder");
 
@@ -1365,6 +1432,280 @@ namespace CourseAcademy.Api.Data.Migrations
                             IsDeleted = false,
                             Name = "Link",
                             SortOrder = 4
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.MediaAsset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssetId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime?>("DeleteRequestedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<long>("LastSequence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("MediaAssetStatusId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MediaKindId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ReadyAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("UploadExpiresAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UploadedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId")
+                        .IsUnique()
+                        .HasFilter("[AssetId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("MediaKindId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("MediaAssetStatusId", "DeleteRequestedAt");
+
+                    b.ToTable("MediaAsset", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MediaAsset_Numbers", "[SizeBytes] > 0 AND ([DurationSeconds] IS NULL OR [DurationSeconds] >= 0) AND [LastSequence] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.MediaAssetStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("MediaAssetStatus", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "pending_upload",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Waiting for upload",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "uploaded",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Uploaded",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "queued",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Queued",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "processing",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Processing",
+                            SortOrder = 4
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "ready",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Ready",
+                            SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "failed",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Failed",
+                            SortOrder = 6
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "deleting",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Deleting",
+                            SortOrder = 7
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "deleted",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Deleted",
+                            SortOrder = 8
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.MediaKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("MediaKind", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "video",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Video",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "document",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Document",
+                            SortOrder = 2
                         });
                 });
 
@@ -2628,10 +2969,6 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AssetId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2(3)")
@@ -2648,6 +2985,9 @@ namespace CourseAcademy.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<int?>("MediaAssetId")
+                        .HasColumnType("int");
 
                     b.Property<int>("SectionId")
                         .HasColumnType("int");
@@ -2668,10 +3008,10 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssetId")
-                        .HasFilter("[AssetId] IS NOT NULL");
-
                     b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("MediaAssetId")
+                        .HasFilter("[MediaAssetId] IS NOT NULL");
 
                     b.HasIndex("SectionVideoId");
 
@@ -2687,10 +3027,6 @@ namespace CourseAcademy.Api.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AssetId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -2708,6 +3044,9 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.Property<bool>("IsPreview")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("MediaAssetId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Minutes")
                         .HasColumnType("int");
@@ -2728,8 +3067,8 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssetId")
-                        .HasFilter("[AssetId] IS NOT NULL");
+                    b.HasIndex("MediaAssetId")
+                        .HasFilter("[MediaAssetId] IS NOT NULL");
 
                     b.HasIndex("SectionId", "SortOrder");
 
@@ -2737,6 +3076,68 @@ namespace CourseAcademy.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_SectionVideo_Minutes", "[Minutes] >= 1");
                         });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.StreamingWebhookEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssetId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.ToTable("StreamingWebhookEvent", (string)null);
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Submodule", b =>
@@ -3044,6 +3445,32 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.Navigation("Instructor");
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.LessonProgress", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Section", null)
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.SectionVideo", null)
+                        .WithMany()
+                        .HasForeignKey("SectionVideoId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.LiveSession", b =>
                 {
                     b.HasOne("CourseAcademy.Api.Entities.Course", null)
@@ -3067,7 +3494,45 @@ namespace CourseAcademy.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("CourseAcademy.Api.Entities.MediaAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("MediaAssetId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Asset");
+
                     b.Navigation("MaterialType");
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.MediaAsset", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.MediaAssetStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("MediaAssetStatusId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.MediaKind", "Kind")
+                        .WithMany()
+                        .HasForeignKey("MediaKindId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Kind");
+
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.PaymentTransaction", b =>
@@ -3186,6 +3651,11 @@ namespace CourseAcademy.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("CourseAcademy.Api.Entities.MediaAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("MediaAssetId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("CourseAcademy.Api.Entities.Section", null)
                         .WithMany("Documents")
                         .HasForeignKey("SectionId")
@@ -3197,6 +3667,8 @@ namespace CourseAcademy.Api.Data.Migrations
                         .HasForeignKey("SectionVideoId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.Navigation("Asset");
+
                     b.Navigation("DocumentType");
 
                     b.Navigation("Video");
@@ -3204,11 +3676,18 @@ namespace CourseAcademy.Api.Data.Migrations
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.SectionVideo", b =>
                 {
+                    b.HasOne("CourseAcademy.Api.Entities.MediaAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("MediaAssetId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("CourseAcademy.Api.Entities.Section", null)
                         .WithMany("Videos")
                         .HasForeignKey("SectionId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Submodule", b =>

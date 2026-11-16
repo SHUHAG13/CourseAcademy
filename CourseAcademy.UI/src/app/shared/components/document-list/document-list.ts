@@ -1,5 +1,8 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { DocumentType, SectionDocument } from '../../../core/models/course.model';
+import { MediaService } from '../../../core/services/media.service';
+import { failureMessage } from '../../../core/services/permission.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 
 const ICONS: Record<DocumentType, string> = {
@@ -23,6 +26,9 @@ const ICONS: Record<DocumentType, string> = {
           @if (locked()) {
             <i class="bi bi-lock text-muted" [title]="'Enroll to open' | t" aria-hidden="true"></i>
             <span class="visually-hidden">{{ 'Enroll to open' | t }}</span>
+          } @else if (d.source === 'upload') {
+            <button type="button" class="open link-btn" [disabled]="opening() === d.id" (click)="open(d)"
+              [attr.aria-label]="'Open: {0}' | t: [d.title]">{{ 'Open' | t }}</button>
           } @else {
             <a [href]="d.url" target="_blank" rel="noopener noreferrer" class="open"
               [attr.aria-label]="'Open (demo link): {0}' | t: [d.title]">{{ 'Open' | t }}</a>
@@ -50,11 +56,29 @@ const ICONS: Record<DocumentType, string> = {
     .type-pptx { color: var(--ca-orange-600); }
     .tag { font-size: 0.7rem; }
     .open { font-weight: 600; white-space: nowrap; }
+    .link-btn { padding: 0; border: 0; background: none; color: var(--ca-link, var(--ca-blue)); }
   `,
 })
 export class DocumentList {
+  private readonly media = inject(MediaService);
+  private readonly toast = inject(ToastService);
+
   readonly documents = input.required<SectionDocument[]>();
   readonly locked = input(false);
 
   protected readonly icons = ICONS;
+  /** The uploaded document whose link is being fetched. */
+  protected readonly opening = signal<string | null>(null);
+
+  /** Uploaded documents open through a short-lived link from the API. */
+  protected async open(document: SectionDocument): Promise<void> {
+    this.opening.set(document.id);
+    try {
+      await this.media.open('documents', document.id);
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The file could not be opened. Please try again.'));
+    } finally {
+      this.opening.set(null);
+    }
+  }
 }

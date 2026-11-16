@@ -126,13 +126,14 @@ public sealed class Section : BaseEntity
 }
 
 /// <summary>
-/// Media is either an external link (seeded videos, and new items until uploads exist) or an uploaded
-/// Streaming asset. The Main App never stores a URL for uploaded media, only the asset id.
+/// Media is either an external link or an uploaded file kept by the Streaming service (<see cref="MediaAsset"/>).
+/// The Main App never stores a URL for uploaded media, only the asset.
 /// </summary>
 public interface IMediaItem
 {
     string? ExternalUrl { get; }
-    string? AssetId { get; }
+    int? MediaAssetId { get; }
+    MediaAsset? Asset { get; }
 }
 
 public sealed class SectionVideo : BaseEntity, IMediaItem
@@ -140,7 +141,8 @@ public sealed class SectionVideo : BaseEntity, IMediaItem
     public int SectionId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? ExternalUrl { get; set; }
-    public string? AssetId { get; set; }
+    public int? MediaAssetId { get; set; }
+    public MediaAsset? Asset { get; set; }
     public int Minutes { get; set; }
     /// <summary>Visitors who are not enrolled can watch it and open its documents.</summary>
     public bool IsPreview { get; set; }
@@ -157,7 +159,8 @@ public sealed class SectionDocument : BaseEntity, IMediaItem
     public DocumentType DocumentType { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
     public string? ExternalUrl { get; set; }
-    public string? AssetId { get; set; }
+    public int? MediaAssetId { get; set; }
+    public MediaAsset? Asset { get; set; }
     public int SortOrder { get; set; }
 }
 
@@ -177,8 +180,9 @@ public sealed class Material : BaseEntity, IMediaItem
     public int MaterialTypeId { get; set; }
     public MaterialType MaterialType { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
-    /// <summary>Required for Link materials; a temporary link for files until uploads exist.</summary>
+    /// <summary>Required for Link materials; file materials use an upload (or an older link).</summary>
     public string? ExternalUrl { get; set; }
-    public string? AssetId { get; set; }
+    public int? MediaAssetId { get; set; }
+    public MediaAsset? Asset { get; set; }
     public int SortOrder { get; set; }
 }

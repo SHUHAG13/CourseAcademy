@@ -69,6 +69,16 @@ public sealed class CurrencyConfiguration : LookupConfiguration<Currency>
     protected override IEnumerable<Currency> Seed => LookupSeed.Currencies;
 }
 
+public sealed class MediaKindConfiguration : LookupConfiguration<MediaKind>
+{
+    protected override IEnumerable<MediaKind> Seed => LookupSeed.MediaKinds;
+}
+
+public sealed class MediaAssetStatusConfiguration : LookupConfiguration<MediaAssetStatus>
+{
+    protected override IEnumerable<MediaAssetStatus> Seed => LookupSeed.MediaAssetStatuses;
+}
+
 public sealed class CategoryConfiguration : LookupConfiguration<Category>
 {
     protected override IEnumerable<Category> Seed => LookupSeed.Categories;

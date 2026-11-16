@@ -1,7 +1,7 @@
 import { API_MODE } from '../../core/api/api-mode';
 import { ComingSoon } from '../../shared/components/coming-soon/coming-soon';
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { LanguageService } from '../../core/i18n/language.service';
@@ -10,6 +10,7 @@ import { CertificateService } from '../../core/services/certificate.service';
 import { CommunityService } from '../../core/services/community.service';
 import { CourseService, allSections, sectionMinutes } from '../../core/services/course.service';
 import { EnrollmentService } from '../../core/services/enrollment.service';
+import { MediaService } from '../../core/services/media.service';
 import { failureMessage } from '../../core/services/permission.service';
 import { ProgressService } from '../../core/services/progress.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -18,7 +19,7 @@ import { CourseCertificate } from './course-certificate/course-certificate';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { FormatBadge } from '../../shared/components/format-badge/format-badge';
 import { SessionList } from '../../shared/components/session-list/session-list';
-import { VideoEmbed } from '../../shared/components/video-embed/video-embed';
+import { VideoEmbed, VideoPosition } from '../../shared/components/video-embed/video-embed';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** The course area for enrolled users: sections with their videos and documents, live classes and materials. */
@@ -74,6 +75,8 @@ export class Learn {
     return [];
   });
   protected readonly saving = signal(false);
+  protected readonly openingMaterial = signal<string | null>(null);
+  private readonly media = inject(MediaService);
 
   constructor() {
     const title = inject(Title);
@@ -81,6 +84,12 @@ export class Learn {
     effect(() => {
       const c = this.course();
       title.setTitle(language.t('{0} | Course Academy', [c?.title ?? 'Course']));
+    });
+    // API mode: progress lives on the server; load it whenever the course (or its curriculum) changes.
+    effect(() => {
+      const c = this.course();
+      if (!this.apiMode || !c || !this.hasAccess()) return;
+      untracked(() => this.progress.loadCourse(c).catch(() => this.toast.error('Your progress could not be loaded. Please refresh the page.')));
     });
   }
 
@@ -106,16 +115,47 @@ export class Learn {
     return !!c && this.progress.isComplete(c.id, sectionId);
   }
 
-  /** Marks the section done and moves on to the next one, or undoes it. */
+  protected isVideoComplete(videoId: string): boolean {
+    const c = this.course();
+    return !!c && this.progress.isVideoComplete(c.id, videoId);
+  }
+
+  protected resumeAt(videoId: string): number {
+    const c = this.course();
+    return c ? this.progress.position(c.id, videoId) : 0;
+  }
+
+  /** In API mode each video is a lesson; otherwise (and for sections without videos) the section is. */
+  private lessonVideo(section: Section) {
+    return this.apiMode && section.videos.length ? this.video() : undefined;
+  }
+
+  /** Whether the lesson shown for `section` is done: its current video in API mode, otherwise the section. */
+  protected isLessonComplete(section: Section): boolean {
+    const v = this.lessonVideo(section);
+    return v ? this.isVideoComplete(v.id) : this.isComplete(section.id);
+  }
+
+  /** Marks the lesson done and moves on to the next video or section, or undoes it. */
   protected async toggleComplete(section: Section): Promise<void> {
     const c = this.course();
     if (!c) return;
-    const complete = !this.isComplete(section.id);
+    const video = this.lessonVideo(section);
+    const complete = !this.isLessonComplete(section);
     this.saving.set(true);
     try {
-      await this.progress.setComplete(c, section.id, complete);
+      if (video) {
+        await this.progress.setVideoComplete(c, video.id, complete);
+      } else {
+        await this.progress.setComplete(c, section.id, complete);
+      }
+      const nextVideo = video ? section.videos[section.videos.indexOf(video) + 1] : undefined;
       const next = this.sections()[this.sections().indexOf(section) + 1];
-      if (complete && next) this.sectionId.set(next.id);
+      if (complete && nextVideo) {
+        this.videoId.set(nextVideo.id);
+      } else if (complete && next) {
+        this.sectionId.set(next.id);
+      }
       if (complete && this.progress.percent(c) === 100) this.toast.success('You have completed every section of {0}!', [c.title]);
       // Completion certificates are issued as soon as the requirement is met.
       const hadCertificate = !!this.certificates.status(c)?.certificate;
@@ -126,6 +166,27 @@ export class Learn {
       this.toast.error(failureMessage(error, 'Your progress could not be saved. Browser storage may be full or blocked.'));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** API mode: an uploaded material opens through a short-lived link from the API. */
+  protected async openMaterial(id: string): Promise<void> {
+    this.openingMaterial.set(id);
+    try {
+      await this.media.open('materials', id);
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The file could not be opened. Please try again.'));
+    } finally {
+      this.openingMaterial.set(null);
+    }
+  }
+
+  /** A video file reported its position (API mode). The server completes it at 90% watched. */
+  protected async onWatched(videoId: string, watched: VideoPosition): Promise<void> {
+    const c = this.course();
+    if (!c || !this.apiMode) return;
+    if (await this.progress.savePosition(c, videoId, watched.position, watched.duration)) {
+      this.toast.success(this.progress.percent(c) === 100 ? 'You have completed every section of {0}!' : 'Lesson completed.', [c.title]);
     }
   }
 }

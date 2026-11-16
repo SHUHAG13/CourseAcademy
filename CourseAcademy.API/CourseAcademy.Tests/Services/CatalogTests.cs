@@ -4,6 +4,7 @@ using CourseAcademy.Api.Dtos;
 using CourseAcademy.Api.Entities;
 using CourseAcademy.Api.Repositories;
 using CourseAcademy.Api.Services;
+using CourseAcademy.Api.Services.Media;
 using CourseAcademy.Api.Services.Payments;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,9 @@ public class CatalogTests
         public EnrollmentService Enrollments { get; }
         public PaymentService Payments { get; }
         public PaymentGatewayResolver Gateways { get; }
+        public ProgressService Progress { get; }
+        public OverviewService Overview { get; }
+        public MediaAssetRepository MediaAssets { get; }
         public int InstructorId { get; }
 
         public Kit()
@@ -35,17 +39,20 @@ public class CatalogTests
             var unitOfWork = new UnitOfWork(db);
             var enrollmentRepository = new EnrollmentRepository(db);
             Catalog = new CatalogService(courses, instructors, enrollmentRepository, Identity.CurrentUser);
+            MediaAssets = new MediaAssetRepository(db);
             Admin = new CourseAdminService(courses, instructors, new LookupRepository(db),
                 new Repository<CourseOutcome>(db), new Repository<CourseRequirement>(db), new Repository<LiveSession>(db),
                 new Repository<Material>(db), new Repository<CourseModule>(db), new Repository<Submodule>(db), new Repository<Section>(db),
                 new Repository<SectionVideo>(db), new Repository<SectionDocument>(db), new Repository<CourseGrant>(db),
-                enrollmentRepository, unitOfWork, Identity.CurrentUser, Identity.Clock);
+                enrollmentRepository, MediaAssets, new MediaDeletionSignal(), unitOfWork, Identity.CurrentUser, Identity.Clock);
             Instructors = new InstructorService(instructors, new Repository<InstructorExpertise>(db), Identity.Users, unitOfWork, Identity.CurrentUser);
             Enrollments = new EnrollmentService(enrollmentRepository, courses, unitOfWork, Identity.CurrentUser, Identity.Clock);
             Gateways = new PaymentGatewayResolver([new DemoPaymentGateway()], Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }));
             Payments = new PaymentService(new PaymentRepository(db), courses, enrollmentRepository, Enrollments, Identity.Users, new LookupRepository(db),
                 Gateways, unitOfWork, Identity.CurrentUser, Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }), Identity.Clock,
                 NullLogger<PaymentService>.Instance);
+            Progress = new ProgressService(new LessonProgressRepository(db), courses, enrollmentRepository, unitOfWork, Identity.CurrentUser, Identity.Clock);
+            Overview = new OverviewService(new OverviewRepository(db), Identity.CurrentUser);
 
             var instructor = new Instructor { Name = "Tanvir Hasan", Title = "Editor", Bio = "Bio" };
             db.Instructors.Add(instructor);
@@ -59,6 +66,35 @@ public class CatalogTests
             Identity.As(email);
             return this;
         }
+
+        /// <summary>An uploaded file of the course, as if it had been uploaded and processed by Streaming.</summary>
+        public async Task<int> UploadedFileAsync(int courseId, string kind = "video", string status = "ready",
+            string mimeType = "video/mp4", string fileName = "lesson.mp4")
+        {
+            var file = new MediaAsset
+            {
+                AssetId = "asset-" + Guid.NewGuid().ToString("N"), CourseId = courseId, UploadedByUserId = Identity.UserId(IdentityTestKit.Admin),
+                MediaKindId = MediaKindCodes.Id(kind), MediaAssetStatusId = MediaStatusCodes.Id(status),
+                FileName = fileName, MimeType = mimeType, SizeBytes = 1000,
+            };
+            Identity.Db.MediaAssets.Add(file);
+            await Identity.Db.SaveChangesAsync();
+            Identity.Db.ChangeTracker.Clear();
+            return file.Id;
+        }
+
+        /// <summary>Turns a video into an older link video, like the seeded demo videos (new videos can only be uploaded).</summary>
+        public async Task UseLinkAsync(int videoId, string url)
+        {
+            var video = await Identity.Db.SectionVideos.SingleAsync(v => v.Id == videoId);
+            video.ExternalUrl = url;
+            video.MediaAssetId = null;
+            await Identity.Db.SaveChangesAsync();
+            Identity.Db.ChangeTracker.Clear();
+        }
+
+        public string FileStatus(int mediaAssetId) =>
+            MediaStatusCodes.Code(Identity.Db.MediaAssets.AsNoTracking().Single(a => a.Id == mediaAssetId).MediaAssetStatusId);
 
         public CourseUpsertRequest Course(string slug = "photo-basics", string format = "Pre-recorded", bool published = false,
             IReadOnlyList<LiveSessionInput>? schedule = null, IReadOnlyList<MaterialInput>? materials = null) => new(
@@ -132,12 +168,14 @@ public class CatalogTests
     {
         var kit = new Kit().As(IdentityTestKit.Admin);
         var course = await kit.Admin.CreateAsync(kit.Course(), Ct);
+        var file = await kit.UploadedFileAsync(course.Id);
         var first = await kit.Admin.SaveCurriculumAsync(course.Id, TwoSections(
-            new VideoInput(null, "v1", "Intro", "https://youtu.be/abcdefgh", 5, true),
+            new VideoInput(null, "v1", "Intro", null, 5, true, file),
             new DocumentInput(null, "Notes", "PDF", "https://files.example.com/notes.pdf", null, "v1")), Ct);
 
         var section = first.Modules[0].Submodules[0].Sections[0];
         Assert.Equal(section.Videos[0].Id, section.Documents[0].VideoId);
+        Assert.Equal((MediaSources.Upload, (string?)null, "ready"), (section.Videos[0].SourceType, section.Videos[0].Url, section.Videos[0].Media?.StatusCode));
         Assert.Equal(2, first.SectionCount);
 
         // Resend with ids, the video dropped: its document stays but is no longer attached.
@@ -156,11 +194,14 @@ public class CatalogTests
         Assert.Empty(saved.Modules[0].Submodules[0].Sections[0].Videos);
         Assert.Null(saved.Modules[0].Submodules[0].Sections[0].Documents[0].VideoId);
         Assert.True(await kit.Identity.Db.Sections.IgnoreQueryFilters().AnyAsync(s => s.Title == "Second" && s.IsDeleted));
+        // The removed video's file is no longer used, so it is deleted from Streaming.
+        Assert.Equal(MediaStatusCodes.Deleting, kit.FileStatus(file));
     }
 
     [Theory]
     [InlineData("one-section", "Each submodule needs 2 or 3 sections.")]
-    [InlineData("no-link", "Add a link for every new video.")]
+    [InlineData("no-file", "Upload a file for every new video.")]
+    [InlineData("new-link", "New videos can't be added as links. Upload the video file.")]
     [InlineData("bad-extension", "A document link must end in .pdf, .docx or .pptx to match its type.")]
     [InlineData("too-deep", "Topics can be nested at most 3 levels deep.")]
     [InlineData("foreign-video", "A document is attached to a video that is not in its section.")]
@@ -170,7 +211,8 @@ public class CatalogTests
         var request = scenario switch
         {
             "one-section" => new CurriculumRequest([new ModuleInput(null, "M", [new SubmoduleInput(null, "S", [Section("A")])])]),
-            "no-link" => TwoSections(new VideoInput(null, "v", "Intro", null, 5, false)),
+            "no-file" => TwoSections(new VideoInput(null, "v", "Intro", null, 5, false)),
+            "new-link" => TwoSections(new VideoInput(null, "v", "Intro", "https://youtu.be/abcdefgh", 5, false)),
             "bad-extension" => TwoSections(document: new DocumentInput(null, "Notes", "PDF", "https://files.example.com/notes.docx", null, null)),
             "too-deep" => new CurriculumRequest([new ModuleInput(null, "M", [new SubmoduleInput(null, "S",
                 [Section("A", topics: [Section("1", topics: [Section("2", topics: [Section("3", topics: [Section("4")])])])]), Section("B")])])]),
@@ -185,17 +227,25 @@ public class CatalogTests
     {
         var kit = new Kit().As(IdentityTestKit.Admin);
         var course = await kit.Admin.CreateAsync(kit.Course(materials: [new MaterialInput(null, "Guide", "PDF", null), new MaterialInput(null, "Site", "Link", "https://example.com/site")]), Ct);
-        await kit.Admin.SaveCurriculumAsync(course.Id, new CurriculumRequest(
+        var saved = await kit.Admin.SaveCurriculumAsync(course.Id, new CurriculumRequest(
         [
             new ModuleInput(null, "M", [new SubmoduleInput(null, "S",
             [
-                Section("A", [new VideoInput(null, "free", "Free", "https://youtu.be/freefree", 5, true), new VideoInput(null, "paid", "Paid", "https://youtu.be/paidpaid", 5, false)],
+                Section("A",
+                    [
+                        new VideoInput(null, "free", "Free", null, 5, true, await kit.UploadedFileAsync(course.Id)),
+                        new VideoInput(null, "paid", "Paid", null, 5, false, await kit.UploadedFileAsync(course.Id)),
+                        new VideoInput(null, "busy", "Processing", null, 5, false, await kit.UploadedFileAsync(course.Id, status: "processing")),
+                    ],
                     [new DocumentInput(null, "Free notes", "PDF", "https://f.example.com/free.pdf", null, "free"),
                      new DocumentInput(null, "Section notes", "PDF", "https://f.example.com/all.pdf", null, null),
                      new DocumentInput(null, "No file yet", "PDF", null, null, null)]),
                 Section("B"),
             ])]),
         ]), Ct);
+        var videos = saved.Modules[0].Submodules[0].Sections[0].Videos;
+        await kit.UseLinkAsync(videos[0].Id, "https://youtu.be/freefree");
+        await kit.UseLinkAsync(videos[1].Id, "https://youtu.be/paidpaid");
         await kit.Admin.SetPublishedAsync(course.Id, true, Ct);
         await kit.Admin.CreateAsync(kit.Course("hidden-draft"), Ct);
         kit.Identity.CurrentUser.Set(null);
@@ -205,6 +255,9 @@ public class CatalogTests
         var section = visible.Modules[0].Submodules[0].Sections[0];
 
         Assert.False(visible.HasContentAccess);
+        // An upload still processing is hidden (media rule B); visitors never get upload details.
+        Assert.Equal(["Free", "Paid"], section.Videos.Select(v => v.Title));
+        Assert.All(section.Videos, v => Assert.Null(v.Media));
         Assert.Equal("https://youtu.be/freefree", section.Videos.Single(v => v.Title == "Free").Url);
         Assert.Null(section.Videos.Single(v => v.Title == "Paid").Url);
         Assert.Equal(["Free notes", "Section notes"], section.Documents.Select(d => d.Title));

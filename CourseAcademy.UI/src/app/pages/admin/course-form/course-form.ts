@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -10,6 +10,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { API_MODE } from '../../../core/api/api-mode';
 import { uid } from '../../../core/data/repository';
 import {
   COURSE_FORMATS,
@@ -17,8 +18,11 @@ import {
   LiveSession,
   MATERIAL_TYPES,
   Material,
+  MediaFile,
+  MediaStatus,
 } from '../../../core/models/course.model';
 import { CourseService, sectionCount } from '../../../core/services/course.service';
+import { ACCEPT, MediaService } from '../../../core/services/media.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { URL_PATTERN } from '../../../shared/forms/validators';
@@ -63,12 +67,20 @@ export class CourseForm implements OnInit {
   private readonly courses = inject(CourseService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly media = inject(MediaService);
+  private readonly changes = inject(ChangeDetectorRef);
+  /** API mode: file materials of a saved course can be uploaded. */
+  protected readonly apiMode = inject(API_MODE);
+  private destroyed = false;
 
   /** Bound from the `:id` route param. Absent when creating a course. */
   readonly id = input<string>();
 
   protected readonly formats = COURSE_FORMATS;
   protected readonly materialTypes = MATERIAL_TYPES;
+  protected readonly acceptDocuments = ACCEPT.document;
+  /** Upload progress (0–100) by row id, while a file is being sent. */
+  protected readonly uploading = signal<Record<string, number>>({});
   protected readonly levels = ['Beginner', 'Intermediate', 'Advanced'];
   protected readonly badges = ['Bestseller', 'New', 'Popular'];
   protected readonly categories = this.courses.categories;
@@ -136,6 +148,10 @@ export class CourseForm implements OnInit {
     return course ? sectionCount(course) : 0;
   }
 
+  constructor() {
+    inject(DestroyRef).onDestroy(() => (this.destroyed = true));
+  }
+
   ngOnInit(): void {
     const course = this.existing();
     if (!course) {
@@ -172,11 +188,84 @@ export class CourseForm implements OnInit {
       id: [material?.id ?? uid('material')],
       title: [material?.title ?? '', Validators.required],
       type: [material?.type ?? 'PDF', Validators.required],
-      // A link is required for Link materials. Files may be listed before the file is added.
-      url: [material?.url ?? 'https://example.com/demo-materials/file', [linkNeedsUrl, Validators.pattern(URL_PATTERN)]],
+      // A link is required for Link materials. Files may be listed before the file is added (API mode: uploaded).
+      url: [material?.url ?? (this.apiMode ? '' : 'https://example.com/demo-materials/file'), [linkNeedsUrl, Validators.pattern(URL_PATTERN)]],
+      mediaId: [material?.mediaId ?? (null as number | null)],
+      savedMediaId: [material?.mediaId ?? (null as number | null)],
+      media: [material?.media ?? (null as MediaFile | null)],
     });
-    group.controls.type.valueChanges.subscribe(() => group.controls.url.updateValueAndValidity());
+    group.controls.type.valueChanges.subscribe((type) => {
+      // A link material has no uploaded file.
+      if (type === 'Link' && group.controls.mediaId.value) this.clearFile(group);
+      group.controls.url.updateValueAndValidity();
+    });
+    if (material?.media && isProcessing(material.media.status)) void this.watch(group, material.media.id);
     return group;
+  }
+
+  // ── Uploads (API mode, saved courses) ───────────────────────
+
+  /** Uploads the chosen file for a material row, then follows its processing. */
+  protected async uploadFile(row: FormGroup, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    const course = this.existing();
+    if (!file || !course) return;
+
+    const rowId = row.get('id')!.value as string;
+    this.uploading.update((u) => ({ ...u, [rowId]: 0 }));
+    try {
+      const uploaded = await this.media.upload(course.id, 'document', file, (percent) => this.uploading.update((u) => ({ ...u, [rowId]: percent })));
+      this.discardUnsavedFile(row);
+      row.patchValue({ mediaId: uploaded.id, media: uploaded, url: '' });
+      row.markAsDirty();
+      void this.watch(row, uploaded.id);
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The upload did not finish. Check your connection and try again.'));
+    } finally {
+      this.uploading.update(({ [rowId]: _, ...rest }) => rest);
+    }
+  }
+
+  protected clearFile(row: AbstractControl): void {
+    this.discardUnsavedFile(row);
+    row.patchValue({ mediaId: null, media: null });
+    row.markAsDirty();
+  }
+
+  protected removeMaterial(index: number): void {
+    this.discardUnsavedFile(this.materials.at(index));
+    this.removeAt(this.materials, index);
+  }
+
+  protected fileStatusLabel(file: MediaFile): string {
+    if (file.status === 'ready') return 'Ready';
+    if (file.status === 'failed') return 'Processing failed';
+    return isProcessing(file.status) ? 'Processing…' : 'Removed';
+  }
+
+  private async watch(row: AbstractControl, mediaId: number): Promise<void> {
+    try {
+      await this.media.waitUntilProcessed(
+        mediaId,
+        (file) => {
+          if (row.get('mediaId')?.value !== mediaId) return;
+          row.get('media')?.setValue(file);
+          // Form values are not signals: ask for the row to be redrawn.
+          this.changes.markForCheck();
+        },
+        () => this.destroyed || row.get('mediaId')?.value !== mediaId,
+      );
+    } catch {
+      // The status shown stays as it was; reopening the page checks again.
+    }
+  }
+
+  /** An upload the server never saved for this row is deleted when it is replaced or its row removed. */
+  private discardUnsavedFile(row: AbstractControl): void {
+    const mediaId = row.get('mediaId')?.value as number | null;
+    if (mediaId && mediaId !== row.get('savedMediaId')?.value) void this.media.remove(mediaId).catch(() => undefined);
   }
 
   protected addSession(): void {
@@ -228,6 +317,10 @@ export class CourseForm implements OnInit {
       this.toast.error('Please fix the highlighted fields.');
       return;
     }
+    if (Object.keys(this.uploading()).length) {
+      this.toast.error('Wait until the uploads have finished, then save.');
+      return;
+    }
 
     const value = this.form.getRawValue();
     const previous = this.existing();
@@ -260,7 +353,7 @@ export class CourseForm implements OnInit {
       requirements: lines(value.requirements),
       modules: this.existing()?.modules ?? [],
       schedule: value.sessions as LiveSession[],
-      materials: value.materials as Material[],
+      materials: (value.materials as Material[]).map((m) => ({ ...m, mediaId: m.mediaId ?? undefined })),
     };
 
     this.saving.set(true);
@@ -279,6 +372,10 @@ export class CourseForm implements OnInit {
 
 function linkNeedsUrl(control: AbstractControl): ValidationErrors | null {
   return control.parent?.get('type')?.value === 'Link' && !control.value ? { required: true } : null;
+}
+
+function isProcessing(status: MediaStatus): boolean {
+  return status === 'pending_upload' || status === 'uploaded' || status === 'queued' || status === 'processing';
 }
 
 function saleNotAboveRegular(group: AbstractControl): ValidationErrors | null {

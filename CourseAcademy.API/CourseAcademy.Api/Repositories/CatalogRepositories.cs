@@ -13,7 +13,7 @@ public interface ICourseRepository : IRepository<Course>
     /// </summary>
     Task<List<Course>> ListWithDetailsAsync(Expression<Func<Course, bool>> filter, bool tracking, CancellationToken ct);
 
-    /// <summary>Every section and topic of the given courses, with videos and documents.</summary>
+    /// <summary>Every section and topic of the given courses, with videos and documents and their uploaded files.</summary>
     Task<List<Section>> ListSectionsAsync(IReadOnlyCollection<int> courseIds, bool tracking, CancellationToken ct);
 
     /// <summary>Number of sections and topics per course.</summary>
@@ -41,6 +41,7 @@ public sealed class CourseRepository(AppDbContext db) : Repository<Course>(db), 
             .Include(c => c.Modules).ThenInclude(m => m.Submodules)
             .Include(c => c.Sessions)
             .Include(c => c.Materials).ThenInclude(m => m.MaterialType)
+            .Include(c => c.Materials).ThenInclude(m => m.Asset)
             .AsSplitQuery()
             .OrderBy(c => c.Id)
             .ToListAsync(ct);
@@ -50,8 +51,9 @@ public sealed class CourseRepository(AppDbContext db) : Repository<Course>(db), 
     {
         IQueryable<Section> query = tracking ? Db.Sections : Db.Sections.AsNoTracking();
         return query.Where(s => courseIds.Contains(s.CourseId))
-            .Include(s => s.Videos)
+            .Include(s => s.Videos).ThenInclude(v => v.Asset)
             .Include(s => s.Documents).ThenInclude(d => d.DocumentType)
+            .Include(s => s.Documents).ThenInclude(d => d.Asset)
             .AsSplitQuery()
             .ToListAsync(ct);
     }

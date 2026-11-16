@@ -358,7 +358,7 @@
       <span class="dur">{{ '{0} min' | t: [v.minutes] }}</span>
     </div>
     @if (previewId() === v.id) {
-      <app-video-embed class="preview-player" [url]="v.url" [title]="v.title" />
+      <app-video-embed class="preview-player" [url]="v.url" [uploadId]="v.source === 'upload' ? v.id : null" [title]="v.title" />
     }
     @if (documentsFor(s, v.id); as docs) {
       @if (docs.length) {

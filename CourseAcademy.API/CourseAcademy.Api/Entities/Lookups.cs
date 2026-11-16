@@ -28,6 +28,10 @@ public sealed class PaymentStatus : LookupEntity;
 
 public sealed class Currency : LookupEntity;
 
+public sealed class MediaKind : LookupEntity;
+
+public sealed class MediaAssetStatus : LookupEntity;
+
 public sealed class Category : LookupEntity
 {
     public string ShortName { get; set; } = string.Empty;

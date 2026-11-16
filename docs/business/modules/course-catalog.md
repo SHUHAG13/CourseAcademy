@@ -62,8 +62,9 @@ Course, Instructor, curriculum entities: see `course-management.md`.
 - **BR-CAT-17** "Play preview" opens the first module containing a preview video; if none: "This course has no free preview videos yet."
 - **BR-CAT-18** Instructor card course count = number of **published** courses by that instructor.
 - **BR-CAT-19** Format intro text: Pre-recorded = self-paced recorded; Live = instructor-led live classes; Hybrid = recorded + scheduled live.
-- **BR-CAT-21** (API) A video, document or material with no link or file yet is not shown to visitors or students; people who manage the course see it. Locked links are not sent to the browser at all (the API returns no URL).
+- **BR-CAT-21** (API) A video, document or material with no link or file yet, or with an uploaded file that is not `ready` (still processing, or failed), is not shown to visitors or students; people who manage the course see it with the file's status. Locked links are not sent to the browser at all (the API returns no URL).
 - **BR-CAT-20** Video URLs: YouTube (`youtu.be`, `youtube.com/watch|embed|shorts`), Vimeo (`vimeo.com/<id>`) or direct `https://…mp4|webm`; anything else shows a placeholder player.
+- **BR-CAT-22** (API) Uploaded files never have a URL in the course data. To play an uploaded video, or download an uploaded document or material, the browser asks the API, which checks access first (preview video and its documents: anyone; otherwise course access, BR-ENR-03; unpublished course: managers or enrolled only) and then returns a link valid for 10 minutes. Videos play as HLS (hls.js, loaded only when needed; Safari plays HLS itself). If the link runs out while a video plays, the player gets a new one and continues at the same point (once; a second failure within 15 seconds shows "This video can't be played right now."). Documents and materials download without leaving the page.
 
 ## 5. Workflows & Status Transitions
 Browse: Guest → `/courses` → filter/sort → open course → preview → Enroll Now → (login if needed) → checkout (see checkout-payments).
@@ -94,6 +95,8 @@ No status transitions in this module.
 | `CourseService.reviews()` / `ratingBreakdown()` (static demo) | `GET /api/courses/{id}/reviews` (planned) |
 | `CourseService.instructor()` | included in course detail response |
 | Simulated latency 350 ms | — |
+| Uploaded video playback (`VideoEmbed` with `uploadId`, API) | `POST /api/v1/media/videos/{id}/playback` → `{ url, format, expiresAt, durationSeconds }` |
+| Uploaded document / material download (API) | `POST /api/v1/media/documents/{id}/download`, `POST /api/v1/media/materials/{id}/download` → `{ url, expiresAt }` |
 
 ## 9. Open Questions / Assumptions
 - Reviews and rating breakdown are fake. Should students be able to submit reviews? Who can review (enrolled only)? Then `rating`, `ratingCount` become calculated.
@@ -109,4 +112,5 @@ No status transitions in this module.
 - `src/app/pages/course-detail/course-detail.ts` / `.html`
 - `src/app/pages/home/home.html`, `src/app/components/*`
 - `src/app/core/data/courses.data.ts`
-- `src/app/shared/components/video-embed/video-embed.ts`
+- `src/app/shared/components/video-embed/video-embed.ts` (links, files, uploads via HLS)
+- `src/app/shared/components/document-list/document-list.ts`, `src/app/core/services/media.service.ts`

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using CourseAcademy.Api.Common.Auth;
@@ -9,6 +10,7 @@ using CourseAcademy.Api.Data.Seed;
 using CourseAcademy.Api.Entities;
 using CourseAcademy.Api.Repositories;
 using CourseAcademy.Api.Services;
+using CourseAcademy.Api.Services.Media;
 using CourseAcademy.Api.Services.Payments;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,6 +18,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -34,6 +37,7 @@ public static class ServiceCollectionExtensions
 
         services.AddDatabase(configuration);
         services.AddApplicationServices();
+        services.AddStreaming(configuration);
         services.AddAuth(configuration);
         services.AddWebApi(configuration);
         return services;
@@ -127,6 +131,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IPaymentService, PaymentService>();
+
+        services.AddScoped<ILessonProgressRepository, LessonProgressRepository>();
+        services.AddScoped<IOverviewRepository, OverviewRepository>();
+        services.AddScoped<IProgressService, ProgressService>();
+        services.AddScoped<IOverviewService, OverviewService>();
         services.AddScoped<DemoCommerceSeeder>();
         // Payment gateways: register each provider here; Payments:Gateway picks the one new payments use.
         services.AddSingleton<IPaymentGateway, DemoPaymentGateway>();
@@ -134,6 +143,45 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<PendingPaymentExpiryService>();
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly(), includeInternalTypes: true);
+    }
+
+    /// <summary>
+    /// The Streaming integration. Streaming:Mode picks the real service (Http, with retries, timeouts and a circuit
+    /// breaker) or the built-in fake (Development only, checked at start-up).
+    /// </summary>
+    private static void AddStreaming(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<StreamingSettings>().Bind(configuration.GetSection(StreamingSettings.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+        // The fake signs its own webhooks; without a configured secret it uses a random one for this run.
+        services.PostConfigure<StreamingSettings>(s =>
+        {
+            if (s.IsFake && string.IsNullOrEmpty(s.WebhookSecret)) s.WebhookSecret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        });
+
+        services.AddScoped<IMediaAssetRepository, MediaAssetRepository>();
+        services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<IStreamingWebhookService, StreamingWebhookService>();
+        services.AddSingleton<MediaDeletionSignal>();
+        services.AddScoped<MediaDeletionSender>();
+        services.AddHostedService<MediaDeletionService>();
+
+        var streaming = configuration.GetSection(StreamingSettings.SectionName).Get<StreamingSettings>() ?? new StreamingSettings();
+        if (streaming.IsFake)
+        {
+            services.AddSingleton<FakeStreamingStore>();
+            services.AddSingleton<FakeStreamingQueue>();
+            services.AddScoped<IStreamingClient, FakeStreamingClient>();
+            services.AddHostedService<FakeStreamingProcessor>();
+            return;
+        }
+        services.AddHttpClient<IStreamingClient, HttpStreamingClient>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<StreamingSettings>>().Value;
+                client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/internal/v1/");
+                client.DefaultRequestHeaders.Add("X-Api-Key", settings.ApiKey);
+            })
+            // Retries only GET/HEAD-like calls, so a slow "create upload" is never sent twice.
+            .AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());
     }
 
     private static void AddWebApi(this IServiceCollection services, IConfiguration configuration)

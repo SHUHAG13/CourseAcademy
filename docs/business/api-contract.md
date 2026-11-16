@@ -62,13 +62,13 @@ CourseCardDto       { id, slug, title, subtitle, categoryCode, formatCode, level
                       price:number, originalPrice:number, discountPercent:int, rating:number, ratingCount:int,
                       students:int, durationHours:int, coverLabel, coverIcon, imageUrl:string|null,
                       instructorName:string, sectionCount:int, contentUpdatedMonth:"YYYY-MM" }
-VideoDto            { id, title, minutes:int, isPreview:bool, url:string|null }   // url null when caller has no access and !isPreview
-DocumentDto         { id, title, typeCode, videoId:int|null, url:string|null, isLocked:bool }
+VideoDto            { id, title, minutes:int, isPreview:bool, sourceType, url:string|null, hasMedia, isLocked, media:MediaAssetDto|null }   // url null when locked or an upload (section 7a)
+DocumentDto         { id, title, typeCode, videoId:int|null, sourceType, url:string|null, hasMedia, isLocked:bool, media:MediaAssetDto|null }
 SectionDto          { id, title, depth:int, minutes:int, videos:VideoDto[], documents:DocumentDto[], topics:SectionDto[] }
 SubmoduleDto        { id, title, sections:SectionDto[] }
 ModuleDto           { id, title, minutes:int, sectionCount:int, submodules:SubmoduleDto[] }
 LiveSessionDto      { id, title, startsAt:datetime, durationMinutes:int, meetingUrl:string|null, isPast:bool }
-MaterialDto         { id, title, typeCode, url:string|null, isLocked:bool }
+MaterialDto         { id, title, typeCode, sourceType, url:string|null, hasMedia, isLocked:bool, media:MediaAssetDto|null }
 TransactionDto      { id, transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle,
                       methodCode, maskedAccount, originalAmount, discountAmount, amount, currency:"BDT",
                       statusCode, failureReason:string|null, fulfilledAt:datetime|null, createdAt, updatedAt,
@@ -127,10 +127,10 @@ Access is stored per **screen** (codes = frontend screen ids). A screen gives al
 ## 6. Catalogue (built in backend Step 3)
 Public endpoints. When a token is sent, people who manage a course (`courses.view` on it) also get its drafts, items without a file and every link.
 
-`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, url|null, hasMedia, isLocked }[], hasContentAccess }`
-`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked }[], documents:{ id, title, typeCode, videoId|null, url|null, hasMedia, isLocked }[], topics:SectionDto[] }`
+`CourseDetailDto` = `{ id, slug, title, subtitle, description, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, language, durationHours, price, originalPrice, discountPercent, coverLabel, coverIcon, imageUrl, rating, ratingCount, students, contentUpdatedMonth, sectionCount, outcomes[], requirements[], modules:ModuleDto[], schedule:{ id, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes, meetingUrl|null }[], materials:{ id, title, typeCode, sourceType, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], hasContentAccess }`
+`ModuleDto` = `{ id, title, submodules:{ id, title, sections:SectionDto[] }[] }`; `SectionDto` = `{ id, title, depth, videos:{ id, title, minutes, isPreview, sourceType:"external"|"upload"|null, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], documents:{ id, title, typeCode, videoId|null, sourceType, url|null, hasMedia, isLocked, media:MediaAssetDto|null }[], topics:SectionDto[] }`
 `CourseCardDto` = `{ id, slug, title, subtitle, categoryCode, formatCode, levelCode, badgeCode, isPublished, isFeatured, instructorId, instructorName, price, originalPrice, discountPercent, rating, ratingCount, students, durationHours, language, coverLabel, coverIcon, imageUrl, contentUpdatedMonth, sectionCount }`
-`url` is null when the item is locked for the caller (BR-CAT-13 to 15). Items with no link or file are left out for everyone but managers (BR-CAT-21).
+`url` is null when the item is locked for the caller (BR-CAT-13 to 15) and always for uploads (`sourceType: "upload"`), which are opened through the media endpoints (section 7a, BR-CAT-22). `media` (the upload's details and status) is only sent to managers. Items with no link or no `ready` file are left out for everyone but managers (BR-CAT-21).
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
@@ -142,8 +142,8 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | — | Reviews | — | not built: reviews and rating breakdown stay demo data in the frontend (see Open Questions) | `CourseDetail` | BR-CAT-12 |
 
 ## 7. Course management (built in backend Step 3)
-`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
-`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs a link until uploads exist; `url: null` keeps an existing video's media. `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
+`CourseUpsertRequest` = `{ title (5–120), slug (pattern, unique), subtitle (≤200), description (≤8000), categoryCode, formatCode, levelCode, badgeCode?, instructorId, language (≤50), durationHours (≥1), originalPrice (≥0), price (0..originalPrice), coverLabel (≤30), coverIcon (≤50), imageUrl? (http(s) or /path), isFeatured, isPublished, outcomes[] (≥1), requirements[], schedule:{ id?, title, startsAt (Asia/Dhaka "YYYY-MM-DDTHH:mm"), durationMinutes (≥1), meetingUrl }[], materials:{ id?, title, typeCode, url? (required for Link), mediaAssetId? (uploaded document of this course; not for Link; not with url; not on a new course) }[] }`. Rows without `id` are created, rows left out are removed; list order = display order.
+`CurriculumRequest` = `{ modules:{ id?, title, submodules:{ id?, title, sections:SectionInput[] (2–3) }[] }[] }`; `SectionInput` = `{ id?, title, videos:{ id?, tempKey?, title, url?, minutes (≥1), isPreview, mediaAssetId? }[], documents:{ id?, title, typeCode, url?, videoId?, videoTempKey?, mediaAssetId? }[], topics:SectionInput[] (depth ≤ 3) }`. A new video needs `mediaAssetId` (an uploaded video of this course) and no `url`; an existing video may resend its unchanged `url`, or a `mediaAssetId` to replace its media; both null keep its media (BR-CMS-24). Documents send their full state: `url`, `mediaAssetId` or neither. Files are checked by BR-CMS-23; files the save releases are deleted (BR-CMS-25). `tempKey` lets a new document point to a new video. Ids from another course → 400 "Something in this course changed in the meantime…".
 
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
@@ -156,6 +156,26 @@ Public endpoints. When a token is sent, people who manage a course (`courses.vie
 | POST | `/instructors` 🔒 instructors.create | `{ name (2–100), title (≤200), bio (≤4000), expertise[], experienceYears (≥0), students (≥0) }` | instructor (201) | `AdminInstructors` | BR-CMS-15 |
 | PUT | `/instructors/{id}` 🔒 instructors.edit | same | instructor | `AdminInstructors` | BR-CMS-15 |
 | DELETE | `/instructors/{id}` 🔒 instructors.delete | — | null (409 while it teaches any course) | `AdminInstructors` | BR-CMS-14 |
+
+## 7a. Media (built in backend Step 6)
+Follows `docs/integration/streaming-integration.md`. The API checks permissions and course access before every call to the Streaming service; 503 "The file service is not available right now…" when Streaming cannot be reached (retries, timeouts and a circuit breaker are applied first).
+```text
+MediaAssetDto  { id, courseId, kindCode:"video"|"document", statusCode, fileName, mimeType, sizeBytes, durationSeconds|null, errorMessage|null }
+MediaUploadDto { mediaAssetId, uploadUrl, uploadMethod:"PUT", headers:{}, expiresAt }   // the browser sends the bytes to uploadUrl directly
+PlaybackDto    { url, format:"hls"|"file", expiresAt, durationSeconds|null }           // 10-minute link
+DownloadDto    { url, expiresAt }                                                       // 10-minute link
+```
+| Method | Endpoint | Request | Response `data` | Used by | Rules |
+|---|---|---|---|---|---|
+| POST | `/media/uploads` 🔒 courses.edit (course) | `{ courseId, kind ("video"\|"document"), fileName (≤255), mimeType, sizeBytes }` | `MediaUploadDto` (201); 400 wrong type/size | `MediaService.upload` | BR-CMS-21 |
+| POST | `/media/uploads/{id}/complete` 🔒 courses.edit (course) | — | `MediaAssetDto` (409 link expired / bytes not received) | `MediaService.upload` | BR-CMS-21,22 |
+| GET | `/media/assets/{id}` 🔒 courses.edit (course) | — | `MediaAssetDto` (asks Streaming when stuck in progress > 30 s) | editor polling | BR-CMS-22 |
+| DELETE | `/media/assets/{id}` 🔒 courses.edit (course) | — | null (409 "This file is still used in the course…") | editor (unsaved upload replaced) | BR-CMS-25 |
+| POST | `/media/videos/{id}/playback` (anonymous allowed) | — | `PlaybackDto`; 401/403 without access; 409 still processing; 400 for link videos | `VideoEmbed` | BR-CAT-13,22 |
+| POST | `/media/documents/{id}/download` (anonymous allowed) | — | `DownloadDto` (same checks; documents of preview videos are open) | `DocumentList` | BR-CAT-13,14,22 |
+| POST | `/media/materials/{id}/download` (anonymous allowed) | — | `DownloadDto` (course access) | `Learn` | BR-CAT-14,22 |
+| POST | `/internal/streaming/webhooks` (Streaming only) | raw JSON event; headers `X-Streaming-Event-Id`, `X-Streaming-Timestamp`, `X-Streaming-Signature` | null; 401 bad/old signature; 400 unreadable; 5xx = Streaming retries | — | streaming spec §6 |
+| PUT/GET | `/dev/fake-streaming/uploads/{assetId}`, `/dev/fake-streaming/files/{assetId}` (Development, `Streaming:Mode = Fake` only; signed, expiring links) | bytes / — | stand-in for Streaming storage | — | streaming spec §8 |
 
 ## 8. Checkout & payments (built in backend Step 4)
 `TransactionDto` = `{ transactionNo, gateway, userId, userName, userEmail, courseId, courseSlug, courseTitle, methodCode, maskedAccount, originalAmount, discountAmount, amount, currency, statusCode, failureReason, fulfilledAt, expiresAt, createdAt, updatedAt, allowedActions[] (admin only), canOpenCourse }`. Payments are addressed by their public `transactionNo`.
@@ -172,7 +192,7 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | GET | `/payments/{transactionNo}` 🔒 buyer or transactions.view | — | `TransactionDto` (expires an overdue pending payment; may ask the provider for its status) | `PaymentResult`, `DemoGateway` | BR-PAY-08,09,18,20 |
 | POST | `/payments/{transactionNo}/demo-outcome` 🔒 buyer, demo gateway only | `{ outcome: "success"\|"failed"\|"cancelled" }` | `TransactionDto` (only a pending, unexpired payment changes) | `DemoGateway` | BR-PAY-06,07,21 |
 | GET | `/payments/mine` | — | `TransactionDto[]` (newest first) | `Dashboard` | BR-LRN-14 |
-| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions`, `AdminOverview` | BR-PAY-13,14 |
+| GET | `/admin/transactions` 🔒 transactions.view | `search?, status?, method?, courseId?, from? (YYYY-MM-DD), to? (YYYY-MM-DD), page, pageSize` | `{ items:TransactionDto[], total, page, pageSize, totals:{ collected, refunded, successful, unsuccessful }, courseOptions:{ id, title }[] }` | `AdminTransactions` | BR-PAY-13,14 |
 | PATCH | `/admin/transactions/{transactionNo}/status` 🔒 transactions.edit | `{ statusCode: "success"\|"cancelled"\|"refunded" }` | `TransactionDto` (409 if not allowed) | `AdminTransactions` | BR-PAY-10,11 |
 | DELETE | `/admin/transactions/{transactionNo}` 🔒 transactions.delete | — | null (409 if status = success; soft delete) | `AdminTransactions` | BR-PAY-12 |
 
@@ -184,16 +204,29 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/enrollments/mine` | — | `EnrollmentDto[]` (newest first, revoked included) | `Dashboard`, `EnrollmentService` | BR-ENR-10 |
-| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments`, `AdminOverview` | BR-ENR-09 |
+| GET | `/admin/enrollments` 🔒 enrollments.view | `search?, status? (active\|revoked), page, pageSize` | page of `EnrollmentDto` (newest first) | `AdminEnrollments` | BR-ENR-09 |
 | PATCH | `/admin/enrollments/{id}/status` 🔒 enrollments.edit | `{ statusCode: "active"\|"revoked" }` | `EnrollmentDto` | `AdminEnrollments` | BR-ENR-05 |
 
-## 10. Learning & progress
+## 10. Learning & progress (built in backend Step 5)
+The learning page reads the course from `GET /courses/{slug}` (section 6): with course access it carries all lesson links (BR-ENR-03).
+A lesson is a video, or a section without videos (BR-LRN-15).
+```text
+VideoProgressDto          { videoId, positionSeconds:int, durationSeconds:int|null, isCompleted:bool }
+CourseProgressDto         { courseId, completedLessons:int, totalLessons:int, percent:int,
+                            completedSectionIds:int[],          // sections whose lessons are all done
+                            videos:VideoProgressDto[] }         // started videos only
+CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
+```
+🔒 below = `learn.view` + course access (active enrollment, or `courses.view` on the course); otherwise 403 "Enroll in this course to track your progress." (404 for an unpublished course on the GET).
+
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/learn/{slug}` 🔒 learn.view + course access | — | `{ course:CourseCardDto, instructor:InstructorDto, modules:ModuleDto[] (all urls), schedule:LiveSessionDto[] (with meetingUrl), materials:MaterialDto[] (with url), canReadCommunity:bool }` | `Learn` | BR-LRN-01, BR-ENR-03 |
-| GET | `/me/courses/{courseId}/progress` | — | `{ completedSectionIds:int[], completedCount, totalSections, percent }` | `Learn` | BR-LRN-04,05 |
-| PUT | `/me/courses/{courseId}/progress/sections/{sectionId}` 🔒 learn.view + course access | `{ completed:bool }` | `{ completedCount, totalSections, percent, certificateIssued:CertificateDto\|null }` | `Learn` | BR-LRN-02,03,06,07 |
-| GET | `/me/upcoming-sessions` | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` | BR-LRN-11 |
+| GET | `/progress/mine` | — | `CourseProgressSummaryDto[]` (every course the user has an enrollment for, revoked included) | `Dashboard` | BR-LRN-16 |
+| GET | `/progress/courses/{slug}` 🔒 | — | `CourseProgressDto` | `Learn` | BR-LRN-05,15,16 |
+| PUT | `/progress/videos/{videoId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto` (404 "Video not found.") | `Learn` | BR-LRN-02,03 |
+| PUT | `/progress/videos/{videoId}/position` 🔒 | `{ positionSeconds (0–86400), durationSeconds (1–86400) }` | `CourseProgressDto`; 400 "This video's position can't be saved. Use Mark as complete." for YouTube/Vimeo | `Learn` (player, every 15 s, on pause and at the end) | BR-LRN-17,18 |
+| PUT | `/progress/sections/{sectionId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto`; 400 "Mark the videos of this section as complete instead." if the section has videos | `Learn` | BR-LRN-02,03,15 |
+| GET | `/me/upcoming-sessions` (not built) | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` (works it out from the catalogue for now) | BR-LRN-11 |
 
 ## 11. Certification
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -228,10 +261,10 @@ Gateways are plug-ins (`IPaymentGateway`: initiate, verify callback, query statu
 | GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `PostDto` + `courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
 | GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `CommentDto` + `postTitle, courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
 
-## 13. Admin overview
+## 13. Admin overview (overview built in backend Step 5)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
-| GET | `/admin/overview` 🔒 reports.view | — | `{ courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions:TransactionDto[5] }` | `AdminOverview` | BR-ADM-01–05 |
+| GET | `/admin/overview` 🔒 reports.view | — | `{ courseCount, publishedCourseCount, studentCount, activeEnrollmentCount, collectedAmount, recentTransactions:{ transactionNo, createdAt, userName, courseTitle, amount, statusCode }[5] }` | `AdminOverview` | BR-ADM-01–05 |
 | POST | `/dev/reset` 🔒 system.reset (development only) | — | null | `AdminOverview` | BR-ADM-06 |
 
 ## 14. Site content

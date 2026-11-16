@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Files uploaded to the development fake streaming service
+**/App_Data/fake-streaming/
+
 # User-specific files
 *.rsuser
 *.suo

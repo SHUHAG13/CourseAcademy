@@ -286,14 +286,45 @@
             </select>
           </div>
           <div class="col-8 col-md-4">
-            <input class="form-control form-control-sm" formControlName="url" placeholder="https://…"
-              [attr.aria-label]="'Material {0} link' | t: [i + 1]" [class.is-invalid]="invalid(m.get('url'))" />
-            @if (invalid(m.get('url'))) {
-              <div class="field-error">{{ 'Enter a valid http(s) link.' | t }}</div>
+            @if (!m.get('mediaId')!.value) {
+              <input class="form-control form-control-sm" formControlName="url" placeholder="https://…"
+                [attr.aria-label]="'Material {0} link' | t: [i + 1]" [class.is-invalid]="invalid(m.get('url'))" />
+              @if (invalid(m.get('url'))) {
+                <div class="field-error">{{ 'Enter a valid http(s) link.' | t }}</div>
+              }
+            }
+            @if (apiMode && m.get('type')!.value !== 'Link') {
+              <div class="file-cell">
+                @if (uploading()[m.get('id')!.value] !== undefined) {
+                  <span class="file-state" role="status">
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    {{ 'Uploading {0}%' | t: [uploading()[m.get('id')!.value]] }}
+                  </span>
+                } @else if (isNew()) {
+                  <span class="file-state">{{ 'Save the course first to upload files.' | t }}</span>
+                } @else {
+                  @if (m.get('media')!.value; as file) {
+                    <span class="file-state" [class.failed]="file.status === 'failed'" [class.ready]="file.status === 'ready'">
+                      <i class="bi" [class]="file.status === 'ready' ? 'bi-check-circle-fill' : file.status === 'failed' ? 'bi-exclamation-triangle-fill' : 'bi-hourglass-split'"
+                        aria-hidden="true"></i>
+                      <span class="text-truncate" [title]="file.fileName">{{ file.fileName }}</span>
+                      <span>· {{ fileStatusLabel(file) | t }}</span>
+                    </span>
+                  }
+                  <label class="btn btn-sm btn-outline upload-btn">
+                    <i class="bi bi-upload" aria-hidden="true"></i> {{ (m.get('media')!.value ? 'Replace file' : 'Upload file') | t }}
+                    <input type="file" class="visually-hidden" [accept]="acceptDocuments" (change)="uploadFile(m, $event)"
+                      [attr.aria-label]="'Material {0} file' | t: [i + 1]" />
+                  </label>
+                  @if (m.get('mediaId')!.value) {
+                    <button type="button" class="btn btn-sm btn-link px-1" (click)="clearFile(m)">{{ 'Remove file' | t }}</button>
+                  }
+                }
+              </div>
             }
           </div>
           <div class="col-md-1 text-end">
-            <button type="button" class="icon-btn danger" (click)="removeAt(materials, i)" [attr.aria-label]="'Delete material' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn danger" (click)="removeMaterial(i)" [attr.aria-label]="'Delete material' | t"><i class="bi bi-trash" aria-hidden="true"></i></button>
           </div>
         </div>
       } @empty {
