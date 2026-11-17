@@ -22,11 +22,15 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 
 namespace CourseAcademy.Api.Common;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>Name of the JWT security scheme in the OpenAPI document (used by Scalar).</summary>
+    public const string BearerScheme = "Bearer";
+
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
@@ -218,6 +222,18 @@ public static class ServiceCollectionExtensions
             options.SwaggerDoc("v1", new() { Title = "Course Academy API", Version = "v1" });
             var xml = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
             if (File.Exists(xml)) options.IncludeXmlComments(xml);
+            // Lets Scalar send the access token from POST /api/v1/auth/login as "Authorization: Bearer <token>".
+            options.AddSecurityDefinition(BearerScheme, new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "Paste the accessToken returned by POST /api/v1/auth/login.",
+            });
+            options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference(BearerScheme, document)] = [],
+            });
         });
     }
 }

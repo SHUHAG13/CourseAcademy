@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
 
@@ -66,7 +67,12 @@ public static class ApplicationBuilderExtensions
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "Course Academy API v1"));
+            // API testing page at /scalar; it reads the OpenAPI document served by UseSwagger.
+            app.MapScalarApiReference(options => options
+                .WithTitle("Course Academy API")
+                .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json")
+                .AddPreferredSecuritySchemes(ServiceCollectionExtensions.BearerScheme)
+                .EnablePersistentAuthentication());
         }
         else
         {

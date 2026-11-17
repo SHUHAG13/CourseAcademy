@@ -31,7 +31,7 @@ Requirements: .NET 10 SDK, SQL Server (Development uses the local default instan
 ```powershell
 dotnet run --project CourseAcademy.Api --launch-profile http
 ```
-- API: http://localhost:5162/api/v1 — Swagger: http://localhost:5162/swagger — Health: http://localhost:5162/health
+- API: http://localhost:5162/api/v1 — Scalar (API testing): http://localhost:5162/scalar (opens automatically with `dotnet run`; log in with `POST /api/v1/auth/login`, then paste the `accessToken` under Authentication → Bearer) — Health: http://localhost:5162/health
 - In Development the database `CourseAcademyDB` is created and migrated automatically on start-up (`Database:MigrateOnStartup`). Tables are grouped in schemas by area (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`), set in `Data/DbSchemas.cs`.
 - Logs: console and `CourseAcademy.Api/logs/api-<date>.log`.
 
@@ -51,7 +51,7 @@ The schema starts from one migration, `InitialCreate` (the step-by-step developm
 
 ## Security
 - Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`; outside Development HTTPS redirection and HSTS are on.
-- Swagger, the demo payment gateway, the fake Streaming service and demo seeding are refused or off outside Development.
+- Scalar and the OpenAPI document (`/swagger/v1/swagger.json`), the demo payment gateway, the fake Streaming service and demo seeding are refused or off outside Development.
 - Review of 2026-11-17: no known vulnerable packages (`dotnet list package --vulnerable`, `npm audit`); see `docs/security-review.md`.
 
 ## Authentication
@@ -59,7 +59,7 @@ The schema starts from one migration, `InitialCreate` (the step-by-step developm
 - Refresh tokens: random, stored as SHA-256 hashes, single use. 30 days with "Remember me", otherwise 24 hours. Reusing a used token ends all of that user's sessions.
 - `register`, `login`, `refresh` are rate limited (`Auth:RequestsPerMinute`, default 20 per client address).
 - Endpoint permissions are checked in services through `ICurrentUser.EnsureCanAsync`; `[RequirePermission]` is available for simple global checks.
-- Development seeds one demo account per role (`Database:SeedDemoData`): `admin@courseacademy.demo` / `Admin@123`, `instructor@courseacademy.demo` / `Instructor@123`, `student@courseacademy.demo` / `Student@123`.
+- Development seeds one demo account per role (`Database:SeedDemoData`) when the API starts — `dotnet ef database update` alone adds only the lookup, screen and permission data: `admin@courseacademy.demo` / `Admin@123`, `instructor@courseacademy.demo` / `Instructor@123`, `student@courseacademy.demo` / `Student@123`.
 
 ## Catalogue (Step 3)
 - Public: `GET /api/v1/courses` (paged), `/courses/all`, `/courses/{slug}`, `/courses/{slug}/related`, `/instructors`. Locked lesson links, file-less items and meeting links are only sent to people with course access.
