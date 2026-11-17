@@ -1,3 +1,4 @@
+import { DEMO_SETUP } from '../../core/api/api-mode';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -23,6 +24,8 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class Checkout {
   private readonly courses = inject(CourseService);
+  /** Demo notices (simulated checkout) apply in demo mode and in the development API only. */
+  protected readonly demoSetup = inject(DEMO_SETUP);
   private readonly payments = inject(PaymentService);
   private readonly enrollments = inject(EnrollmentService);
   private readonly auth = inject(AuthService);

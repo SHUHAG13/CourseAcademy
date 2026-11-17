@@ -4,6 +4,7 @@ import { TitleStrategy, provideRouter, withComponentInputBinding, withInMemorySc
 
 import { routes } from './app.routes';
 import { apiErrorInterceptor, authInterceptor } from './core/api/interceptors';
+import { LanguageService } from './core/i18n/language.service';
 import { LocalizedTitleStrategy } from './core/i18n/localized-title.strategy';
 import { DemoPaymentGateway } from './core/payments/demo-payment-gateway';
 import { PaymentGateway } from './core/payments/payment-gateway';
@@ -15,6 +16,8 @@ export const appConfig: ApplicationConfig = {
     // The error interceptor is outermost, so it sees failures after the auth interceptor has tried a token refresh.
     provideHttpClient(withFetch(), withInterceptors([apiErrorInterceptor, authInterceptor])),
     provideAppInitializer(() => inject(DemoDataService).load()),
+    // The Bangla dictionary is a separate file; load it before the first page when Bangla is chosen.
+    provideAppInitializer(() => inject(LanguageService).ready()),
     // Replace with a gateway that calls the ASP.NET Core API to take real payments.
     { provide: PaymentGateway, useExisting: DemoPaymentGateway },
     { provide: TitleStrategy, useClass: LocalizedTitleStrategy },

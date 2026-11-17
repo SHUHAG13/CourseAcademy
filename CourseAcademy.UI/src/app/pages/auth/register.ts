@@ -2,6 +2,7 @@ import { Component, inject, input, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { API_MODE } from '../../core/api/api-mode';
 import { map } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissionService } from '../../core/services/permission.service';
@@ -21,6 +22,8 @@ export class Register {
   private readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  /** With the API, the account is stored on the server and the password is hashed. */
+  protected readonly apiMode = inject(API_MODE);
 
   /** Bound from `?returnUrl=`, passed along from the login page. */
   readonly returnUrl = input<string>();

@@ -1,191 +1,142 @@
-using System.Text.Json;
 using CourseAcademy.Api.Common;
 using CourseAcademy.Api.Common.Auth;
 using CourseAcademy.Api.Entities;
+using CourseAcademy.Api.Services;
+using CourseAcademy.Api.Services.Payments;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseAcademy.Api.Data.Seed;
 
 /// <summary>
-/// Adds the frontend's demo catalogue (instructors, four courses with their curriculum) when no course exists yet.
-/// The data is the frontend's <c>courses.data.ts</c>, exported to <c>demo-courses.json</c>. Course ids 1–4 are kept,
-/// because demo records that still live in the browser refer to them.
-/// Decisions: video links are kept; documents and file materials are seeded without a file (uploaded later);
-/// Link materials keep their link. Demo instructor accounts are linked to their profiles and given course grants.
+/// Adds a small demo catalogue when no course exists yet (development only): one instructor teaching one published
+/// Hybrid course (1 module, 1 submodule, 2 sections, 2 videos, 1 document, 1 live class, 1 material), the instructor
+/// account linked to the profile with a course grant, and one paid enrollment for the demo student.
+/// Videos are links (older-style videos); the document has no file yet; the material is a link.
+/// Runs after <see cref="DemoDataSeeder"/>, which adds the accounts.
 /// </summary>
-public sealed class DemoCourseSeeder(AppDbContext db, ILogger<DemoCourseSeeder> logger)
+public sealed class DemoCourseSeeder(AppDbContext db, TimeProvider clock, ILogger<DemoCourseSeeder> logger)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
-    /// <summary>Which demo account teaches as which instructor profile.</summary>
-    private static readonly Dictionary<string, string> InstructorAccounts = new()
-    {
-        ["tanvir-hasan"] = "instructor@courseacademy.demo",
-        ["sabbir-ahmed"] = "sabbir@courseacademy.demo",
-    };
-
     private static readonly string[] InstructorGrantPermissions =
         [PermissionCodes.CoursesView, PermissionCodes.CoursesEdit, PermissionCodes.CommunityModerate, PermissionCodes.CertificatesManage];
 
     public async Task SeedAsync(CancellationToken ct)
     {
         if (await db.Courses.IgnoreQueryFilters().AnyAsync(ct)) return;
-        var data = await LoadAsync(ct);
+        var instructorAccount = await db.Users.FirstOrDefaultAsync(u => u.Email == DemoDataSeeder.InstructorEmail, ct);
+        var student = await db.Users.FirstOrDefaultAsync(u => u.Email == DemoDataSeeder.StudentEmail, ct);
+        if (instructorAccount is null || student is null) return;
 
         var strategy = db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             db.ChangeTracker.Clear();
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            var instructors = await SeedInstructorsAsync(data, ct);
-            await SeedCoursesAsync(data, instructors, ct);
-            await LinkInstructorAccountsAsync(data, instructors, ct);
-            await transaction.CommitAsync(ct);
-        });
-        logger.LogInformation("Added the demo catalogue: {Courses} courses, {Instructors} instructors.", data.Courses.Count, data.Instructors.Count);
-    }
 
-    private async Task<Dictionary<string, Instructor>> SeedInstructorsAsync(SeedData data, CancellationToken ct)
-    {
-        var map = new Dictionary<string, Instructor>();
-        foreach (var i in data.Instructors)
-        {
             var instructor = new Instructor
             {
-                Name = i.Name, Title = i.Title, Bio = i.Bio, ExperienceYears = i.ExperienceYears, Students = i.Students, Rating = i.Rating,
-                Expertise = i.Expertise.Select((e, index) => new InstructorExpertise { Expertise = e, SortOrder = index + 1 }).ToList(),
+                Name = "Tanvir Hasan", Title = "Senior Video Editor", ExperienceYears = 8, Students = 1200, Rating = 4.8m,
+                Bio = "Edits documentaries and brand films, and teaches editing to beginners.",
+                Expertise = [new() { Expertise = "Premiere Pro", SortOrder = 1 }, new() { Expertise = "Colour grading", SortOrder = 2 }],
             };
             db.Instructors.Add(instructor);
-            map[i.Id] = instructor;
-        }
-        await db.SaveChangesAsync(ct);
-        return map;
+            await db.SaveChangesAsync(ct);
+
+            var course = await AddCourseAsync(instructor.Id, ct);
+            await GrantInstructorAsync(instructorAccount.Id, instructor.Id, course.Id, ct);
+            await AddPaidEnrollmentAsync(student, course, ct);
+
+            await transaction.CommitAsync(ct);
+        });
+        logger.LogInformation("Added the demo catalogue: 1 instructor, 1 course, 1 paid enrollment.");
     }
 
-    private async Task SeedCoursesAsync(SeedData data, Dictionary<string, Instructor> instructors, CancellationToken ct)
+    private async Task<Course> AddCourseAsync(int instructorId, CancellationToken ct)
     {
-        var categories = await db.Categories.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
-        var formats = await db.CourseFormats.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
-        var levels = await db.CourseLevels.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
-        var badges = await db.CourseBadges.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
-        var documentTypes = await db.DocumentTypes.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
-        var materialTypes = await db.MaterialTypes.ToDictionaryAsync(c => c.Code, c => c.Id, ct);
+        int Lookup<T>(IQueryable<T> set, string code) where T : LookupEntity => set.Single(x => x.Code == code).Id;
+        var now = clock.GetUtcNow().UtcDateTime;
+        // The live class is a week from now at 20:00 Bangladesh time.
+        BangladeshTime.TryParseToUtc(BangladeshTime.FromUtc(now.AddDays(7))[..10] + "T20:00", out var classStartsAt);
 
-        // Course ids are fixed (1–4), so the identity column must accept explicit values for this insert.
-        await db.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT [Course] ON", ct);
-        foreach (var c in data.Courses)
+        var course = new Course
         {
-            db.Courses.Add(new Course
-            {
-                Id = c.Id, Slug = c.Slug, Title = c.Title, Subtitle = c.Subtitle, Description = c.Description,
-                CategoryId = categories[c.Category], CourseFormatId = formats[c.Format], CourseLevelId = levels[c.Level],
-                CourseBadgeId = c.Badge is null ? null : badges[c.Badge], InstructorId = instructors[c.InstructorId].Id,
-                IsPublished = c.Published, IsFeatured = c.Featured ?? false, Language = c.Language, DurationHours = c.DurationHours,
-                OriginalPrice = c.OriginalPrice, Price = c.Price, CoverLabel = c.CoverLabel, CoverIcon = c.CoverIcon, ImageUrl = c.Image,
-                Rating = c.Rating, RatingCount = c.RatingCount, Students = c.Students, ContentUpdatedMonth = c.Updated,
-            });
-        }
+            Slug = "video-editing-basics", Title = "Video Editing Basics", Subtitle = "Cut, trim and publish your first video",
+            Description = "A short, practical start in video editing: learn the workspace, make clean cuts and export for YouTube.",
+            CategoryId = Lookup(db.Categories, "video-editing"), CourseFormatId = Lookup(db.CourseFormats, "Hybrid"),
+            CourseLevelId = Lookup(db.CourseLevels, "Beginner"), InstructorId = instructorId,
+            IsPublished = true, IsFeatured = true, Language = "Bangla", DurationHours = 6,
+            OriginalPrice = 3000, Price = 2500, CoverLabel = "Editing", CoverIcon = "bi-camera-reels",
+            Rating = 4.8m, RatingCount = 2, Students = 1, ContentUpdatedMonth = now.ToString("yyyy-MM"),
+            Outcomes = [new() { Text = "Find your way around an editing workspace", SortOrder = 1 }, new() { Text = "Cut and export a short video", SortOrder = 2 }],
+            Requirements = [new() { Text = "A computer with a free video editor installed", SortOrder = 1 }],
+            Sessions =
+            [
+                new() { Title = "Live Q&A: your first edit", StartsAtUtc = classStartsAt, DurationMinutes = 60, MeetingUrl = "https://meet.example.com/video-editing-basics", SortOrder = 1 },
+            ],
+            Materials =
+            [
+                new() { Title = "Editing glossary", MaterialTypeId = Lookup(db.MaterialTypes, "Link"), ExternalUrl = "https://example.com/editing-glossary", SortOrder = 1 },
+            ],
+        };
+        db.Courses.Add(course);
         await db.SaveChangesAsync(ct);
-        await db.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT [Course] OFF", ct);
 
-        foreach (var c in data.Courses)
+        var workspace = new SectionVideo { Title = "Tour of the editing workspace", ExternalUrl = "https://example.com/demo-videos/editing-workspace", Minutes = 12, IsPreview = true, SortOrder = 1 };
+        var firstCut = new Section
         {
-            db.CourseOutcomes.AddRange(c.Outcomes.Select((t, i) => new CourseOutcome { CourseId = c.Id, Text = t, SortOrder = i + 1 }));
-            db.CourseRequirements.AddRange(c.Requirements.Select((t, i) => new CourseRequirement { CourseId = c.Id, Text = t, SortOrder = i + 1 }));
-            db.LiveSessions.AddRange(c.Schedule.Select((s, i) =>
-            {
-                BangladeshTime.TryParseToUtc(s.StartsAt, out var startsAt);
-                return new LiveSession { CourseId = c.Id, Title = s.Title, StartsAtUtc = startsAt, DurationMinutes = s.DurationMinutes, MeetingUrl = s.MeetingUrl, SortOrder = i + 1 };
-            }));
-            db.Materials.AddRange(c.Materials.Select((m, i) => new Material
-            {
-                CourseId = c.Id, MaterialTypeId = materialTypes[m.Type], Title = m.Title, SortOrder = i + 1,
-                ExternalUrl = m.Type == "Link" ? m.Url : null,
-            }));
-
-            foreach (var (m, mi) in c.Modules.Select((m, i) => (m, i)))
-            {
-                var module = new CourseModule { CourseId = c.Id, Title = m.Title, SortOrder = mi + 1 };
-                foreach (var (s, si) in m.Submodules.Select((s, i) => (s, i)))
-                {
-                    var submodule = new Submodule { Title = s.Title, SortOrder = si + 1 };
-                    foreach (var (sec, i) in s.Sections.Select((x, i) => (x, i))) submodule.Sections.Add(BuildSection(c.Id, sec, 0, i, documentTypes));
-                    module.Submodules.Add(submodule);
-                }
-                db.CourseModules.Add(module);
-            }
-        }
+            CourseId = course.Id, Depth = 0, Title = "Your first cut", SortOrder = 2,
+            Videos = [new() { Title = "Cutting and trimming clips", ExternalUrl = "https://example.com/demo-videos/cutting-and-trimming", Minutes = 18, SortOrder = 1 }],
+        };
+        var intro = new Section
+        {
+            CourseId = course.Id, Depth = 0, Title = "The editing workspace", SortOrder = 1,
+            Videos = [workspace],
+            Documents = [new() { Title = "Keyboard shortcuts", DocumentTypeId = Lookup(db.DocumentTypes, "PDF"), Video = workspace, SortOrder = 1 }],
+        };
+        db.CourseModules.Add(new CourseModule
+        {
+            CourseId = course.Id, Title = "Getting started", SortOrder = 1,
+            Submodules = [new() { Title = "First steps", SortOrder = 1, Sections = [intro, firstCut] }],
+        });
         await db.SaveChangesAsync(ct);
+        return course;
     }
 
-    /// <summary>Topics hang off their parent section, so EF inserts them after it and fills in the ids.</summary>
-    private static Section BuildSection(int courseId, SeedSection s, int depth, int index, Dictionary<string, int> documentTypes)
+    /// <summary>The instructor account teaches as the profile and may manage the course.</summary>
+    private async Task GrantInstructorAsync(int userId, int instructorId, int courseId, CancellationToken ct)
     {
-        var section = new Section { CourseId = courseId, Depth = depth, Title = s.Title, SortOrder = index + 1 };
-        var videos = s.Videos.Select((v, i) => (Key: v.Id, Video: new SectionVideo
-        {
-            Title = v.Title, ExternalUrl = v.Url, Minutes = v.Minutes, IsPreview = v.Preview, SortOrder = i + 1,
-        })).ToList();
-        foreach (var (_, video) in videos) section.Videos.Add(video);
-
-        foreach (var (d, i) in s.Documents.Select((d, i) => (d, i)))
-        {
-            section.Documents.Add(new SectionDocument
-            {
-                Title = d.Title, DocumentTypeId = documentTypes[d.Type], SortOrder = i + 1,
-                Video = videos.FirstOrDefault(v => v.Key == d.VideoId).Video,
-            });
-        }
-        foreach (var (t, i) in s.Topics.Select((t, i) => (t, i)))
-        {
-            var topic = BuildSection(courseId, t, depth + 1, i, documentTypes);
-            topic.ParentSection = section;
-            section.Topics.Add(topic);
-        }
-        return section;
-    }
-
-    private async Task LinkInstructorAccountsAsync(SeedData data, Dictionary<string, Instructor> instructors, CancellationToken ct)
-    {
+        var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
+        user.InstructorId = instructorId;
         var permissionIds = await db.Permissions.Where(p => InstructorGrantPermissions.Contains(p.Code)).Select(p => p.Id).ToListAsync(ct);
-        foreach (var (instructorKey, email) in InstructorAccounts)
+        db.CourseGrants.Add(new CourseGrant
         {
-            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
-            if (user is null || !instructors.TryGetValue(instructorKey, out var instructor)) continue;
-            user.InstructorId = instructor.Id;
-            foreach (var course in data.Courses.Where(c => c.InstructorId == instructorKey))
-            {
-                db.CourseGrants.Add(new CourseGrant
-                {
-                    UserId = user.Id, CourseId = course.Id,
-                    Permissions = permissionIds.Select(id => new CourseGrantPermission { PermissionId = id }).ToList(),
-                });
-            }
-        }
+            UserId = userId, CourseId = courseId,
+            Permissions = permissionIds.Select(id => new CourseGrantPermission { PermissionId = id }).ToList(),
+        });
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task<SeedData> LoadAsync(CancellationToken ct)
+    /// <summary>The demo student bought the course three days ago (demo gateway, bKash).</summary>
+    private async Task AddPaidEnrollmentAsync(User student, Course course, CancellationToken ct)
     {
-        await using var stream = typeof(DemoCourseSeeder).Assembly.GetManifestResourceStream("CourseAcademy.Api.Data.Seed.demo-courses.json")
-            ?? throw new InvalidOperationException("The demo course data is missing from the build.");
-        return await JsonSerializer.DeserializeAsync<SeedData>(stream, Json, ct)
-            ?? throw new InvalidOperationException("The demo course data could not be read.");
+        var paidAt = clock.GetUtcNow().UtcDateTime.AddDays(-3);
+        var payment = new PaymentTransaction
+        {
+            TransactionNo = "DEMO-SAMPLE-0001", Gateway = DemoPaymentGateway.GatewayName,
+            UserId = student.Id, UserName = student.Name, UserEmail = student.Email,
+            CourseId = course.Id, CourseSlug = course.Slug, CourseTitle = course.Title,
+            PaymentMethodId = db.PaymentMethods.Single(m => m.Code == "bkash").Id, MaskedAccount = "017•••••000",
+            OriginalAmount = course.OriginalPrice, DiscountAmount = course.OriginalPrice - course.Price, Amount = course.Price,
+            CurrencyId = LookupIds.Currency("BDT"), PaymentStatusId = LookupIds.PaymentStatus(PaymentStatusCodes.Success),
+            ExpiresAt = paidAt.AddMinutes(30), FulfilledAt = paidAt,
+        };
+        db.PaymentTransactions.Add(payment);
+        db.Enrollments.Add(new Enrollment
+        {
+            UserId = student.Id, CourseId = course.Id, PaymentTransaction = payment, EnrolledAt = paidAt,
+            EnrollmentStatusId = LookupIds.EnrollmentStatus(EnrollmentStatusCodes.Active),
+        });
+        await db.SaveChangesAsync(ct);
+        // The save stamps "now"; the demo payment is dated when it was made.
+        await db.PaymentTransactions.Where(t => t.Id == payment.Id).ExecuteUpdateAsync(s => s.SetProperty(t => t.CreatedAt, paidAt), ct);
     }
-
-    // Shapes of demo-courses.json (the frontend's model).
-    private sealed record SeedData(List<SeedInstructor> Instructors, List<SeedCourse> Courses);
-    private sealed record SeedInstructor(string Id, string Name, string Title, string Bio, List<string> Expertise, int ExperienceYears, int Students, decimal Rating);
-    private sealed record SeedCourse(
-        int Id, string Slug, string Title, string Subtitle, string Description, string Category, string Format, bool Published,
-        string InstructorId, decimal Rating, int RatingCount, int Students, int DurationHours, string Level, string Language,
-        decimal Price, decimal OriginalPrice, string CoverLabel, string CoverIcon, string? Image, string? Badge, bool? Featured, string Updated,
-        List<string> Outcomes, List<string> Requirements, List<SeedModule> Modules, List<SeedSession> Schedule, List<SeedMaterial> Materials);
-    private sealed record SeedModule(string Title, List<SeedSubmodule> Submodules);
-    private sealed record SeedSubmodule(string Title, List<SeedSection> Sections);
-    private sealed record SeedSection(string Title, List<SeedVideo> Videos, List<SeedDocument> Documents, List<SeedSection> Topics);
-    private sealed record SeedVideo(string Id, string Title, string Url, int Minutes, bool Preview);
-    private sealed record SeedDocument(string Title, string Type, string? VideoId);
-    private sealed record SeedSession(string Title, string StartsAt, int DurationMinutes, string MeetingUrl);
-    private sealed record SeedMaterial(string Title, string Type, string Url);
 }

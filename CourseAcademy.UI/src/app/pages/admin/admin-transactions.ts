@@ -1,3 +1,4 @@
+import { DEMO_SETUP } from '../../core/api/api-mode';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -49,6 +50,8 @@ const ACTIONS: Partial<Record<PaymentStatus, { label: string; title: string; mes
 })
 export class AdminTransactions {
   protected readonly payments = inject(PaymentService);
+  /** Demo notices (simulated checkout) apply in demo mode and in the development API only. */
+  protected readonly demoSetup = inject(DEMO_SETUP);
   protected readonly permissions = inject(PermissionService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);

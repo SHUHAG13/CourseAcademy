@@ -1,6 +1,7 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { API_MODE, DEMO_SETUP } from '../../core/api/api-mode';
 import {
   DEMO_ADMIN_CREDENTIALS,
   DEMO_INSTRUCTOR_CREDENTIALS,
@@ -25,6 +26,9 @@ export class Login {
   private readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  /** Demo accounts exist in demo mode and in the development API (seeded), not in production. */
+  protected readonly demoSetup = inject(DEMO_SETUP);
+  protected readonly apiMode = inject(API_MODE);
 
   /** Bound from `?returnUrl=`, set when a guard sent the user here. */
   readonly returnUrl = input<string>();
@@ -33,10 +37,11 @@ export class Login {
   protected readonly showPassword = signal(false);
   protected readonly error = signal('');
 
+  /** The API seeds one account per role; the browser demo has a second instructor. */
   protected readonly demoAccounts = [
     { label: 'Admin', ...DEMO_ADMIN_CREDENTIALS },
     { label: 'Instructor', ...DEMO_INSTRUCTOR_CREDENTIALS },
-    { label: 'Software instructor', ...DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS },
+    ...(this.apiMode ? [] : [{ label: 'Software instructor', ...DEMO_SOFTWARE_INSTRUCTOR_CREDENTIALS }]),
     { label: 'Student', ...DEMO_STUDENT_CREDENTIALS },
   ];
 

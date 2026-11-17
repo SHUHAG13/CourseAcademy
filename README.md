@@ -11,7 +11,7 @@ Online course academy for Bangladesh: course catalogue, checkout (bKash, Nagad, 
 | [`docs/integration/`](docs/integration) | Streaming (media) service integration spec |
 
 ## Run locally
-Requirements: Node.js and npm, .NET 10 SDK, SQL Server LocalDB.
+Requirements: Node.js and npm, .NET 10 SDK, SQL Server (local default instance, `Server=.`; database `CourseAcademyDB`).
 
 ```powershell
 # 1. API (first time on a machine: set a JWT signing key, see CourseAcademy.API/README.md)
@@ -23,7 +23,7 @@ cd CourseAcademy.UI
 npm install
 npm start                                                      # http://localhost:4200
 ```
-In development the API creates the database and the demo accounts and courses on start-up, for example `admin@courseacademy.demo` / `Admin@123`.
+In development the API creates the database and a small demo set on start-up: `admin@courseacademy.demo` / `Admin@123`, `instructor@courseacademy.demo` / `Instructor@123`, `student@courseacademy.demo` / `Student@123`, and one course.
 
 ## Tests
 ```powershell

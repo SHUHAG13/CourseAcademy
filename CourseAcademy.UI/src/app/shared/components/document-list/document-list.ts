@@ -1,4 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
+import { API_MODE } from '../../../core/api/api-mode';
 import { DocumentType, SectionDocument } from '../../../core/models/course.model';
 import { MediaService } from '../../../core/services/media.service';
 import { failureMessage } from '../../../core/services/permission.service';
@@ -31,7 +32,7 @@ const ICONS: Record<DocumentType, string> = {
               [attr.aria-label]="'Open: {0}' | t: [d.title]">{{ 'Open' | t }}</button>
           } @else {
             <a [href]="d.url" target="_blank" rel="noopener noreferrer" class="open"
-              [attr.aria-label]="'Open (demo link): {0}' | t: [d.title]">{{ 'Open' | t }}</a>
+              [attr.aria-label]="(apiMode ? 'Open: {0}' : 'Open (demo link): {0}') | t: [d.title]">{{ 'Open' | t }}</a>
           }
         </li>
       }
@@ -62,6 +63,7 @@ const ICONS: Record<DocumentType, string> = {
 export class DocumentList {
   private readonly media = inject(MediaService);
   private readonly toast = inject(ToastService);
+  protected readonly apiMode = inject(API_MODE);
 
   readonly documents = input.required<SectionDocument[]>();
   readonly locked = input(false);

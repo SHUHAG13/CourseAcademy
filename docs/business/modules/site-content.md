@@ -47,7 +47,7 @@ Public marketing and information pages (about, sports media, career opportunitie
 - **BR-SITE-02** Career application is simulated (900 ms); nothing is stored; form resets.
 - **BR-SITE-03** Contact topic list = all published course titles + Payment & enrollment + Career + Something else.
 - **BR-SITE-04** Career "Apply" on a role pre-fills the role field and scrolls to the form.
-- **BR-SITE-05** Default language is Bangla (`bn`); choice saved in browser (`ca-language`). Missing translations fall back to the English text.
+- **BR-SITE-05** Default language is Bangla (`bn`); choice saved in browser (`ca-language`). Missing translations fall back to the English text. The Bangla dictionary is a separate file, loaded before the first page when Bangla is chosen and otherwise only when the user switches to Bangla (the switch happens once it has loaded); English visitors never download it.
 - **BR-SITE-06** In Bangla, numbers and dates use Bangla digits and `bn` locale; AM/PM → এএম/পিএম.
 - **BR-SITE-07** Page titles follow `<Page> | Course Academy` (course pages use course title).
 - **BR-SITE-08** WhatsApp links pre-fill a message, including course title (and price on the payment page).

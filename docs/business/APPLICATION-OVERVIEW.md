@@ -1177,7 +1177,7 @@ No own entity. Reads Course, User, Enrollment, PaymentTransaction.
 - **BR-ADM-03** "Active enrollments" = enrollments with status `active`.
 - **BR-ADM-04** "Demo payments collected" (API mode: "Payments collected") = Σ amount of transactions with status `success` (refunded excluded).
 - **BR-ADM-05** Recent payments = 5 newest transactions by createdAt (any status).
-- **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo-only, must not exist in production.
+- **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo mode only: the panel is not shown in API mode.
 - **BR-ADM-07** If stored data can't be read on start-up, defaults are restored and a toast says so (demo-only).
 
 ### 5. Workflows & Status Transitions
@@ -1256,7 +1256,7 @@ Public marketing and information pages (about, sports media, career opportunitie
 - **BR-SITE-02** Career application is simulated (900 ms); nothing is stored; form resets.
 - **BR-SITE-03** Contact topic list = all published course titles + Payment & enrollment + Career + Something else.
 - **BR-SITE-04** Career "Apply" on a role pre-fills the role field and scrolls to the form.
-- **BR-SITE-05** Default language is Bangla (`bn`); choice saved in browser (`ca-language`). Missing translations fall back to the English text.
+- **BR-SITE-05** Default language is Bangla (`bn`); choice saved in browser (`ca-language`). Missing translations fall back to the English text. The Bangla dictionary is a separate file, loaded before the first page when Bangla is chosen and otherwise only when the user switches to Bangla (the switch happens once it has loaded); English visitors never download it.
 - **BR-SITE-06** In Bangla, numbers and dates use Bangla digits and `bn` locale; AM/PM → এএম/পিএম.
 - **BR-SITE-07** Page titles follow `<Page> | Course Academy` (course pages use course title).
 - **BR-SITE-08** WhatsApp links pre-fill a message, including course title (and price on the payment page).
@@ -1300,6 +1300,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 |---|---|
 | Engine | SQL Server, EF Core |
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
+| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
 | Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
@@ -1321,13 +1322,15 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ### 2. Tables overview
+The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`.
+
 | Area | Tables |
 |---|---|
 | Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, MediaKind, MediaAssetStatus, CertificationMode, ExamType, SubmissionStatus |
 | Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
 | Media | MediaAsset, StreamingWebhookEvent |
-| Commerce & learning | Enrollment, PaymentTransaction, LessonProgress |
+| Commerce & learning | Enrollment, PaymentTransaction (`Commerce`); LessonProgress (`Learning`) |
 | Certification | CertificationRule, ExamSubmission, Certificate |
 | Community | Post, Comment |
 
@@ -2237,6 +2240,8 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 
 ## C1b. Database & API open questions
 See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-api): token lifetimes/rotation, exam score type, ContentUpdatedMonth, Language lookup, Bangla lookup names, collation, error item shape, message language.
+
+Security (from `docs/security-review.md`, 2026-11-17): tokens are kept in browser storage (an injected script could read them; httpOnly cookies would avoid that); no Content-Security-Policy yet (belongs on the web server hosting the Angular app); rate limiting covers only sign-in, sign-up and refresh. Decide whether to change these before going live.
 
 ## C2. Likely bugs & inconsistencies (found in the frontend code)
 1. ~~**Live courses can never be completed**~~ — **fixed in backend Step 5** (Live courses show their lessons and "Mark as complete", in both modes). Original note: the learning page hid "Mark as complete" for Live format, so demo course 2 (Live, exam rule needing 100%) could never award a certificate. (BR-LRN-08, BR-CERT-06)

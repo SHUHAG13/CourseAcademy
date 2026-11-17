@@ -96,7 +96,7 @@
             <a class="btn btn-outline w-100 mt-2" [href]="whatsappLink()" target="_blank" rel="noopener">
               <i class="bi bi-whatsapp" aria-hidden="true"></i> {{ 'Ask on WhatsApp' | t }}
             </a>
-            <p class="pay-note">{{ 'Pay with bKash, Nagad, Rocket or card in our demo checkout.' | t }} <a routerLink="/payment" [queryParams]="{ course: c.slug }">{{ 'How it works' | t }}</a></p>
+            <p class="pay-note">{{ (demoSetup ? 'Pay with bKash, Nagad, Rocket or card in our demo checkout.' : 'Pay with bKash, Nagad, Rocket or card.') | t }} <a routerLink="/payment" [queryParams]="{ course: c.slug }">{{ 'How it works' | t }}</a></p>
 
             <h2 class="includes-title">{{ 'This course includes' | t }}</h2>
             <ul class="includes">

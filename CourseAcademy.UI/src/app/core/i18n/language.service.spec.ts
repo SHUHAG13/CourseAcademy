@@ -13,16 +13,30 @@ describe('LanguageService', () => {
     return TestBed.inject(LanguageService);
   }
 
-  it('defaults to Bangla and marks the page language', () => {
+  it('defaults to Bangla and marks the page language', async () => {
     const language = create();
+    await language.ready();
     TestBed.tick();
     expect(language.language()).toBe('bn');
     expect(language.t('Log in')).toBe('লগ ইন');
     expect(document.documentElement.lang).toBe('bn');
   });
 
-  it('remembers the chosen language', () => {
-    create().setLanguage('en');
+  it('loads the Bangla dictionary only when switching to Bangla, then switches at once', async () => {
+    const language = create('en');
+    await language.ready();
+    expect(language.t('Log in')).toBe('Log in');
+
+    const switching = language.setLanguage('bn');
+    // Still English until the dictionary has arrived, so the page never shows a mix.
+    expect(language.language()).toBe('en');
+    await switching;
+    expect(language.language()).toBe('bn');
+    expect(language.t('Log in')).toBe('লগ ইন');
+  });
+
+  it('remembers the chosen language', async () => {
+    await create().setLanguage('en');
     TestBed.resetTestingModule();
     expect(TestBed.inject(LanguageService).language()).toBe('en');
   });
@@ -37,8 +51,9 @@ describe('LanguageService', () => {
     expect(create().t('Demo Podcast Production')).toBe('Demo Podcast Production');
   });
 
-  it('fills placeholders, translating text and using Bangla digits for numbers', () => {
+  it('fills placeholders, translating text and using Bangla digits for numbers', async () => {
     const language = create();
+    await language.ready();
     expect(language.t('{0} students', [1200])).toBe('১,২০০ জন শিক্ষার্থী');
     expect(language.t('More in {0}', ['Video Editing'])).toBe('ভিডিও এডিটিং-এ আরও কোর্স');
   });

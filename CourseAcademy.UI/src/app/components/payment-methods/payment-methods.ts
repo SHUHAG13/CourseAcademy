@@ -1,3 +1,4 @@
+import { DEMO_SETUP } from '../../core/api/api-mode';
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CONTACT } from '../../core/data/site.data';
@@ -17,6 +18,8 @@ import { TranslatePipe, LocalNumberPipe } from '../../shared/pipes/translate.pip
 })
 export class PaymentMethods {
   private readonly courses = inject(CourseService);
+  /** Demo notices (simulated checkout) apply in demo mode and in the development API only. */
+  protected readonly demoSetup = inject(DEMO_SETUP);
 
   /** Bound from `?course=<slug>`. */
   readonly course = input<string>();

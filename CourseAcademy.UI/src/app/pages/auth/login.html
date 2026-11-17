@@ -2,19 +2,23 @@
   <h1 class="title">{{ 'Log in to your account' | t }}</h1>
   <p class="sub">{{ 'New here?' | t }} <a routerLink="/register" queryParamsHandling="preserve">{{ 'Create a free account' | t }}</a></p>
 
-  <div class="demo-accounts">
-    <strong>{{ 'Demo accounts' | t }}</strong>
-    @for (a of demoAccounts; track a.email) {
-      <div class="account">
-        <span>
-          <b>{{ a.label | t }}:</b> {{ a.email }} / {{ a.password }}
-        </span>
-        <button type="button" class="link" (click)="useDemoAccount(a.email, a.password)"
-          [attr.aria-label]="'Fill in the {0} demo account' | t: [a.label]">{{ 'Use' | t }}</button>
-      </div>
-    }
-    <small>{{ 'This is a browser-only demo. Accounts are not secure, so don\'t use a real password.' | t }}</small>
-  </div>
+  @if (demoSetup) {
+    <div class="demo-accounts">
+      <strong>{{ 'Demo accounts' | t }}</strong>
+      @for (a of demoAccounts; track a.email) {
+        <div class="account">
+          <span>
+            <b>{{ a.label | t }}:</b> {{ a.email }} / {{ a.password }}
+          </span>
+          <button type="button" class="link" (click)="useDemoAccount(a.email, a.password)"
+            [attr.aria-label]="'Fill in the {0} demo account' | t: [a.label]">{{ 'Use' | t }}</button>
+        </div>
+      }
+      @if (!apiMode) {
+        <small>{{ 'This is a browser-only demo. Accounts are not secure, so don\'t use a real password.' | t }}</small>
+      }
+    </div>
+  }
 
   @if (error()) {
     <div class="form-alert" role="alert">

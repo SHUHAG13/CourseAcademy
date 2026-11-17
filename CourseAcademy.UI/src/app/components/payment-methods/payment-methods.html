@@ -8,7 +8,10 @@
       <li aria-current="page">{{ 'Enroll' | t }}</li>
     </ol>
     <h1>{{ (selected() ? 'Complete your enrollment' : 'How to enroll & pay') | t }}</h1>
-    <p>{{ 'Enrolling takes a few minutes. Choose bKash, Nagad, Rocket or Visa/Mastercard in our demo checkout. No real money is taken.' | t }}</p>
+    <p>
+      {{ (demoSetup ? 'Enrolling takes a few minutes. Choose bKash, Nagad, Rocket or Visa/Mastercard in our demo checkout. No real money is taken.'
+        : 'Enrolling takes a few minutes. Pay with bKash, Nagad, Rocket or Visa/Mastercard.') | t }}
+    </p>
   </div>
 </section>
 
@@ -48,12 +51,14 @@
           }
         </div>
 
-        <div class="note">
-          <i class="bi bi-shield-check" aria-hidden="true"></i>
-          <p class="mb-0">
-            <strong>{{ 'Demo only:' | t }}</strong> {{ 'Checkout is simulated. No payment provider is connected, no money moves, and you are never asked for a real card number, PIN or password.' | t }}
-          </p>
-        </div>
+        @if (demoSetup) {
+          <div class="note">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            <p class="mb-0">
+              <strong>{{ 'Demo only:' | t }}</strong> {{ 'Checkout is simulated. No payment provider is connected, no money moves, and you are never asked for a real card number, PIN or password.' | t }}
+            </p>
+          </div>
+        }
       </div>
 
       <div class="col-lg-5">

@@ -7,6 +7,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 |---|---|
 | Engine | SQL Server, EF Core |
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
+| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
 | Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
@@ -28,13 +29,15 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ## 2. Tables overview
+The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`.
+
 | Area | Tables |
 |---|---|
 | Lookups | Permission, Screen, Category, CourseFormat, CourseLevel, CourseBadge, DocumentType, MaterialType, EnrollmentStatus, PaymentMethod, PaymentStatus, Currency, MediaKind, MediaAssetStatus, CertificationMode, ExamType, SubmissionStatus |
 | Identity & access | User, RefreshToken, Role, RoleScreen, UserScreen, CourseGrant, CourseGrantPermission |
 | Catalogue | CategorySkill, Instructor, InstructorExpertise, Course, CourseOutcome, CourseRequirement, CourseModule, Submodule, Section, SectionVideo, SectionDocument, LiveSession, Material |
 | Media | MediaAsset, StreamingWebhookEvent |
-| Commerce & learning | Enrollment, PaymentTransaction, LessonProgress |
+| Commerce & learning | Enrollment, PaymentTransaction (`Commerce`); LessonProgress (`Learning`) |
 | Certification | CertificationRule, ExamSubmission, Certificate |
 | Community | Post, Comment |
 

@@ -47,6 +47,11 @@ internal sealed class IdentityTestKit
             new Repository<CourseGrant>(Db), new Repository<CourseGrantPermission>(Db), unitOfWork, Catalog, CurrentUser);
 
         new DemoDataSeeder(Db, hasher, NullLogger<DemoDataSeeder>.Instance).SeedAsync(CancellationToken.None).GetAwaiter().GetResult();
+        // A second student for tests that need two learners; the demo seed has one account per role.
+        var learner = new User { Name = "Sample Learner", Email = Learner, RoleId = Db.Roles.Single(r => r.Code == Role.StudentCode).Id };
+        learner.PasswordHash = hasher.HashPassword(learner, "Learner@123");
+        Db.Users.Add(learner);
+        Db.SaveChanges();
         Db.ChangeTracker.Clear();
     }
 

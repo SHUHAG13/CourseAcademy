@@ -26,13 +26,13 @@ One Web API project with a simple layered flow: **Controller → Service → Rep
 - Warnings are errors (`TreatWarningsAsErrors`).
 
 ## Run locally
-Requirements: .NET 10 SDK, SQL Server LocalDB (`(localdb)\MSSQLLocalDB`).
+Requirements: .NET 10 SDK, SQL Server (Development uses the local default instance: `ConnectionStrings:DefaultConnection` = `Server=.;Database=CourseAcademyDB;Trusted_Connection=True;…`).
 
 ```powershell
 dotnet run --project CourseAcademy.Api --launch-profile http
 ```
 - API: http://localhost:5162/api/v1 — Swagger: http://localhost:5162/swagger — Health: http://localhost:5162/health
-- In Development the database `CourseAcademy` is created and migrated automatically on start-up (`Database:MigrateOnStartup`).
+- In Development the database `CourseAcademyDB` is created and migrated automatically on start-up (`Database:MigrateOnStartup`). Tables are grouped in schemas by area (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`), set in `Data/DbSchemas.cs`.
 - Logs: console and `CourseAcademy.Api/logs/api-<date>.log`.
 
 ## Tests
@@ -47,18 +47,24 @@ dotnet ef migrations add <Name> --project CourseAcademy.Api --output-dir Data/Mi
 dotnet ef database update --project CourseAcademy.Api
 ```
 Production: generate an idempotent script (`dotnet ef migrations script --idempotent`) and apply it as a release step; keep `Database:MigrateOnStartup` false.
+The schema starts from one migration, `InitialCreate` (the step-by-step development migrations were merged into it before the first deployment).
+
+## Security
+- Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`; outside Development HTTPS redirection and HSTS are on.
+- Swagger, the demo payment gateway, the fake Streaming service and demo seeding are refused or off outside Development.
+- Review of 2026-11-17: no known vulnerable packages (`dotnet list package --vulnerable`, `npm audit`); see `docs/security-review.md`.
 
 ## Authentication
 - JWT access tokens (HS256, 15 minutes) carry only the user id. Permissions are read from the database on every request, so access changes apply immediately.
 - Refresh tokens: random, stored as SHA-256 hashes, single use. 30 days with "Remember me", otherwise 24 hours. Reusing a used token ends all of that user's sessions.
 - `register`, `login`, `refresh` are rate limited (`Auth:RequestsPerMinute`, default 20 per client address).
 - Endpoint permissions are checked in services through `ICurrentUser.EnsureCanAsync`; `[RequirePermission]` is available for simple global checks.
-- Development seeds the demo accounts (`Database:SeedDemoData`): `admin@courseacademy.demo` / `Admin@123`, `student@courseacademy.demo` / `Student@123`, `learner@courseacademy.demo` / `Learner@123`, `instructor@courseacademy.demo` and `sabbir@courseacademy.demo` / `Instructor@123`.
+- Development seeds one demo account per role (`Database:SeedDemoData`): `admin@courseacademy.demo` / `Admin@123`, `instructor@courseacademy.demo` / `Instructor@123`, `student@courseacademy.demo` / `Student@123`.
 
 ## Catalogue (Step 3)
 - Public: `GET /api/v1/courses` (paged), `/courses/all`, `/courses/{slug}`, `/courses/{slug}/related`, `/instructors`. Locked lesson links, file-less items and meeting links are only sent to people with course access.
 - Admin: `/api/v1/admin/courses` (create, update, publish, curriculum, delete), `/instructors` (create, update, delete).
-- Development seeds the frontend's demo catalogue from `Data/Seed/demo-courses.json` (exported from the frontend's `courses.data.ts`), keeping course ids 1–4, and links the two demo instructor accounts to their profiles with course grants.
+- Development seeds a small demo catalogue (`Data/Seed/DemoCourseSeeder.cs`): one instructor (linked to the instructor account, with a course grant), one published Hybrid course (1 module, 1 submodule, 2 sections, 2 videos, 1 document, 1 live class, 1 material) and one paid enrollment for the demo student. Lookup values, screens and permissions are seeded completely by the migration.
 - Media columns: `ExternalUrl` (links) and `AssetId` (uploads, added with the media module).
 
 ## Payments (Step 4)
@@ -107,7 +113,7 @@ Secrets never go in `appsettings.json`. Set them as environment variables or use
 
 | Setting | Environment variable |
 |---|---|
-| Database connection | `ConnectionStrings__Default` |
+| Database connection | `ConnectionStrings__DefaultConnection` |
 | Allowed browser origins | `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, … |
 | JWT signing key (≥ 32 chars, random) | `Jwt__SigningKey` |
 | Streaming mode and address | `Streaming__Mode` = `Http`, `Streaming__BaseUrl` |

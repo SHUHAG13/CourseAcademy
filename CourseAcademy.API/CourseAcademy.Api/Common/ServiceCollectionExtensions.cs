@@ -91,11 +91,11 @@ public static class ServiceCollectionExtensions
 
     private static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Default");
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException(
-                "Connection string 'Default' is missing. Set ConnectionStrings__Default in the environment or user secrets.");
+                "Connection string 'DefaultConnection' is missing. Set ConnectionStrings__DefaultConnection in the environment or user secrets.");
         }
 
         services.AddSingleton<AuditInterceptor>();
@@ -136,7 +136,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOverviewRepository, OverviewRepository>();
         services.AddScoped<IProgressService, ProgressService>();
         services.AddScoped<IOverviewService, OverviewService>();
-        services.AddScoped<DemoCommerceSeeder>();
         // Payment gateways: register each provider here; Payments:Gateway picks the one new payments use.
         services.AddSingleton<IPaymentGateway, DemoPaymentGateway>();
         services.AddSingleton<IPaymentGatewayResolver, PaymentGatewayResolver>();

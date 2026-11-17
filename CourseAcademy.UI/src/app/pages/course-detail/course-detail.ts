@@ -1,4 +1,4 @@
-import { API_MODE } from '../../core/api/api-mode';
+import { API_MODE, DEMO_SETUP } from '../../core/api/api-mode';
 import { ComingSoon } from '../../shared/components/coming-soon/coming-soon';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
@@ -54,6 +54,8 @@ const FORMAT_INTRO = {
 })
 export class CourseDetail {
   private readonly courseService = inject(CourseService);
+  /** Demo notices (simulated checkout) apply in demo mode and in the development API only. */
+  protected readonly demoSetup = inject(DEMO_SETUP);
   private readonly enrollments = inject(EnrollmentService);
   protected readonly auth = inject(AuthService);
   /** Course communities have not moved to the API yet. */

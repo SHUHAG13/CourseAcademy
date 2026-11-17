@@ -2,11 +2,13 @@
   <h1 class="title">{{ 'Create your account' | t }}</h1>
   <p class="sub">{{ 'Already have an account?' | t }} <a routerLink="/login" queryParamsHandling="preserve">{{ 'Log in' | t }}</a></p>
 
-  <div class="demo-accounts">
-    <small>
-      <strong>{{ 'Demo only:' | t }}</strong> {{ 'your details stay in this browser, and the password is stored without protection. Please use a made-up password, not one you use elsewhere.' | t }}
-    </small>
-  </div>
+  @if (!apiMode) {
+    <div class="demo-accounts">
+      <small>
+        <strong>{{ 'Demo only:' | t }}</strong> {{ 'your details stay in this browser, and the password is stored without protection. Please use a made-up password, not one you use elsewhere.' | t }}
+      </small>
+    </div>
+  }
 
   @if (error()) {
     <div class="form-alert" role="alert">

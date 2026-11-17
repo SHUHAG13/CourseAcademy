@@ -19,7 +19,7 @@ Online course academy (Bangladesh): course catalogue, checkout (bKash/Nagad/Rock
 - `src/app/core/payments` — payment service, gateway abstraction, demo gateway
 - `src/app/core/data` — repositories (localStorage), seed/demo data, screens config
 - `src/app/core/api` — `ApiService` (HttpClient wrapper: unwraps `{success,data,message,errors}`, throws `ApiError`), API models
-- `src/environments` — `apiBaseUrl` and `useApi`. Development has `useApi: true` (needs the API running); production build still `false`. In API mode sign-in, users, roles, access, courses (catalogue, curriculum, sessions, materials), instructors, payments, enrollments, learning progress, the admin overview and media uploads/playback (`core/services/media.service.ts`, via the Streaming service; fake in Development) use the API; other features still use browser-storage demo data, except certificates and community, which show "Coming soon". Services read the mode from the `API_MODE` token.
+- `src/environments` — `apiBaseUrl` and `useApi`. Development and production builds have `useApi: true` (production: set `apiBaseUrl` before building if the API is on another host); unit tests use `environment.testing.ts` (demo mode). In API mode sign-in, users, roles, access, courses (catalogue, curriculum, sessions, materials), instructors, payments, enrollments, learning progress, the admin overview and media uploads/playback (`core/services/media.service.ts`, via the Streaming service; fake in Development) use the API; other features still use browser-storage demo data, except certificates and community, which show "Coming soon". Services read the mode from the `API_MODE` token.
 - `src/app/core/api/interceptors.ts` — `authInterceptor` (adds token, single shared refresh on 401) and `apiErrorInterceptor` (turns failures into `ApiError`)
 - `src/app/core/guards`, `core/i18n`
 - `src/app/pages` — routed pages (incl. `pages/admin`)
@@ -34,6 +34,7 @@ Run the frontend commands inside `CourseAcademy.UI/`, the backend commands insid
 - `npm test` — unit tests (Vitest). Uses the `test` build configuration (production `environment.ts`, so demo mode); specs for API mode provide `API_MODE`/`API_BASE_URL` themselves.
 - `npm start` with `useApi: true` needs the API running: `dotnet run --project CourseAcademy.Api --launch-profile http` in `CourseAcademy.API/`.
 - `dotnet test` (in `CourseAcademy.API/`) — backend unit tests (xUnit).
+- Database: local SQL Server, connection string `ConnectionStrings:DefaultConnection` (`CourseAcademyDB`). Tables live in area schemas (`DbSchemas`); one migration `InitialCreate`.
 
 ## Task Workflow (MANDATORY)
 

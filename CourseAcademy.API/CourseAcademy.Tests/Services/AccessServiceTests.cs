@@ -156,7 +156,8 @@ public class AccessServiceTests
         var all = await kit.As(IdentityTestKit.Admin).Access.GetUsersAsync(new UserListQuery { PageSize = 2 }, Ct);
         var found = await kit.Access.GetUsersAsync(new UserListQuery { Search = "learner" }, Ct);
 
-        Assert.Equal(5, all.Total);
+        // Admin, instructor and student from the demo seed, plus the test kit's second student.
+        Assert.Equal(4, all.Total);
         Assert.Equal(2, all.Items.Count);
         Assert.Equal(AccessTypes.Full, all.Items[0].AccessType);
         var learner = Assert.Single(found.Items);

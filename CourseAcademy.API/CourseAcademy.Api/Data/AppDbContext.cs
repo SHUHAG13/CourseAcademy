@@ -55,7 +55,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        ApplySchemas(modelBuilder);
         ApplySoftDeleteFilters(modelBuilder);
+    }
+
+    /// <summary>Puts every table in the schema of its area (<see cref="DbSchemas"/>).</summary>
+    private static void ApplySchemas(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(e => !e.IsOwned()))
+        {
+            entityType.SetSchema(DbSchemas.Of(entityType.ClrType));
+        }
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

@@ -26,7 +26,7 @@ describe('Navbar', () => {
 
   it('has a language switch in the navbar that defaults to Bangla', async () => {
     const language = TestBed.inject(LanguageService);
-    language.setLanguage('bn');
+    await language.setLanguage('bn');
     await fixture.whenStable();
 
     const el = fixture.nativeElement as HTMLElement;

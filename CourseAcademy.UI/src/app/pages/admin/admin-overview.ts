@@ -63,7 +63,8 @@ import { PermissionService, failureMessage } from '../../core/services/permissio
       </div>
     </section>
 
-    @if (permissions.can('system.reset')) {
+    <!-- Demo mode only: with the API there is no browser demo data to reset (BR-ADM-06). -->
+    @if (!apiMode && permissions.can('system.reset')) {
       <section class="panel ca-card" aria-labelledby="reset-title">
         <h2 id="reset-title" class="panel-title">{{ 'Reset demo data' | t }}</h2>
         <p class="text-muted small">

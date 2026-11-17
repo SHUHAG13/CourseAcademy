@@ -72,7 +72,7 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 ## Technical decisions (backend)
 | Topic | Decision |
 |---|---|
-| Database | SQL Server + EF Core; PascalCase singular table names |
+| Database | SQL Server + EF Core; PascalCase singular table names in area schemas (`Securities.User`, `Catalog.Course`, …); one `InitialCreate` migration |
 | Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
 | Delete | Soft delete (`IsDeleted`) except join/token tables, which are hard-deleted; FKs `NO ACTION`; filtered unique indexes |
 | Audit | `CreatedAt`, `UpdatedAt` on all tables |

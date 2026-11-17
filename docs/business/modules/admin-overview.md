@@ -23,7 +23,7 @@ No own entity. Reads Course, User, Enrollment, PaymentTransaction.
 - **BR-ADM-03** "Active enrollments" = enrollments with status `active`.
 - **BR-ADM-04** "Demo payments collected" (API mode: "Payments collected") = Σ amount of transactions with status `success` (refunded excluded).
 - **BR-ADM-05** Recent payments = 5 newest transactions by createdAt (any status).
-- **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo-only, must not exist in production.
+- **BR-ADM-06** Reset demo data (confirm) restores all collections to seed data; requires `system.reset`. Demo mode only: the panel is not shown in API mode.
 - **BR-ADM-07** If stored data can't be read on start-up, defaults are restored and a toast says so (demo-only).
 
 ## 5. Workflows & Status Transitions

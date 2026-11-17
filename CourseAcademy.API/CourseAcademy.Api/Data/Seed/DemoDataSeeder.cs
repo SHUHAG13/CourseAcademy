@@ -5,21 +5,23 @@ using Microsoft.EntityFrameworkCore;
 namespace CourseAcademy.Api.Data.Seed;
 
 /// <summary>
-/// Adds the frontend's demo accounts when they are missing. Runs only when Database:SeedDemoData is true
-/// (development). Safe to run on every start-up: existing accounts are left unchanged.
+/// Adds the demo accounts when they are missing: one per built-in role. Runs only when Database:SeedDemoData is
+/// true (development). Safe to run on every start-up: existing accounts are left unchanged.
 /// </summary>
 public sealed class DemoDataSeeder(AppDbContext db, IPasswordHasher<User> passwordHasher, ILogger<DemoDataSeeder> logger)
 {
+    public const string AdminEmail = "admin@courseacademy.demo";
+    public const string InstructorEmail = "instructor@courseacademy.demo";
+    public const string StudentEmail = "student@courseacademy.demo";
+
     private sealed record DemoUser(string Name, string Email, string Password, string RoleCode);
 
     // Same accounts and passwords as the demo login buttons in the Angular app.
     private static readonly DemoUser[] Users =
     [
-        new("Academy Admin", "admin@courseacademy.demo", "Admin@123", Role.AdminCode),
-        new("Demo Student", "student@courseacademy.demo", "Student@123", Role.StudentCode),
-        new("Sample Learner", "learner@courseacademy.demo", "Learner@123", Role.StudentCode),
-        new("Tanvir Hasan", "instructor@courseacademy.demo", "Instructor@123", Role.InstructorCode),
-        new("Sabbir Ahmed", "sabbir@courseacademy.demo", "Instructor@123", Role.InstructorCode),
+        new("Academy Admin", AdminEmail, "Admin@123", Role.AdminCode),
+        new("Tanvir Hasan", InstructorEmail, "Instructor@123", Role.InstructorCode),
+        new("Demo Student", StudentEmail, "Student@123", Role.StudentCode),
     ];
 
     public async Task SeedAsync(CancellationToken ct)

@@ -1,5 +1,6 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { API_MODE } from '../../core/api/api-mode';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 /** Shared two-panel layout for the login and register pages. */
@@ -23,7 +24,9 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
             <p class="foot">{{ 'Learn → Build Skills → Work → Earn → Grow' | t }}</p>
           </aside>
           <div class="main">
-            <div class="demo"><i class="bi bi-info-circle" aria-hidden="true"></i>{{ 'Demo only — no real account is created and no data leaves your browser.' | t }}</div>
+            @if (!apiMode) {
+              <div class="demo"><i class="bi bi-info-circle" aria-hidden="true"></i>{{ 'Demo only — no real account is created and no data leaves your browser.' | t }}</div>
+            }
             <ng-content />
           </div>
         </div>
@@ -34,4 +37,6 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class AuthShell {
   readonly tagline = input('Start building real skills today.');
+  /** With the API, accounts are real and stored on the server. */
+  protected readonly apiMode = inject(API_MODE);
 }

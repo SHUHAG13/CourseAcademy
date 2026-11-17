@@ -124,7 +124,9 @@
               <section class="mb-4" aria-labelledby="learn-schedule">
                 <h2 id="learn-schedule" class="h5 mb-3">{{ 'Live classes' | t }}</h2>
                 <app-session-list [sessions]="c.schedule" [showLinks]="true" />
-                <p class="small text-muted mt-2 mb-0">{{ 'Meeting links are demo placeholders. No meeting provider is connected.' | t }}</p>
+                @if (!apiMode) {
+                  <p class="small text-muted mt-2 mb-0">{{ 'Meeting links are demo placeholders. No meeting provider is connected.' | t }}</p>
+                }
               </section>
             }
 
@@ -142,7 +144,7 @@
                           [attr.aria-label]="'Open: {0}' | t: [m.title]">{{ 'Open' | t }}</button>
                       } @else {
                         <a [href]="m.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline"
-                          [attr.aria-label]="'Open (demo link): {0}' | t: [m.title]">{{ 'Open' | t }}</a>
+                          [attr.aria-label]="(apiMode ? 'Open: {0}' : 'Open (demo link): {0}') | t: [m.title]">{{ 'Open' | t }}</a>
                       }
                     </li>
                   }

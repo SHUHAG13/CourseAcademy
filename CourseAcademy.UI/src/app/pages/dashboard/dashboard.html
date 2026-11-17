@@ -133,7 +133,7 @@
                 <td class="primary">{{ u.session.title | t }}</td>
                 <td>{{ u.course.title | t }}</td>
                 <td class="actions">
-                  <a class="btn btn-sm btn-outline" [href]="u.session.meetingUrl" target="_blank" rel="noopener noreferrer">{{ 'Join (demo)' | t }}</a>
+                  <a class="btn btn-sm btn-outline" [href]="u.session.meetingUrl" target="_blank" rel="noopener noreferrer">{{ (apiMode ? 'Join' : 'Join (demo)') | t }}</a>
                 </td>
               </tr>
             }

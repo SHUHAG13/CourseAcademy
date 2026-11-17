@@ -32,6 +32,15 @@ public static class ApplicationBuilderExtensions
             throw new InvalidOperationException("Streaming:Mode Fake may only be used in Development. Set Streaming:Mode to Http and configure the Streaming service.");
         }
 
+        // Basic security headers on every response: no MIME sniffing, no framing, no referrer leaks.
+        app.Use(async (context, next) =>
+        {
+            var headers = context.Response.Headers;
+            headers.XContentTypeOptions = "nosniff";
+            headers.XFrameOptions = "DENY";
+            headers["Referrer-Policy"] = "no-referrer";
+            await next();
+        });
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         // Requests the client cancelled (e.g. by leaving the page) are not errors.
         app.UseSerilogRequestLogging(options => options.GetLevel = (context, _, exception) =>
@@ -99,7 +108,6 @@ public static class ApplicationBuilderExtensions
             }
             await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(CancellationToken.None);
             await scope.ServiceProvider.GetRequiredService<DemoCourseSeeder>().SeedAsync(CancellationToken.None);
-            await scope.ServiceProvider.GetRequiredService<DemoCommerceSeeder>().SeedAsync(CancellationToken.None);
         }
     }
 }

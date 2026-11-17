@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { API_MODE } from '../../../core/api/api-mode';
 import { LiveSession } from '../../../core/models/course.model';
 import { TranslatePipe, LocalDatePipe } from '../../pipes/translate.pipe';
 
@@ -22,8 +23,8 @@ import { TranslatePipe, LocalDatePipe } from '../../pipes/translate.pipe';
             <span class="tag">{{ 'Completed' | t }}</span>
           } @else if (showLinks()) {
             <a class="btn btn-sm btn-outline" [href]="s.meetingUrl" target="_blank" rel="noopener noreferrer"
-              [attr.aria-label]="'Join (demo link): {0}' | t: [s.title]">
-              <i class="bi bi-camera-video" aria-hidden="true"></i> {{ 'Join (demo)' | t }}
+              [attr.aria-label]="(apiMode ? 'Join: {0}' : 'Join (demo link): {0}') | t: [s.title]">
+              <i class="bi bi-camera-video" aria-hidden="true"></i> {{ (apiMode ? 'Join' : 'Join (demo)') | t }}
             </a>
           }
         </li>
@@ -59,6 +60,8 @@ import { TranslatePipe, LocalDatePipe } from '../../pipes/translate.pipe';
 export class SessionList {
   readonly sessions = input.required<LiveSession[]>();
   readonly showLinks = input(false);
+  /** With the API, meeting links are the real ones the course team entered; demo data has placeholders. */
+  protected readonly apiMode = inject(API_MODE);
 
   protected readonly sorted = computed(() => [...this.sessions()].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
 

@@ -82,7 +82,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Category", (string)null);
+                    b.ToTable("Category", "Lookups");
 
                     b.HasData(
                         new
@@ -175,7 +175,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CategoryId", "SortOrder");
 
-                    b.ToTable("CategorySkill", (string)null);
+                    b.ToTable("CategorySkill", "Lookups");
 
                     b.HasData(
                         new
@@ -415,7 +415,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("IsPublished", "CategoryId");
 
-                    b.ToTable("Course", null, t =>
+                    b.ToTable("Course", "Catalog", t =>
                         {
                             t.HasCheckConstraint("CK_Course_Counts", "[RatingCount] >= 0 AND [Students] >= 0");
 
@@ -467,7 +467,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("CourseBadge", (string)null);
+                    b.ToTable("CourseBadge", "Lookups");
 
                     b.HasData(
                         new
@@ -539,7 +539,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("CourseFormat", (string)null);
+                    b.ToTable("CourseFormat", "Lookups");
 
                     b.HasData(
                         new
@@ -605,7 +605,7 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.HasIndex("UserId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("CourseGrant", (string)null);
+                    b.ToTable("CourseGrant", "Securities");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.CourseGrantPermission", b =>
@@ -642,7 +642,7 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.HasIndex("CourseGrantId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("CourseGrantPermission", (string)null);
+                    b.ToTable("CourseGrantPermission", "Securities");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.CourseLevel", b =>
@@ -685,7 +685,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("CourseLevel", (string)null);
+                    b.ToTable("CourseLevel", "Lookups");
 
                     b.HasData(
                         new
@@ -753,7 +753,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseId", "SortOrder");
 
-                    b.ToTable("CourseModule", (string)null);
+                    b.ToTable("CourseModule", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.CourseOutcome", b =>
@@ -792,7 +792,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseId", "SortOrder");
 
-                    b.ToTable("CourseOutcome", (string)null);
+                    b.ToTable("CourseOutcome", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.CourseRequirement", b =>
@@ -831,7 +831,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseId", "SortOrder");
 
-                    b.ToTable("CourseRequirement", (string)null);
+                    b.ToTable("CourseRequirement", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Currency", b =>
@@ -874,7 +874,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Currency", (string)null);
+                    b.ToTable("Currency", "Lookups");
 
                     b.HasData(
                         new
@@ -933,7 +933,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("DocumentType", (string)null);
+                    b.ToTable("DocumentType", "Lookups");
 
                     b.HasData(
                         new
@@ -1016,7 +1016,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Enrollment", (string)null);
+                    b.ToTable("Enrollment", "Commerce");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.EnrollmentStatus", b =>
@@ -1059,7 +1059,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("EnrollmentStatus", (string)null);
+                    b.ToTable("EnrollmentStatus", "Lookups");
 
                     b.HasData(
                         new
@@ -1130,7 +1130,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Instructor", null, t =>
+                    b.ToTable("Instructor", "Catalog", t =>
                         {
                             t.HasCheckConstraint("CK_Instructor_ExperienceYears", "[ExperienceYears] >= 0");
 
@@ -1176,7 +1176,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("InstructorId", "SortOrder");
 
-                    b.ToTable("InstructorExpertise", (string)null);
+                    b.ToTable("InstructorExpertise", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.LessonProgress", b =>
@@ -1241,7 +1241,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("LessonProgress", null, t =>
+                    b.ToTable("LessonProgress", "Learning", t =>
                         {
                             t.HasCheckConstraint("CK_LessonProgress_Seconds", "[PositionSeconds] >= 0 AND [MaxWatchedSeconds] >= 0 AND ([DurationSeconds] IS NULL OR [DurationSeconds] > 0)");
                         });
@@ -1294,7 +1294,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseId", "StartsAtUtc");
 
-                    b.ToTable("LiveSession", null, t =>
+                    b.ToTable("LiveSession", "Catalog", t =>
                         {
                             t.HasCheckConstraint("CK_LiveSession_Duration", "[DurationMinutes] >= 1");
                         });
@@ -1351,7 +1351,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseId", "SortOrder");
 
-                    b.ToTable("Material", (string)null);
+                    b.ToTable("Material", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.MaterialType", b =>
@@ -1394,7 +1394,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("MaterialType", (string)null);
+                    b.ToTable("MaterialType", "Lookups");
 
                     b.HasData(
                         new
@@ -1523,7 +1523,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("MediaAssetStatusId", "DeleteRequestedAt");
 
-                    b.ToTable("MediaAsset", null, t =>
+                    b.ToTable("MediaAsset", "Media", t =>
                         {
                             t.HasCheckConstraint("CK_MediaAsset_Numbers", "[SizeBytes] > 0 AND ([DurationSeconds] IS NULL OR [DurationSeconds] >= 0) AND [LastSequence] >= 0");
                         });
@@ -1569,7 +1569,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("MediaAssetStatus", (string)null);
+                    b.ToTable("MediaAssetStatus", "Lookups");
 
                     b.HasData(
                         new
@@ -1686,7 +1686,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("MediaKind", (string)null);
+                    b.ToTable("MediaKind", "Lookups");
 
                     b.HasData(
                         new
@@ -1763,7 +1763,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("PaymentMethod", (string)null);
+                    b.ToTable("PaymentMethod", "Lookups");
 
                     b.HasData(
                         new
@@ -1854,7 +1854,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("PaymentStatus", (string)null);
+                    b.ToTable("PaymentStatus", "Lookups");
 
                     b.HasData(
                         new
@@ -2024,7 +2024,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("PaymentTransaction", null, t =>
+                    b.ToTable("PaymentTransaction", "Commerce", t =>
                         {
                             t.HasCheckConstraint("CK_PaymentTransaction_Amounts", "[OriginalAmount] >= 0 AND [DiscountAmount] >= 0 AND [Amount] >= 0 AND [Amount] + [DiscountAmount] = [OriginalAmount]");
                         });
@@ -2083,7 +2083,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("ScreenId");
 
-                    b.ToTable("Permission", (string)null);
+                    b.ToTable("Permission", "Securities");
 
                     b.HasData(
                         new
@@ -2463,7 +2463,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("UserId", "ExpiresAt");
 
-                    b.ToTable("RefreshToken", (string)null);
+                    b.ToTable("RefreshToken", "Securities");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Role", b =>
@@ -2514,7 +2514,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Role", (string)null);
+                    b.ToTable("Role", "Securities");
 
                     b.HasData(
                         new
@@ -2583,7 +2583,7 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.HasIndex("RoleId", "ScreenId")
                         .IsUnique();
 
-                    b.ToTable("RoleScreen", (string)null);
+                    b.ToTable("RoleScreen", "Securities");
 
                     b.HasData(
                         new
@@ -2714,7 +2714,7 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Screen", null, t =>
+                    b.ToTable("Screen", "Securities", t =>
                         {
                             t.HasCheckConstraint("CK_Screen_Area", "[Area] IN ('admin', 'student')");
                         });
@@ -2955,7 +2955,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("SubmoduleId", "SortOrder");
 
-                    b.ToTable("Section", null, t =>
+                    b.ToTable("Section", "Catalog", t =>
                         {
                             t.HasCheckConstraint("CK_Section_Parent", "([SubmoduleId] IS NOT NULL AND [ParentSectionId] IS NULL AND [Depth] = 0) OR ([SubmoduleId] IS NULL AND [ParentSectionId] IS NOT NULL AND [Depth] BETWEEN 1 AND 3)");
                         });
@@ -3017,7 +3017,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("SectionId", "SortOrder");
 
-                    b.ToTable("SectionDocument", (string)null);
+                    b.ToTable("SectionDocument", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.SectionVideo", b =>
@@ -3072,7 +3072,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("SectionId", "SortOrder");
 
-                    b.ToTable("SectionVideo", null, t =>
+                    b.ToTable("SectionVideo", "Catalog", t =>
                         {
                             t.HasCheckConstraint("CK_SectionVideo_Minutes", "[Minutes] >= 1");
                         });
@@ -3137,7 +3137,7 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.HasIndex("EventId")
                         .IsUnique();
 
-                    b.ToTable("StreamingWebhookEvent", (string)null);
+                    b.ToTable("StreamingWebhookEvent", "Media");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.Submodule", b =>
@@ -3176,7 +3176,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("CourseModuleId", "SortOrder");
 
-                    b.ToTable("Submodule", (string)null);
+                    b.ToTable("Submodule", "Catalog");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.User", b =>
@@ -3242,7 +3242,7 @@ namespace CourseAcademy.Api.Data.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("User", (string)null);
+                    b.ToTable("User", "Securities");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.UserScreen", b =>
@@ -3279,7 +3279,7 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.HasIndex("UserId", "ScreenId")
                         .IsUnique();
 
-                    b.ToTable("UserScreen", (string)null);
+                    b.ToTable("UserScreen", "Securities");
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.CategorySkill", b =>
