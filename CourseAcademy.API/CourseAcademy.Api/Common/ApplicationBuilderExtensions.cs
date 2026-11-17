@@ -67,7 +67,8 @@ public static class ApplicationBuilderExtensions
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            // API testing page at /scalar; it reads the OpenAPI document served by UseSwagger.
+            app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "Course Academy API v1"));
+            // Second API testing page at /scalar; it reads the same OpenAPI document as Swagger UI.
             app.MapScalarApiReference(options => options
                 .WithTitle("Course Academy API")
                 .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json")

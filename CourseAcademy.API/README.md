@@ -31,7 +31,7 @@ Requirements: .NET 10 SDK, SQL Server (Development uses the local default instan
 ```powershell
 dotnet run --project CourseAcademy.Api --launch-profile http
 ```
-- API: http://localhost:5162/api/v1 — Scalar (API testing): http://localhost:5162/scalar (opens automatically with `dotnet run`; log in with `POST /api/v1/auth/login`, then paste the `accessToken` under Authentication → Bearer) — Health: http://localhost:5162/health
+- API: http://localhost:5162/api/v1 — API testing: Scalar http://localhost:5162/scalar (opens automatically with `dotnet run`) or Swagger http://localhost:5162/swagger (to test protected endpoints, log in with `POST /api/v1/auth/login`, then paste the `accessToken` under Authentication → Bearer in Scalar, or Authorize in Swagger) — Health: http://localhost:5162/health
 - In Development the database `CourseAcademyDB` is created and migrated automatically on start-up (`Database:MigrateOnStartup`). Tables are grouped in schemas by area (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`), set in `Data/DbSchemas.cs`.
 - Logs: console and `CourseAcademy.Api/logs/api-<date>.log`.
 
@@ -51,7 +51,7 @@ The schema starts from one migration, `InitialCreate` (the step-by-step developm
 
 ## Security
 - Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`; outside Development HTTPS redirection and HSTS are on.
-- Scalar and the OpenAPI document (`/swagger/v1/swagger.json`), the demo payment gateway, the fake Streaming service and demo seeding are refused or off outside Development.
+- Scalar, Swagger and the OpenAPI document (`/swagger/v1/swagger.json`), the demo payment gateway, the fake Streaming service and demo seeding are refused or off outside Development.
 - Review of 2026-11-17: no known vulnerable packages (`dotnet list package --vulnerable`, `npm audit`); see `docs/security-review.md`.
 
 ## Authentication
