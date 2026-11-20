@@ -12,7 +12,7 @@ export interface CertificationRule {
   enabled: boolean;
   /** `completion`: certified when the progress requirement is met. `exam`: also needs a passed central exam. */
   mode: CertificationMode;
-  /** Percentage of sections that must be completed, 1–100. */
+  /** Percentage of the course that must be completed, 1–100: sections in demo mode, lessons in API mode. */
   minProgress: number;
   examType: ExamType;
   examTitle: string;
@@ -40,6 +40,18 @@ export interface ExamSubmission {
   feedback?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  // API mode: sent by the server, so the admin list needs no user or course lookups.
+  userName?: string;
+  courseTitle?: string;
+  /** The course's current exam settings. */
+  exam?: SubmissionExam;
+}
+
+/** The exam settings a submission is reviewed against. */
+export interface SubmissionExam {
+  title: string;
+  maxScore: number;
+  passingScore: number;
 }
 
 /** An issued certificate. Names are copied in, so later edits don't change a certificate. */

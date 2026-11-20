@@ -124,6 +124,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAccessService, AccessService>();
         services.AddScoped<DemoDataSeeder>();
         services.AddScoped<DemoCourseSeeder>();
+        services.AddScoped<DemoCertificationCommunitySeeder>();
 
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<IInstructorRepository, InstructorRepository>();
@@ -140,6 +141,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOverviewRepository, OverviewRepository>();
         services.AddScoped<IProgressService, ProgressService>();
         services.AddScoped<IOverviewService, OverviewService>();
+
+        services.AddScoped<ICertificationRuleRepository, CertificationRuleRepository>();
+        services.AddScoped<IExamSubmissionRepository, ExamSubmissionRepository>();
+        services.AddScoped<ICertificateRepository, CertificateRepository>();
+        services.AddScoped<ICertificationService, CertificationService>();
+
+        services.AddScoped<IPostRepository, PostRepository>();
+        services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<ICommunityService, CommunityService>();
         // Payment gateways: register each provider here; Payments:Gateway picks the one new payments use.
         services.AddSingleton<IPaymentGateway, DemoPaymentGateway>();
         services.AddSingleton<IPaymentGatewayResolver, PaymentGatewayResolver>();

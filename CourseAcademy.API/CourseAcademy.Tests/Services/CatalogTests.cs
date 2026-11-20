@@ -28,6 +28,8 @@ public class CatalogTests
         public PaymentGatewayResolver Gateways { get; }
         public ProgressService Progress { get; }
         public OverviewService Overview { get; }
+        public CertificationService Certification { get; }
+        public CommunityService Community { get; }
         public MediaAssetRepository MediaAssets { get; }
         public int InstructorId { get; }
 
@@ -44,14 +46,19 @@ public class CatalogTests
                 new Repository<CourseOutcome>(db), new Repository<CourseRequirement>(db), new Repository<LiveSession>(db),
                 new Repository<Material>(db), new Repository<CourseModule>(db), new Repository<Submodule>(db), new Repository<Section>(db),
                 new Repository<SectionVideo>(db), new Repository<SectionDocument>(db), new Repository<CourseGrant>(db),
-                enrollmentRepository, MediaAssets, new MediaDeletionSignal(), unitOfWork, Identity.CurrentUser, Identity.Clock);
+                enrollmentRepository, new PostRepository(db), new CommentRepository(db), MediaAssets, new MediaDeletionSignal(), unitOfWork, Identity.CurrentUser, Identity.Clock);
             Instructors = new InstructorService(instructors, new Repository<InstructorExpertise>(db), Identity.Users, unitOfWork, Identity.CurrentUser);
             Enrollments = new EnrollmentService(enrollmentRepository, courses, unitOfWork, Identity.CurrentUser, Identity.Clock);
             Gateways = new PaymentGatewayResolver([new DemoPaymentGateway()], Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }));
             Payments = new PaymentService(new PaymentRepository(db), courses, enrollmentRepository, Enrollments, Identity.Users, new LookupRepository(db),
                 Gateways, unitOfWork, Identity.CurrentUser, Options.Create(new PaymentSettings { Gateway = "demo", PendingMinutes = 30 }), Identity.Clock,
                 NullLogger<PaymentService>.Instance);
-            Progress = new ProgressService(new LessonProgressRepository(db), courses, enrollmentRepository, unitOfWork, Identity.CurrentUser, Identity.Clock);
+            var progressRepository = new LessonProgressRepository(db);
+            Certification = new CertificationService(new CertificationRuleRepository(db), new ExamSubmissionRepository(db), new CertificateRepository(db),
+                courses, progressRepository, enrollmentRepository, Identity.Users, unitOfWork, Identity.CurrentUser, Identity.Clock);
+            Progress = new ProgressService(progressRepository, courses, enrollmentRepository, Certification, unitOfWork, Identity.CurrentUser, Identity.Clock);
+            Community = new CommunityService(new PostRepository(db), new CommentRepository(db), courses, enrollmentRepository, unitOfWork,
+                Identity.CurrentUser, Identity.Clock);
             Overview = new OverviewService(new OverviewRepository(db), Identity.CurrentUser);
 
             var instructor = new Instructor { Name = "Tanvir Hasan", Title = "Editor", Bio = "Bio" };

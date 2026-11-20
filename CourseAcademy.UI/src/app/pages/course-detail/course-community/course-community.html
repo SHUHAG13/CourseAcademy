@@ -80,7 +80,7 @@
             <span class="tag red"><i class="bi bi-eye-slash" aria-hidden="true"></i> {{ 'Hidden' | t }}</span>
           }
           <span class="flex-grow-1"></span>
-          @if (community.isAuthor(post) && editingPost() !== post.id) {
+          @if (community.canEdit(post) && editingPost() !== post.id) {
             <button type="button" class="link-btn" (click)="startEditPost(post)">{{ 'Edit' | t }}</button>
           }
           @if (canModerate()) {
@@ -88,7 +88,7 @@
             <button type="button" class="link-btn" (click)="setFlag(post, 'locked')">{{ (post.locked ? 'Unlock' : 'Lock') | t }}</button>
             <button type="button" class="link-btn" (click)="setFlag(post, 'hidden')">{{ (post.hidden ? 'Unhide' : 'Hide') | t }}</button>
           }
-          @if (community.isAuthor(post) || canModerate()) {
+          @if (community.canDelete(post)) {
             <button type="button" class="link-btn danger" (click)="deletePost(post)">{{ 'Delete' | t }}</button>
           }
         </div>
@@ -104,7 +104,7 @@
               }
               @if (replyingTo() === c.id) {
                 <form class="reply reply-form" (ngSubmit)="sendReply(c)" novalidate>
-                  <label class="visually-hidden" [for]="'reply-' + c.id">{{ 'Reply to {0}' | t: [community.authorName(c.authorId)] }}</label>
+                  <label class="visually-hidden" [for]="'reply-' + c.id">{{ 'Reply to {0}' | t: [community.authorOf(c)] }}</label>
                   <textarea [id]="'reply-' + c.id" name="reply" class="form-control form-control-sm" rows="2" [(ngModel)]="replyBody"
                     [maxlength]="limits.comment" [placeholder]="'Write a reply…' | t"></textarea>
                   <div class="d-flex justify-content-end gap-2 mt-1">
@@ -138,17 +138,23 @@
         <p class="mb-0 small">{{ 'No discussions yet. Start the first one!' | t }}</p>
       </div>
     }
+
+    @if (hasMore()) {
+      <div class="text-center mt-2">
+        <button type="button" class="btn btn-outline btn-sm" [disabled]="loadingMore()" (click)="loadMore()">{{ 'Load more discussions' | t }}</button>
+      </div>
+    }
   }
 </section>
 
 <!-- Author line, shared by posts and comments. -->
 <ng-template #author let-item let-size="size">
   <div class="author">
-    <app-avatar [name]="community.authorName(item.authorId)" [size]="size" />
+    <app-avatar [name]="community.authorOf(item)" [size]="size" />
     <div class="min-w-0">
-      <span class="name">{{ community.authorName(item.authorId) | t }}</span>
-      @if (roleOf(item.authorId) !== 'student') {
-        <span class="tag role" [class.blue]="roleOf(item.authorId) === 'instructor'">{{ roleLabels[roleOf(item.authorId)] | t }}</span>
+      <span class="name">{{ community.authorOf(item) | t }}</span>
+      @if (roleOf(item) !== 'student') {
+        <span class="tag role" [class.blue]="roleOf(item) === 'instructor'">{{ roleLabels[roleOf(item)] | t }}</span>
       }
       <span class="when">
         {{ item.createdAt | ldate: 'd MMM y, h:mm a' }}
@@ -184,13 +190,13 @@
       @if (community.canComment(post)) {
         <button type="button" class="link-btn" (click)="startReply(c)">{{ 'Reply' | t }}</button>
       }
-      @if (community.isAuthor(c) && editingComment() !== c.id) {
+      @if (community.canEdit(c) && editingComment() !== c.id) {
         <button type="button" class="link-btn" (click)="startEditComment(c)">{{ 'Edit' | t }}</button>
       }
       @if (canModerate()) {
         <button type="button" class="link-btn" (click)="toggleCommentHidden(c)">{{ (c.hidden ? 'Unhide' : 'Hide') | t }}</button>
       }
-      @if (community.isAuthor(c) || canModerate()) {
+      @if (community.canDelete(c)) {
         <button type="button" class="link-btn danger" (click)="deleteComment(c)">{{ 'Delete' | t }}</button>
       }
     </div>

@@ -83,6 +83,7 @@ public sealed class ProgressService(
     ILessonProgressRepository progress,
     ICourseRepository courses,
     IEnrollmentRepository enrollments,
+    ICertificationService certification,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider clock) : IProgressService
@@ -116,6 +117,7 @@ public sealed class ProgressService(
         var row = await GetOrAddAsync(userId, target, ct);
         SetCompleted(row, completed);
         await SaveAsync(ct);
+        if (completed) await certification.IssueForProgressAsync(userId, target.CourseId, ct);
         return await BuildAsync(userId, target.CourseId, ct);
     }
 
@@ -127,6 +129,7 @@ public sealed class ProgressService(
         var row = await GetOrAddAsync(userId, target, ct);
         SetCompleted(row, completed);
         await SaveAsync(ct);
+        if (completed) await certification.IssueForProgressAsync(userId, target.CourseId, ct);
         return await BuildAsync(userId, target.CourseId, ct);
     }
 
@@ -150,9 +153,12 @@ public sealed class ProgressService(
         row.DurationSeconds = duration;
         row.MaxWatchedSeconds = Math.Max(row.MaxWatchedSeconds, position);
         // Completes once, when 90% is first reached, so a lesson the user marked as not done stays that way.
-        if (!row.IsCompleted && !reachedBefore && row.MaxWatchedSeconds >= threshold) SetCompleted(row, true);
+        var completesNow = !row.IsCompleted && !reachedBefore && row.MaxWatchedSeconds >= threshold;
+        if (completesNow) SetCompleted(row, true);
 
         await SaveAsync(ct);
+        // Reaching the requirement issues a completion certificate (BR-CERT-04).
+        if (completesNow) await certification.IssueForProgressAsync(userId, target.CourseId, ct);
         return await BuildAsync(userId, target.CourseId, ct);
     }
 

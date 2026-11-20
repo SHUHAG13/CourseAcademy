@@ -23,7 +23,13 @@ public interface ICourseRepository : IRepository<Course>
 
     /// <summary>Courses for the catalogue list, with the lookups and instructor needed for cards. Filtering is done by the caller.</summary>
     IQueryable<Course> CatalogQuery();
+
+    /// <summary>Id, slug, title, publish state and instructor of the matching courses, for areas that only need those.</summary>
+    Task<List<CourseSummary>> ListSummariesAsync(Expression<Func<Course, bool>> filter, CancellationToken ct);
 }
+
+/// <summary>InstructorName is empty when the instructor profile was deleted.</summary>
+public sealed record CourseSummary(int Id, string Slug, string Title, bool IsPublished, int InstructorId, string InstructorName);
 
 public sealed class CourseRepository(AppDbContext db) : Repository<Course>(db), ICourseRepository
 {
@@ -74,6 +80,13 @@ public sealed class CourseRepository(AppDbContext db) : Repository<Course>(db), 
             .Include(c => c.Level)
             .Include(c => c.Badge)
             .Include(c => c.Instructor);
+
+    public Task<List<CourseSummary>> ListSummariesAsync(Expression<Func<Course, bool>> filter, CancellationToken ct) =>
+        Query.Where(filter)
+            .OrderBy(c => c.Id)
+            .Select(c => new CourseSummary(c.Id, c.Slug, c.Title, c.IsPublished, c.InstructorId,
+                Db.Instructors.Where(i => i.Id == c.InstructorId).Select(i => i.Name).FirstOrDefault() ?? ""))
+            .ToListAsync(ct);
 }
 
 public interface IInstructorRepository : IRepository<Instructor>

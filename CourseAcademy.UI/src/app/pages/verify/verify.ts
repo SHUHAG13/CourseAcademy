@@ -1,6 +1,8 @@
-import { Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { API_MODE } from '../../core/api/api-mode';
+import { Certificate } from '../../core/models/certificate.model';
 import { CertificateService } from '../../core/services/certificate.service';
 import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe';
 
@@ -27,7 +29,13 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
         </form>
 
         @if (code()) {
-          @if (certificate(); as c) {
+          @if (!checked()) {
+            <p class="small text-muted mt-3" role="status">{{ 'Checking the certificate…' | t }}</p>
+          } @else if (failed()) {
+            <div class="result ca-card missing" role="status">
+              <p class="verdict mb-0"><i class="bi bi-wifi-off" aria-hidden="true"></i> {{ 'The certificate could not be checked. Please try again.' | t }}</p>
+            </div>
+          } @else if (certificate(); as c) {
             <div class="result ca-card" [class.valid]="!c.revoked" [class.revoked]="c.revoked" role="status">
               <p class="verdict">
                 <i class="bi" [class]="c.revoked ? 'bi-x-octagon-fill' : 'bi-patch-check-fill'" aria-hidden="true"></i>
@@ -63,9 +71,11 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
           }
         }
 
-        <p class="small text-muted mt-3">
-          {{ 'Frontend demo: certificates are stored in this browser, so only certificates issued here can be verified.' | t }}
-        </p>
+        @if (!apiMode) {
+          <p class="small text-muted mt-3">
+            {{ 'Frontend demo: certificates are stored in this browser, so only certificates issued here can be verified.' | t }}
+          </p>
+        }
       </div>
     </section>
   `,
@@ -86,12 +96,32 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
 export class Verify {
   private readonly certificates = inject(CertificateService);
   private readonly router = inject(Router);
+  protected readonly apiMode = inject(API_MODE);
 
   /** Bound from the optional `:code` route param. */
   readonly code = input('');
 
   protected readonly draft = linkedSignal(() => this.code());
-  protected readonly certificate = computed(() => this.certificates.findByCode(this.code()));
+  /** API mode: the server's answer for a code. */
+  private readonly answer = signal<{ code: string; certificate?: Certificate; failed?: boolean } | null>(null);
+  protected readonly checked = computed(() => !this.apiMode || this.answer()?.code === this.code());
+  protected readonly failed = computed(() => this.apiMode && !!this.answer()?.failed);
+  protected readonly certificate = computed(() =>
+    this.apiMode ? this.answer()?.certificate : this.certificates.findByCode(this.code()),
+  );
+
+  constructor() {
+    effect(() => {
+      const code = this.code();
+      if (!this.apiMode || !code) return;
+      untracked(() =>
+        this.certificates
+          .verify(code)
+          .then((certificate) => this.answer.set({ code, certificate }))
+          .catch(() => this.answer.set({ code, failed: true })),
+      );
+    });
+  }
 
   protected check(): void {
     const code = this.draft().trim().toUpperCase();

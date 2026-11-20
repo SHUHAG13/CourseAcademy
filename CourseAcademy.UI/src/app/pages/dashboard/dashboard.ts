@@ -30,7 +30,7 @@ export class Dashboard {
   private readonly enrollments = inject(EnrollmentService);
   private readonly payments = inject(PaymentService);
   protected readonly auth = inject(AuthService);
-  /** Certificates have not moved to the API yet. */
+  /** API mode: live class links are real; demo mode marks them as demo links. */
   protected readonly apiMode = inject(API_MODE);
   protected readonly progress = inject(ProgressService);
   protected readonly certificates = inject(CertificateService);

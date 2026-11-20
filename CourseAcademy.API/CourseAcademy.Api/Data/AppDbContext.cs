@@ -52,6 +52,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<StreamingWebhookEvent> StreamingWebhookEvents => Set<StreamingWebhookEvent>();
 
+    public DbSet<CertificationMode> CertificationModes => Set<CertificationMode>();
+    public DbSet<ExamType> ExamTypes => Set<ExamType>();
+    public DbSet<SubmissionStatus> SubmissionStatuses => Set<SubmissionStatus>();
+    public DbSet<CertificationRule> CertificationRules => Set<CertificationRule>();
+    public DbSet<ExamSubmission> ExamSubmissions => Set<ExamSubmission>();
+    public DbSet<Certificate> Certificates => Set<Certificate>();
+
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<Comment> Comments => Set<Comment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

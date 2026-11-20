@@ -1,5 +1,4 @@
-import { API_MODE, DEMO_SETUP } from '../../core/api/api-mode';
-import { ComingSoon } from '../../shared/components/coming-soon/coming-soon';
+import { DEMO_SETUP } from '../../core/api/api-mode';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
@@ -33,7 +32,7 @@ const FORMAT_INTRO = {
 
 @Component({
   selector: 'app-course-detail',
-  imports: [ComingSoon, 
+  imports: [
     TranslatePipe, LocalNumberPipe, LocalDatePipe,
     RouterLink,
     BdtPipe,
@@ -58,8 +57,6 @@ export class CourseDetail {
   protected readonly demoSetup = inject(DEMO_SETUP);
   private readonly enrollments = inject(EnrollmentService);
   protected readonly auth = inject(AuthService);
-  /** Course communities have not moved to the API yet. */
-  protected readonly apiMode = inject(API_MODE);
   private readonly permissions = inject(PermissionService);
   private readonly toast = inject(ToastService);
   private readonly language = inject(LanguageService);

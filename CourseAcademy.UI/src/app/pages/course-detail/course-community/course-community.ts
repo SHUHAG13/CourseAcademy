@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { COMMENT_MAX, Comment, POST_BODY_MAX, POST_TITLE_MAX, Post } from '../../../core/models/community.model';
@@ -53,9 +53,31 @@ export class CourseCommunity {
   protected editBody = '';
   protected replyBody = '';
   protected readonly commentDrafts: Record<string, string> = {};
+  protected readonly hasMore = computed(() => this.community.hasMorePosts(this.course().id));
+  protected readonly loadingMore = signal(false);
 
-  protected roleOf(userId: string): CommunityRole {
-    return this.community.roleIn(userId, this.course().id);
+  constructor() {
+    // API mode: the community is read from the server for this course; demo mode has it already.
+    effect(() => {
+      const id = this.course().id;
+      this.auth.user();
+      untracked(() => this.community.loadCourse(id).catch(() => this.toast.error('The discussions could not be loaded. Please refresh the page.')));
+    });
+  }
+
+  protected async loadMore(): Promise<void> {
+    this.loadingMore.set(true);
+    try {
+      await this.community.loadMorePosts(this.course().id);
+    } catch {
+      this.toast.error('The discussions could not be loaded. Please refresh the page.');
+    } finally {
+      this.loadingMore.set(false);
+    }
+  }
+
+  protected roleOf(item: Post | Comment): CommunityRole {
+    return this.community.badgeOf(item);
   }
 
   protected isOpen(post: Post): boolean {
@@ -63,11 +85,13 @@ export class CourseCommunity {
   }
 
   protected toggleOpen(post: Post): void {
+    const opening = !this.isOpen(post);
     this.open.update((set) => {
       const next = new Set(set);
       if (!next.delete(post.id)) next.add(post.id);
       return next;
     });
+    if (opening) this.community.loadComments(post.id).catch(() => this.toast.error('The comments could not be loaded. Please try again.'));
   }
 
   // ── Posts ───────────────────────────────────────────────────

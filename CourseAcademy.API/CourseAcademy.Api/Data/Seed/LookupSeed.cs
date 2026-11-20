@@ -93,6 +93,25 @@ public static class LookupSeed
         Row<MediaAssetStatus>(8, "deleted", "Deleted"),
     ];
 
+    public static readonly CertificationMode[] CertificationModes =
+    [
+        Row<CertificationMode>(1, "completion", "Course completion"),
+        Row<CertificationMode>(2, "exam", "Central exam"),
+    ];
+
+    public static readonly ExamType[] ExamTypes =
+    [
+        Row<ExamType>(1, "project", "Project"),
+        Row<ExamType>(2, "presentation", "Presentation"),
+    ];
+
+    public static readonly SubmissionStatus[] SubmissionStatuses =
+    [
+        Row<SubmissionStatus>(1, "submitted", "Waiting for review"),
+        Row<SubmissionStatus>(2, "passed", "Passed"),
+        Row<SubmissionStatus>(3, "failed", "Not passed"),
+    ];
+
     public static readonly Category[] Categories =
     [
         Row<Category>(1, "video-editing", "Video Editing", c =>

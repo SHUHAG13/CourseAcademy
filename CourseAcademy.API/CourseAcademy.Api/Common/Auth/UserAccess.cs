@@ -55,6 +55,15 @@ public sealed class UserAccess
     public bool CanOnAnyCourse(string permission) =>
         _permissions.Contains(permission) || _grants.Values.Any(granted => granted.Contains(permission));
 
+    /// <summary>
+    /// Null when the user has <paramref name="permission"/> on every course; otherwise the courses whose grant
+    /// includes it (empty when there are none). For lists that show only the courses a user manages.
+    /// </summary>
+    public IReadOnlySet<int>? CoursesWith(string permission) =>
+        _permissions.Contains(permission)
+            ? null
+            : _grants.Where(g => g.Value.Contains(permission)).Select(g => g.Key).ToHashSet();
+
     public bool CanView(ScreenInfo screen) => screen.IsCourseScoped ? CanOnAnyCourse(screen.ViewPermission) : Can(screen.ViewPermission);
 
     private IEnumerable<ScreenInfo> AdminScreens => _catalog.Screens.Where(s => s.Area == Screen.AdminArea);

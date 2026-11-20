@@ -32,7 +32,7 @@ Requirements: .NET 10 SDK, SQL Server (Development uses the local default instan
 dotnet run --project CourseAcademy.Api --launch-profile http
 ```
 - API: http://localhost:5162/api/v1 — API testing: Scalar http://localhost:5162/scalar (opens automatically with `dotnet run`) or Swagger http://localhost:5162/swagger (to test protected endpoints, log in with `POST /api/v1/auth/login`, then paste the `accessToken` under Authentication → Bearer in Scalar, or Authorize in Swagger) — Health: http://localhost:5162/health
-- In Development the database `CourseAcademyDB` is created and migrated automatically on start-up (`Database:MigrateOnStartup`). Tables are grouped in schemas by area (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`), set in `Data/DbSchemas.cs`.
+- In Development the database `CourseAcademyDB` is created and migrated automatically on start-up (`Database:MigrateOnStartup`). Tables are grouped in schemas by area (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, `Certification`, `Community`), set in `Data/DbSchemas.cs`.
 - Logs: console and `CourseAcademy.Api/logs/api-<date>.log`.
 
 ## Tests
@@ -47,7 +47,7 @@ dotnet ef migrations add <Name> --project CourseAcademy.Api --output-dir Data/Mi
 dotnet ef database update --project CourseAcademy.Api
 ```
 Production: generate an idempotent script (`dotnet ef migrations script --idempotent`) and apply it as a release step; keep `Database:MigrateOnStartup` false.
-The schema starts from one migration, `InitialCreate` (the step-by-step development migrations were merged into it before the first deployment).
+The schema starts from one migration, `InitialCreate` (the step-by-step development migrations were merged into it before the first deployment). `AddCertificationAndCommunity` (Step 8) adds the certification and community tables on top, so an existing database keeps its data: run `dotnet ef database update` (Development also applies it on start-up).
 
 ## Security
 - Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`; outside Development HTTPS redirection and HSTS are on.
@@ -107,6 +107,12 @@ Course files (videos, documents, materials) are kept by a separate **Streaming s
 - `Streaming:Mode = Fake` (Development default): a built-in stand-in stores files in `CourseAcademy.Api/App_Data/fake-streaming`, "processes" them in a few seconds and sends real signed webhooks to itself. Videos play as plain files. Refused outside Development.
 - `Streaming:Mode = Http`: the real service at `Streaming:BaseUrl`, called with an `X-Api-Key` header and a resilience handler (retries for safe calls, timeouts, circuit breaker).
 - Files no lesson or material uses any more are deleted from Streaming by a background worker (`MediaDeletionService`), at once and retried every minute.
+
+## Certification and community (Step 8)
+- Certification (`Certification` schema): `/api/v1/admin/courses/{id}/certification-rule` (get, save), `/me/courses/{id}/certification` (status), `/me/courses/{id}/certificate` (claim), `/me/courses/{id}/exam-submissions` (hand in), `/me/certificates`, `/admin/exam-submissions` (+ `/{id}/review`), `/admin/certificates` (+ `/{id}/revoke`, `/{id}/restore`), public `/certificates/verify/{code}`. Rules live in `Services/CertificationService.cs`.
+- Completion certificates use the lesson % from `LessonRules` and are issued by the server when a lesson completes (`ProgressService` calls `ICertificationService.IssueForProgressAsync`). A revoked certificate blocks new ones until it is restored. Codes `CA-<UTC year>-XXXXXX`; one valid certificate per user and course (filtered unique index).
+- Community (`Community` schema): `/courses/{slug}/community` (public), `/courses/{slug}/posts`, `/posts/{id}` (+ `/flags`, `/comments`), `/comments/{id}` (+ `/hidden`), `/admin/community/posts`, `/admin/community/comments`. Rules live in `Services/CommunityService.cs`; deleting a course soft-deletes its posts and comments.
+- Development seed (`Data/Seed/DemoCertificationCommunitySeeder.cs`, added when the area is empty): an exam rule on the demo course, two more students who bought it and finished every lesson — `sample@courseacademy.demo` (passed, certificate `CA-<year>-K7Q2XM`) and `nusrat@courseacademy.demo` (hand-in waiting for review), both `Student@123` — and four posts with comments.
 
 ## Configuration (production)
 Secrets never go in `appsettings.json`. Set them as environment variables or user secrets:

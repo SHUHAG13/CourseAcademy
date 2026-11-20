@@ -7,7 +7,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 |---|---|
 | Engine | SQL Server, EF Core |
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
-| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
+| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, `Certification`, `Community`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
 | Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
@@ -29,7 +29,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ## 2. Tables overview
-The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`.
+The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`, Certification → `Certification`, Community → `Community`.
 
 | Area | Tables |
 |---|---|
@@ -49,7 +49,7 @@ The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → 
 | Phone | nvarchar(20) | User.Phone |
 | Title / label | nvarchar(200) | titles without a frontend limit (module, section, video, document, session, material, exam, role name, instructor title) |
 | URL | nvarchar(2048) | all URL/link/image columns |
-| Long text | nvarchar(max) | Course.Description, Instructor.Bio, ExamInstructions, outcome/requirement text |
+| Long text | nvarchar(max) | Course.Description, Instructor.Bio, ExamInstructions (app limit 8000), outcome/requirement text |
 | Code | nvarchar(50) | lookup `Code`, icon classes, Language |
 | Slug | nvarchar(200) | Course.Slug |
 | **Frontend limits kept** | Course.Title 120, Course.Subtitle 200, Course.CoverLabel 30, Post.Title 120, Post.Body 2000, Comment.Body 1000, ExamSubmission.Notes 1000, ExamSubmission.Feedback 1000, Certificate.RevokedReason 200 | |
@@ -364,7 +364,7 @@ One row per user and lesson. A lesson is a video, or a section that has no video
 Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server treats NULLs as equal in a unique index, so a section without videos also has one row per user.
 
 ## 8. Certification
-### CertificationRule (+ std) — 0..1 per course
+### CertificationRule (+ std) — 0..1 per course — built in backend Step 8
 | Column | Type | Null | Default | Key / Constraint |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -378,9 +378,9 @@ Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server
 | MaxScore | int | NOT NULL | 100 | CHECK ≥ 1 |
 | PassingScore | int | NOT NULL | 60 | CHECK 1 ≤ PassingScore ≤ MaxScore |
 | MaxAttempts | int | NOT NULL | 0 | CHECK ≥ 0 (0 = unlimited) |
-No row → API returns the default rule (BR-CERT-01).
+No row → API returns the default rule (BR-CERT-01). CHECKs: `CK_CertificationRule_MinProgress`, `CK_CertificationRule_Scores`, `CK_CertificationRule_MaxAttempts`.
 
-### ExamSubmission (+ std)
+### ExamSubmission (+ std) — built in backend Step 8
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
@@ -390,17 +390,17 @@ No row → API returns the default rule (BR-CERT-01).
 | Url | nvarchar(2048) | NOT NULL | starts with `https://` (app) | |
 | Notes | nvarchar(1000) | NULL | | |
 | SubmittedAt | datetime2(3) | NOT NULL | | |
-| SubmissionStatusId | int | NOT NULL | FK SubmissionStatus | |
-| Score | decimal(9,2) | NULL | CHECK ≥ 0 | see Open Questions (integer?) |
+| SubmissionStatusId | int | NOT NULL | FK SubmissionStatus; concurrency token | two reviews saved at once: only the first is kept |
+| Score | decimal(9,2) | NULL | CHECK ≥ 0 | up to 2 decimals (decided 2026-11-20) |
 | Feedback | nvarchar(1000) | NULL | | |
 | ReviewedByUserId | int | NULL | FK User | |
 | ReviewedAt | datetime2(3) | NULL | | |
 
-### Certificate (+ std)
+### Certificate (+ std) — built in backend Step 8
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| Code | char(14) | NOT NULL | UQ filtered | `CA-YYYY-XXXXXX` |
+| Code | char(14) | NOT NULL | UQ filtered | `CA-YYYY-XXXXXX`, year = issue year (UTC) |
 | UserId | int | NOT NULL | FK User | |
 | CourseId | int | NOT NULL | FK Course | |
 | UserName | nvarchar(100) | NOT NULL | | snapshot |
@@ -413,9 +413,10 @@ No row → API returns the default rule (BR-CERT-01).
 | IsRevoked | bit | NOT NULL | default 0 | |
 | RevokedReason | nvarchar(200) | NULL | | public |
 | UQ | | | (UserId, CourseId) filtered `WHERE IsRevoked = 0 AND IsDeleted = 0` | ≤ 1 valid (BR-CERT-03) |
+Rows stay when the course is deleted (BR-CERT-19); a revoked row blocks new certificates for the user and course (BR-CERT-17).
 
 ## 9. Community
-### Post (+ std)
+### Post (+ std) — built in backend Step 8
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -428,7 +429,7 @@ No row → API returns the default rule (BR-CERT-01).
 | IsLocked | bit | NOT NULL | 0 | |
 | IsHidden | bit | NOT NULL | 0 | |
 
-### Comment (+ std)
+### Comment (+ std) — built in backend Step 8
 | Column | Type | Null | Default | Key / Constraint |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -488,12 +489,11 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | StreamingWebhookEvent | UQ EventId (unfiltered); AssetId |
 | CertificationRule | UQ CourseId |
 | ExamSubmission | (CourseId, SubmissionStatusId, SubmittedAt DESC); (UserId, CourseId) |
-| Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0 |
-| Post | (CourseId, IsPinned DESC, CreatedAt DESC) |
-| Comment | (PostId, CreatedAt); ParentCommentId |
+| Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0; CourseId |
+| Post | (CourseId, IsPinned DESC, CreatedAt DESC); AuthorUserId |
+| Comment | (PostId, CreatedAt); ParentCommentId; (CourseId, CreatedAt) |
 
 ## 13. Open questions (database)
-- `ExamSubmission.Score`: integer or decimal? (rule fields are integers.)
 - `Course.ContentUpdatedMonth` could be derived from `UpdatedAt`. Keep the column or derive?
 - Should `Course.Language` become a lookup table?
 - Lookup `Name` is English only. Need a Bangla name column?

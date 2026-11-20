@@ -77,9 +77,9 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 | 4 | Course Management | Done (server, with file uploads) | Admin/instructor creates and edits courses, builds the curriculum, uploads lesson videos and documents (kept by a separate video service, processed before students see them), schedules live classes, adds materials, publishes, and manages instructor profiles. |
 | 5 | Checkout & Payments | Done on the server (demo gateway; real gateways plug in later) | Student pays with bKash/Nagad/Rocket/card; each attempt is a transaction. Admin can mark paid, cancel or refund. Free courses enroll directly. |
 | 6 | Enrollments | Done (server) | Records who has access to which course. Admin can revoke or restore access. |
-| 7 | Learning & Progress | Done (server; certificates come later) | Enrolled students watch lessons, open documents, join live classes and mark lessons complete (every course format, Live included). On the server each video is a lesson; video files remember where the student stopped and complete themselves at 90% watched. Dashboard shows courses with progress, upcoming classes, payments. |
-| 8 | Certification | Done | Each course awards a certificate on completion or after an exam (project/presentation scored by instructor). Anyone can verify a certificate by code. |
-| 9 | Community | Done | Each course has a discussion board. Moderators can pin, lock, hide and delete. |
+| 7 | Learning & Progress | Done (server) | Enrolled students watch lessons, open documents, join live classes and mark lessons complete (every course format, Live included). On the server each video is a lesson; video files remember where the student stopped and complete themselves at 90% watched. Dashboard shows courses with progress, upcoming classes, payments. |
+| 8 | Certification | Done (server) | Each course awards a certificate on completion or after an exam (project/presentation scored by instructor). Anyone can verify a certificate by code. A revoked certificate stays revoked until staff restore it. |
+| 9 | Community | Done (server) | Each course has a discussion board (20 posts at a time, "Load more"). Moderators can pin, lock, hide and delete. |
 | 10 | Admin Overview | Done (server) | Summary numbers (courses, students, enrollments, money collected) and recent payments. |
 | 11 | Site Content | Partial (forms not stored) | About, sports media, career, contact, FAQ, testimonials, legal pages; Bangla/English switch. |
 
@@ -105,7 +105,7 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 - **Dates**: stored as ISO 8601 UTC strings; displayed in viewer's locale/time zone. `LiveSession.startsAt` is local `YYYY-MM-DDTHH:mm` (no zone). `Course.updated` is `YYYY-MM`.
 - **IDs / codes (frontend demo)**: browser-created ids `<prefix>-<base36 timestamp>-<6 random>`; Course id = numeric timestamp (never reused); Transaction id `DEMO-YYYYMMDD-XXXXXX`; Certificate code `CA-YYYY-XXXXXX` (alphabet without I, O, 0, 1); Progress id `userId:courseId`; CertificationRule id = courseId. Backend: `int IDENTITY` PKs; slug, `TransactionNo` and certificate `Code` stay unique public identifiers.
 - **Snapshots**: Transactions copy user + course data; Certificates copy user, course and instructor names — later edits don't change them.
-- **Deletion**: frontend demo hard-deletes; **backend soft-deletes every table** (`IsDeleted`). Business states also exist: "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certificates).
+- **Deletion**: frontend demo hard-deletes; **backend soft-deletes every table** (`IsDeleted`). Business states also exist: "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certification rule, hand-ins and certificates).
 - **Pagination**: API lists return `{items,total,page,pageSize}` (see api-contract). Frontend today: Client: catalogue "load more" 6 per page; admin community latest 20 comments; overview 5 recent payments; dashboard 5 upcoming classes.
 - **Sorting defaults**: newest first for admin lists/transactions/enrollments/certificates; catalogue by popularity.
 - **Text**: inputs trimmed before save; validation messages are English keys (translated in UI).
@@ -115,7 +115,7 @@ Current state: a frontend-only Angular demo (data stored in the browser). A .NET
 ### Technical decisions (backend)
 | Topic | Decision |
 |---|---|
-| Database | SQL Server + EF Core; PascalCase singular table names |
+| Database | SQL Server + EF Core; PascalCase singular table names in area schemas (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, `Certification`, `Community`); migrations `InitialCreate` + `AddCertificationAndCommunity` |
 | Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
 | Delete | Soft delete (`IsDeleted`) except join/token tables, which are hard-deleted; FKs `NO ACTION`; filtered unique indexes |
 | Audit | `CreatedAt`, `UpdatedAt` on all tables |
@@ -572,7 +572,7 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-10** New documents attach to the section's first video by default.
 - **BR-CMS-11** Every save sets `updated` = current `YYYY-MM`. `rating`, `ratingCount`, `students` are preserved (0 for new).
 - **BR-CMS-12** Publish/unpublish toggle from the list. (API) The server checks BR-CMS-04/05 on every save and on the toggle, so a course without sections, or a Live/Hybrid course without sessions, cannot be published from the list either.
-- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API, Step 3) The course is soft-deleted and its grants removed; enrollments and communities are removed by the API once they move there (Steps 4+); until then the browser removes them.
+- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API) The course is soft-deleted with its enrollments, posts and comments, and its grants are removed. Its certification rule, hand-ins and certificates are kept (BR-CERT-19).
 - **BR-CMS-14** Instructor delete is blocked while any course (published or not) has that `instructorId`: "{name} teaches {n} course(s). Reassign them before deleting."
 - **BR-CMS-15** Instructor create/edit/delete require `instructors.create` / `.edit` / `.delete`.
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
@@ -870,7 +870,7 @@ Gives enrolled users a place to watch lessons, open documents and materials, joi
 - **BR-LRN-04** Reading order = for each module → submodule → section, the section then its topics depth-first. Each topic counts as one section.
 - **BR-LRN-05** Only completed ids that still exist in the course count (removed sections don't count).
 - **BR-LRN-06** Reaching 100% shows "You have completed every section of {course}!".
-- **BR-LRN-07** After each completion, a completion-mode certificate is evaluated and issued if the rule is met (BR-CERT-04).
+- **BR-LRN-07** After each completion, a completion-mode certificate is evaluated and issued if the rule is met (BR-CERT-04). API mode: the server does this when it saves the lesson (button or 90% watched), using the lesson %.
 - **BR-LRN-08** **Live** format courses work like the others: player, "Mark as complete" and a clickable outline, so their progress can move. (Changed 2026-11-16; before, Live courses showed a static outline only.)
 - **BR-LRN-09** Documents attached to a video show under that video; documents without `videoId` show for the whole section.
 - **BR-LRN-10** Live sessions are "past" when `startsAt + durationMinutes` < now.
@@ -911,7 +911,7 @@ Lesson state per user (API): `Not completed ⇄ Completed` (student toggles); a 
 | `setVideoComplete(course, videoId, bool)` | `PUT /api/v1/progress/videos/{id}/complete` `{completed}` |
 | `setComplete(course, sectionId, bool)` (section without videos) | `PUT /api/v1/progress/sections/{id}/complete` `{completed}` |
 | `savePosition(...)` (player) | `PUT /api/v1/progress/videos/{id}/position` `{positionSeconds, durationSeconds}` |
-| `percentFor(userId, course)` | demo only (certificate checks); certificates move to the API later |
+| `percentFor(userId, course)` | demo only (certificate checks); in API mode the certification status brings the lesson % |
 | `CourseService.bySlug` (learn) | `GET /api/v1/courses/{slug}` (lesson links included with course access) |
 
 ### 9. Open Questions / Assumptions
@@ -930,15 +930,16 @@ See [Part C](#part-c--open-questions--likely-bugs).
 
 ### 1. Purpose
 Awards each course a certificate either on completion or after passing a "central exam" (a project or presentation scored by an instructor), and lets anyone verify a certificate by its public code.
+Served by the API (backend Step 8, tables in the `Certification` schema); the browser-storage demo mode follows the same rules.
 
 ### 2. Screens & Routes
 | Route | Component | What the user sees / does |
 |---|---|---|
 | `/admin/courses/:id/certification` | `CertificationSettings` | Per-course rule: enabled, mode (completion / exam), required progress %, and for exam: type, title, instructions, max score, pass mark, max attempts. Guard `certificates.manage` on course. |
 | `/admin/certificates` | `AdminCertificates` | (1) Exam submissions to review (filter status, default "submitted"): student, course, exam title/type, link, notes; Review → score + feedback. (2) Issued certificates (search code/name/course): download PDF, Revoke (with reason ≤ 200), Restore. Only courses the user can manage. |
-| `/learn/:slug` (box) | `CourseCertificate` | Student status: requirement text, progress step, exam step (pass mark, attempts left), past submissions with result/feedback, hand-in form (link + notes), "Get my certificate" (completion), earned certificate (download PDF, verification page). |
+| `/learn/:slug` (box) | `CourseCertificate` | Student status: requirement text, progress step, exam step (pass mark, attempts left), past submissions with result/feedback, hand-in form (link + notes), "Get my certificate" (completion), earned certificate (download PDF, verification page), or "Your certificate for this course was revoked." with code and reason (BR-CERT-17). |
 | `/dashboard` (section) | `Dashboard` | My certificates: download, verify, revoked tag. |
-| `/verify`, `/verify/:code` | `Verify` | Public: enter code → valid / revoked (+ reason) / not found; shows name, course, type, score, instructor, issue date, code. |
+| `/verify`, `/verify/:code` | `Verify` | Public: enter code → valid / revoked (+ reason) / not found; shows name, course, type, score, instructor, issue date, code. API mode asks the server ("Checking the certificate…"; network error → "The certificate could not be checked. Please try again."). |
 
 ### 3. Entities & Fields
 **CertificationRule** (one per course; id = courseId)
@@ -947,10 +948,10 @@ Awards each course a certificate either on completion or after passing a "centra
 | id | number | yes | = Course.id | — | PK + FK Course (1-1) |
 | enabled | bool | yes | — | true | |
 | mode | enum | yes | `completion` / `exam` | completion | |
-| minProgress | int % | yes | integer 1–100 | 100 | |
+| minProgress | int % | yes | integer 1–100 | 100 | % of sections (demo) / of lessons (API, BR-LRN-15) |
 | examType | enum | yes (exam) | `project` / `presentation` | project | |
 | examTitle | string | yes (exam) | trimmed non-empty | `Final project` | |
-| examInstructions | string | no | trimmed | '' | |
+| examInstructions | string | no | trimmed; API ≤ 8000 | '' | |
 | maxScore | int | yes (exam) | integer ≥ 1 | 100 | |
 | passingScore | int | yes (exam) | integer 1..maxScore | 60 | |
 | maxAttempts | int | yes (exam) | integer ≥ 0; 0 = unlimited | 0 | |
@@ -963,10 +964,10 @@ Awards each course a certificate either on completion or after passing a "centra
 | courseId | number | yes | FK Course | — | |
 | examType | enum | yes | from rule at submit time | — | snapshot |
 | url | string | yes | `^https:\/\/\S+\.\S+$` (https only), trimmed | — | Repo / slides / video link |
-| notes | string | no | ≤ 1000 chars | '' | Trimmed |
+| notes | string | no | ≤ 1000 chars after trimming | '' | Trimmed |
 | submittedAt | ISO datetime | yes | — | now | |
 | status | enum | yes | `submitted` / `passed` / `failed` | submitted | |
-| score | number | no | 0..maxScore | — | Set on review |
+| score | number | no | 0..maxScore, up to 2 decimals | — | Set on review |
 | feedback | string | no | trimmed; UI max 1000 | — | |
 | reviewedBy | string | no | FK User | — | |
 | reviewedAt | ISO datetime | no | — | — | |
@@ -992,26 +993,29 @@ Awards each course a certificate either on completion or after passing a "centra
 - **BR-CERT-01** A course without a saved rule uses the default rule (enabled, completion, 100%).
 - **BR-CERT-02** Rule save requires `certificates.manage` on the course. minProgress integer 1–100 always; exam fields validated only when mode = exam (title required; maxScore ≥ 1; 1 ≤ passingScore ≤ maxScore; maxAttempts ≥ 0; all integers).
 - **BR-CERT-03** A user has at most one **valid** (non-revoked) certificate per course; issuing returns the existing valid one.
-- **BR-CERT-04** Completion mode: when an **active-enrolled** user's progress ≥ minProgress, a certificate is issued (automatically after marking a section, or via "Get my certificate").
+- **BR-CERT-04** Completion mode: when an **active-enrolled** user's progress ≥ minProgress, a certificate is issued (automatically after marking a section, or via "Get my certificate"). API mode: progress is the lesson % (BR-LRN-15); the server issues it when a lesson completion (button or 90% watched) meets the rule, and the learning page then shows "Congratulations! Your certificate is ready."
 - **BR-CERT-05** Disabled rule: no certificate box; nothing issued.
 - **BR-CERT-06** Exam hand-in allowed only if: rule enabled, mode exam, progress ≥ minProgress, no valid certificate, no submission that is `submitted` or `passed`, and attempts left ≠ 0. Also requires `learn.view` and active enrollment.
 - **BR-CERT-07** Attempts left = maxAttempts = 0 → unlimited; else max(0, maxAttempts − number of submissions).
-- **BR-CERT-08** Hand-in error messages: progress not met → "Complete the course before the central exam."; no attempts → "You have used all your attempts."; otherwise "You cannot hand in the exam right now."; bad link → "Enter a link that starts with https://."
-- **BR-CERT-09** Review requires `certificates.manage` on the course; only `submitted` submissions can be reviewed ("already been reviewed"); score must be 0..maxScore.
-- **BR-CERT-10** Pass = score ≥ passingScore → status `passed` + certificate issued immediately (mode exam, examType, scorePercent). Otherwise `failed`.
+- **BR-CERT-08** Hand-in error messages: progress not met → "Complete the course before the central exam."; no attempts → "You have used all your attempts."; otherwise "You cannot hand in the exam right now."; bad link → "Enter a link that starts with https://."; notes over 1000 characters after trimming → "This is too long. Please shorten it."
+- **BR-CERT-09** Review requires `certificates.manage` on the course; only `submitted` submissions can be reviewed ("This submission has already been reviewed."; API: also when two reviewers save at once); score must be 0..maxScore with up to 2 decimals ("Enter a score between 0 and the maximum score.").
+- **BR-CERT-10** Pass = score ≥ passingScore → status `passed` + certificate issued immediately (mode exam, the hand-in's examType, scorePercent). Otherwise `failed`.
 - **BR-CERT-11** Revoke/restore requires `certificates.manage` on the course. Restore is refused if the student already has another valid certificate for that course.
 - **BR-CERT-12** Certificate names/titles are snapshots; later edits don't change them.
 - **BR-CERT-13** Verification is public; code lookup is trimmed and case-insensitive (upper-cased).
-- **BR-CERT-14** Certificate codes are unique (regenerate on collision); year = issue year.
+- **BR-CERT-14** Certificate codes are unique (regenerate on collision); year = issue year (UTC).
 - **BR-CERT-15** PDF: A4 landscape; "Certificate of Completion" or "Certificate of Achievement" (exam, with exam type and score %); instructor name (or "Course Academy"); issue date `d MMMM yyyy` (en-GB); code; verify link `<origin>/verify/<code>`; file `certificate-<code>.pdf`. English/Latin fonts only.
 - **BR-CERT-16** Students see "out of attempts" message only when attempts left = 0 and nothing is waiting for review.
+- **BR-CERT-17** A revoked certificate blocks every new certificate for that user and course: progress, "Get my certificate", a passed review and a new hand-in issue nothing (hand-in shows "You cannot hand in the exam right now."). Only **Restore** makes it valid again.
+- **BR-CERT-18** Rule save (API): mode and exam type must be valid codes ("Choose how the certificate is earned." / "Choose the type of central exam."); title ≤ 200 and instructions ≤ 8000 characters ("This is too long. Please shorten it."). In completion mode an exam field that is not valid keeps its stored value.
+- **BR-CERT-19** Deleting a course keeps its rule, hand-ins and certificates; its certificates still verify (snapshots).
 
 ### 5. Workflows & Status Transitions
 **Completion mode**: Student completes sections → progress ≥ min → Certificate issued.
 **Exam mode**: Student reaches min progress → hands in link → `submitted` → Instructor/Admin reviews → `passed` (certificate issued) or `failed` → (if attempts left) student hands in again.
 
 ExamSubmission: `submitted → passed` | `submitted → failed` (Instructor with grant / Admin).
-Certificate: `valid → revoked` (Revoke, manager) → `valid` (Restore, manager; only if no other valid certificate).
+Certificate: `valid → revoked` (Revoke, manager) → `valid` (Restore, manager; only if no other valid certificate). While revoked, nothing new is issued (BR-CERT-17).
 
 ### 6. Permissions
 | Action | Guest | Student | Instructor (granted course) | Admin |
@@ -1024,32 +1028,34 @@ Certificate: `valid → revoked` (Revoke, manager) → `valid` (Restore, manager
 | Revoke / restore / download any | — | — | ✓ | ✓ |
 
 ### 7. Calculations
-- `scorePercent = round(score / maxScore × 100)`.
+- `scorePercent = round(score / maxScore × 100)` (halves round up).
 - Progress % — see BR-LRN calculations (`percentFor`).
 - Attempts left — BR-CERT-07.
 
 ### 8. Data Source
-| Current | Future endpoint |
+API mode (default) uses `/api/v1` (api-contract §11); demo mode keeps browser storage (`ca-certification-rules`, `ca-exam-submissions`, `ca-certificates`).
+| Service method | API endpoint |
 |---|---|
-| `rule(courseId)` (`ca-certification-rules`) | `GET /api/courses/{id}/certification-rule` |
-| `saveRule` | `PUT /api/admin/courses/{id}/certification-rule` |
-| `status(course)` | `GET /api/me/courses/{id}/certification` |
-| `evaluate(course)` | `POST /api/me/courses/{id}/certificate` (claim; also server-triggered on progress) |
-| `submitExam` (`ca-exam-submissions`) | `POST /api/me/courses/{id}/exam-submissions` |
-| `submissions` (admin) | `GET /api/admin/exam-submissions?status=&courseId=&page=` |
-| `review` | `POST /api/admin/exam-submissions/{id}/review` |
-| `certificates` (`ca-certificates`) | `GET /api/admin/certificates?search=&page=` |
-| `mine` | `GET /api/me/certificates` |
-| `setRevoked` | `POST /api/admin/certificates/{id}/revoke`, `POST …/restore` |
-| `findByCode` | `GET /api/certificates/verify/{code}` (public) |
-| `downloadCertificatePdf` (client jsPDF) | `GET /api/certificates/{code}/pdf` (optional, or keep client-side) |
+| `rule` / `loadRule(courseId)` | `GET /admin/courses/{id}/certification-rule` |
+| `saveRule` | `PUT /admin/courses/{id}/certification-rule` |
+| `status` / `loadStatus(course)` | `GET /me/courses/{id}/certification` |
+| `evaluate(course)` | `POST /me/courses/{id}/certificate` (claim; the server also issues on progress) |
+| `submitExam` | `POST /me/courses/{id}/exam-submissions` |
+| `submissions` / `loadAdmin` | `GET /admin/exam-submissions?status=all&page=` |
+| `review` | `POST /admin/exam-submissions/{id}/review` |
+| `certificates` / `loadAdmin` | `GET /admin/certificates?search=&courseId=&page=` |
+| `mine` / `loadMine` | `GET /me/certificates` |
+| `setRevoked` | `POST /admin/certificates/{id}/revoke`, `POST …/restore` |
+| `verify(code)` (demo: `findByCode`) | `GET /certificates/verify/{code}` (public) |
+| `downloadCertificatePdf` | stays client-side (jsPDF) |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
 
 ### 10. Source Files
 - `src/app/core/services/certificate.service.ts`, `certificate-pdf.ts`
-- `src/app/core/models/certificate.model.ts`
+- `src/app/core/models/certificate.model.ts`, `src/app/core/api/certification.models.ts`
+- Backend: `Controllers/CertificationControllers.cs`, `Services/CertificationService.cs`, `Repositories/CertificationRepositories.cs`, `Entities/Certification.cs`, `Data/Configurations/CertificationConfigurations.cs`, `Data/Seed/DemoCertificationCommunitySeeder.cs`
 - `src/app/pages/admin/certification-settings.ts`, `admin-certificates.ts`
 - `src/app/pages/learn/course-certificate/course-certificate.ts`
 - `src/app/pages/verify/verify.ts`
@@ -1058,13 +1064,14 @@ See [Part C](#part-c--open-questions--likely-bugs).
 
 ### 1. Purpose
 Each course has its own discussion board where enrolled students, the course's instructors and admins post questions, comment and reply; moderators can pin, lock, hide and delete.
+Served by the API (backend Step 8, tables in the `Community` schema); the browser-storage demo mode follows the same rules.
 
 ### 2. Screens & Routes
 | Route | Component | What the user sees / does |
 |---|---|---|
-| `/courses/:slug#community` | `CourseCommunity` (inside `CourseDetail`) | Outsiders: teaser with visible post count and "Log in to join" (returnUrl = course page). Members: post list (pinned first), new post form, expand comments, comment, reply, edit/delete own, role badges (Admin/Instructor/Student). Moderators: pin, lock, hide/unhide posts and comments, delete any. |
+| `/courses/:slug#community` | `CourseCommunity` (inside `CourseDetail`) | Outsiders: teaser with visible post count and "Log in to join" (returnUrl = course page). Members: post list (pinned first), new post form, expand comments, comment, reply, edit/delete own, role badges (Admin/Instructor/Student). Moderators: pin, lock, hide/unhide posts and comments, delete any. API mode: 20 posts at a time with a "Load more discussions" button; comments load when a post is opened. |
 | `/learn/:slug` | `Learn` | Link to the community if the user can read it. |
-| `/admin/community` | `AdminCommunity` | Moderation list for courses the user can moderate: filter by course, status (all/visible/hidden/pinned/locked), search (title/body/author). Posts list + latest 20 comments. Pin/lock/hide/delete. Guard `community.moderate` (any course). |
+| `/admin/community` | `AdminCommunity` | Moderation list for courses the user can moderate: filter by course, status (all/visible/hidden/pinned/locked), search (title/body/author). Posts list + latest 20 comments. Pin/lock/hide/delete. Guard `community.moderate` (any course). API mode: the server filters (search waits 300 ms after typing). |
 
 ### 3. Entities & Fields
 **Post**
@@ -1099,17 +1106,17 @@ Each course has its own discussion board where enrolled students, the course's i
 - **BR-COM-02** Read = moderator OR (`community.view` AND course access per BR-ENR-03).
 - **BR-COM-03** Post/comment = can read AND (moderator OR `community.post`).
 - **BR-COM-04** Comment on a locked post only by moderators; others get "This discussion is locked."
-- **BR-COM-05** Post list: pinned first, then newest first. Hidden posts visible to moderators only.
-- **BR-COM-06** Comments: oldest first; hidden ones visible to moderators only. Comment count = visible comments incl. replies.
+- **BR-COM-05** Post list: pinned first, then newest first. Hidden posts visible to moderators only; for others a hidden post behaves as removed (its comments cannot be read or added: "This post was removed."). API mode: 20 posts per page, "Load more discussions" adds the next page.
+- **BR-COM-06** Comments: oldest first; hidden ones visible to moderators only, and so are the replies under a hidden comment. Comment count = the comments and replies the viewer can see.
 - **BR-COM-07** Replies are one level deep: replying to a reply attaches to the top-level comment. Replying to a removed comment fails ("The comment you replied to was removed.").
 - **BR-COM-08** Edit post/comment: author only (and must still be able to read). Sets `editedAt`. Moderators cannot edit others' content.
-- **BR-COM-09** Delete post: author (who can read) or moderator; deletes all its comments. Delete comment: author or moderator; deletes its replies. Hard delete, with confirm dialog.
+- **BR-COM-09** Delete post: author (who can read) or moderator; deletes all its comments. Delete comment: author or moderator; deletes its replies. With confirm dialog. Demo mode removes the rows; the API soft-deletes them (`IsDeleted`).
 - **BR-COM-10** Pin / lock / hide post and hide comment: moderators only.
 - **BR-COM-11** Text limits: title ≤ 120, body ≤ 2000, comment ≤ 1000 (after trim); empty → "Give your post a title." / "Write something in your post." / "Write a comment."; too long → "This is too long. Please shorten it."
 - **BR-COM-12** Author badge: Admin if user role admin; Instructor if user's instructorId = course instructorId OR has grant `courses.edit` on course; else Student.
 - **BR-COM-13** Deleted authors show as "Former member".
 - **BR-COM-14** Public teaser count = non-hidden posts of the course.
-- **BR-COM-15** Deleting a course deletes all its posts and comments.
+- **BR-COM-15** Deleting a course deletes all its posts and comments (API: soft delete together with the course).
 - **BR-COM-16** Admin moderation list shows the latest 20 comments only; status filter pinned/locked doesn't filter comments.
 
 ### 5. Workflows & Status Transitions
@@ -1132,23 +1139,26 @@ Discussion: Member creates post → members comment/reply → moderator may pin/
 - Comment count per post = visible comments + replies.
 
 ### 8. Data Source
-| Current | Future endpoint |
+API mode (default) uses `/api/v1` (api-contract §12); demo mode keeps browser storage (`ca-posts`, `ca-comments`).
+| Service method | API endpoint |
 |---|---|
-| `postsFor(courseId)` (`ca-posts`) | `GET /api/courses/{id}/posts?page=` |
-| `publicCount` | `GET /api/courses/{id}/posts/count` (public) |
-| `createPost` / `editPost` / `deletePost` | `POST /api/courses/{id}/posts`, `PUT /api/posts/{id}`, `DELETE /api/posts/{id}` |
-| `commentsFor` / `repliesTo` (`ca-comments`) | `GET /api/posts/{id}/comments` (tree, 1 level) |
-| `addComment` / `editComment` / `deleteComment` | `POST /api/posts/{id}/comments` `{body, parentId?}`, `PUT /api/comments/{id}`, `DELETE /api/comments/{id}` |
-| `setPostFlags` | `PATCH /api/posts/{id}/flags` `{pinned?, locked?, hidden?}` |
-| `setCommentHidden` | `PATCH /api/comments/{id}/hidden` |
-| Admin lists | `GET /api/admin/community/posts?courseId=&status=&search=`, `GET /api/admin/community/comments?courseId=&status=&search=&limit=20` |
+| `loadCourse` → `publicCount`, `postsFor` | `GET /courses/{slug}/community` (public), then `GET /courses/{slug}/posts?page=1&pageSize=20` |
+| `loadMorePosts` / `hasMorePosts` | `GET /courses/{slug}/posts?page=n&pageSize=20` |
+| `createPost` / `editPost` / `deletePost` | `POST /courses/{slug}/posts`, `PUT /posts/{id}`, `DELETE /posts/{id}` |
+| `loadComments` → `commentsFor` / `repliesTo` | `GET /posts/{id}/comments` (tree, 1 level) |
+| `addComment` / `editComment` / `deleteComment` | `POST /posts/{id}/comments` `{body, parentId?}`, `PUT /comments/{id}`, `DELETE /comments/{id}` |
+| `setPostFlags` | `PATCH /posts/{id}/flags` `{isPinned?, isLocked?, isHidden?}` |
+| `setCommentHidden` | `PATCH /comments/{id}/hidden` |
+| `loadModeration` → `posts`, `comments` (admin) | `GET /admin/community/posts?courseId=&status=&search=`, `GET /admin/community/comments?courseId=&status=&search=&limit=20` |
+| `canEdit`, `canDelete`, `canComment`, `authorOf`, `badgeOf` | worked out by the server (`PostDto`/`CommentDto`) |
 
 ### 9. Open Questions / Assumptions
 See [Part C](#part-c--open-questions--likely-bugs).
 
 ### 10. Source Files
 - `src/app/core/services/community.service.ts`
-- `src/app/core/models/community.model.ts`
+- `src/app/core/models/community.model.ts`, `src/app/core/api/community.models.ts`
+- Backend: `Controllers/CommunityControllers.cs`, `Services/CommunityService.cs`, `Repositories/CommunityRepositories.cs`, `Entities/Community.cs`, `Data/Configurations/CommunityConfigurations.cs`, `Data/Seed/DemoCertificationCommunitySeeder.cs`
 - `src/app/pages/course-detail/course-community/course-community.ts` / `.html`
 - `src/app/pages/admin/admin-community.ts`
 
@@ -1300,7 +1310,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 |---|---|
 | Engine | SQL Server, EF Core |
 | Naming | PascalCase, **singular** table names (`User`, `Course`); FK columns `<Entity>Id` (`CourseId`) |
-| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
+| Schemas | Every table is in the schema of its area (section 2): `Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, `Certification`, `Community`, e.g. `Securities.User`, `Catalog.Section`. Nothing in `dbo` except EF's `__EFMigrationsHistory`. Set in code by `DbSchemas` (a new entity must be added there) |
 | Primary key | `Id int IDENTITY(1,1)` on every table (incl. lookup and join tables) |
 | Public identifiers | Kept as separate unique columns: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code`. Used in URLs; never the PK |
 | Soft delete | Every table has `IsDeleted` and an EF global query filter `IsDeleted = 0`. Deleting a row sets `IsDeleted = 1`, **except** hard-delete tables (marked `IHardDelete` in code: RoleScreen, UserScreen, CourseGrant, CourseGrantPermission and RefreshToken), which are physically removed. Where a business rule says "delete" (e.g. BR-CMS-13, BR-COM-09) the service soft-deletes the row and its listed children |
@@ -1322,7 +1332,7 @@ Physical design for SQL Server + EF Core, derived from the frontend demo. Busine
 | IsDeleted | bit | NOT NULL | 0 | soft delete flag (hard-delete tables are removed instead) |
 
 ### 2. Tables overview
-The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`.
+The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → `Securities`, Catalogue → `Catalog`, Commerce → `Commerce`, Learning (LessonProgress) → `Learning`, Media → `Media`, Certification → `Certification`, Community → `Community`.
 
 | Area | Tables |
 |---|---|
@@ -1342,7 +1352,7 @@ The area is the SQL Server schema: Lookups → `Lookups`, Identity & access → 
 | Phone | nvarchar(20) | User.Phone |
 | Title / label | nvarchar(200) | titles without a frontend limit (module, section, video, document, session, material, exam, role name, instructor title) |
 | URL | nvarchar(2048) | all URL/link/image columns |
-| Long text | nvarchar(max) | Course.Description, Instructor.Bio, ExamInstructions, outcome/requirement text |
+| Long text | nvarchar(max) | Course.Description, Instructor.Bio, ExamInstructions (app limit 8000), outcome/requirement text |
 | Code | nvarchar(50) | lookup `Code`, icon classes, Language |
 | Slug | nvarchar(200) | Course.Slug |
 | **Frontend limits kept** | Course.Title 120, Course.Subtitle 200, Course.CoverLabel 30, Post.Title 120, Post.Body 2000, Comment.Body 1000, ExamSubmission.Notes 1000, ExamSubmission.Feedback 1000, Certificate.RevokedReason 200 | |
@@ -1657,7 +1667,7 @@ One row per user and lesson. A lesson is a video, or a section that has no video
 Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server treats NULLs as equal in a unique index, so a section without videos also has one row per user.
 
 ### 8. Certification
-#### CertificationRule (+ std) — 0..1 per course
+#### CertificationRule (+ std) — 0..1 per course — built in backend Step 8
 | Column | Type | Null | Default | Key / Constraint |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -1671,9 +1681,9 @@ Rows of removed videos/sections stay but no longer count (BR-LRN-05). SQL Server
 | MaxScore | int | NOT NULL | 100 | CHECK ≥ 1 |
 | PassingScore | int | NOT NULL | 60 | CHECK 1 ≤ PassingScore ≤ MaxScore |
 | MaxAttempts | int | NOT NULL | 0 | CHECK ≥ 0 (0 = unlimited) |
-No row → API returns the default rule (BR-CERT-01).
+No row → API returns the default rule (BR-CERT-01). CHECKs: `CK_CertificationRule_MinProgress`, `CK_CertificationRule_Scores`, `CK_CertificationRule_MaxAttempts`.
 
-#### ExamSubmission (+ std)
+#### ExamSubmission (+ std) — built in backend Step 8
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
@@ -1683,17 +1693,17 @@ No row → API returns the default rule (BR-CERT-01).
 | Url | nvarchar(2048) | NOT NULL | starts with `https://` (app) | |
 | Notes | nvarchar(1000) | NULL | | |
 | SubmittedAt | datetime2(3) | NOT NULL | | |
-| SubmissionStatusId | int | NOT NULL | FK SubmissionStatus | |
-| Score | decimal(9,2) | NULL | CHECK ≥ 0 | see Open Questions (integer?) |
+| SubmissionStatusId | int | NOT NULL | FK SubmissionStatus; concurrency token | two reviews saved at once: only the first is kept |
+| Score | decimal(9,2) | NULL | CHECK ≥ 0 | up to 2 decimals (decided 2026-11-20) |
 | Feedback | nvarchar(1000) | NULL | | |
 | ReviewedByUserId | int | NULL | FK User | |
 | ReviewedAt | datetime2(3) | NULL | | |
 
-#### Certificate (+ std)
+#### Certificate (+ std) — built in backend Step 8
 | Column | Type | Null | Key / Constraint | Notes |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | PK | |
-| Code | char(14) | NOT NULL | UQ filtered | `CA-YYYY-XXXXXX` |
+| Code | char(14) | NOT NULL | UQ filtered | `CA-YYYY-XXXXXX`, year = issue year (UTC) |
 | UserId | int | NOT NULL | FK User | |
 | CourseId | int | NOT NULL | FK Course | |
 | UserName | nvarchar(100) | NOT NULL | | snapshot |
@@ -1706,9 +1716,10 @@ No row → API returns the default rule (BR-CERT-01).
 | IsRevoked | bit | NOT NULL | default 0 | |
 | RevokedReason | nvarchar(200) | NULL | | public |
 | UQ | | | (UserId, CourseId) filtered `WHERE IsRevoked = 0 AND IsDeleted = 0` | ≤ 1 valid (BR-CERT-03) |
+Rows stay when the course is deleted (BR-CERT-19); a revoked row blocks new certificates for the user and course (BR-CERT-17).
 
 ### 9. Community
-#### Post (+ std)
+#### Post (+ std) — built in backend Step 8
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -1721,7 +1732,7 @@ No row → API returns the default rule (BR-CERT-01).
 | IsLocked | bit | NOT NULL | 0 | |
 | IsHidden | bit | NOT NULL | 0 | |
 
-#### Comment (+ std)
+#### Comment (+ std) — built in backend Step 8
 | Column | Type | Null | Default | Key / Constraint |
 |---|---|---|---|---|
 | Id | int IDENTITY | NOT NULL | | PK |
@@ -1781,12 +1792,11 @@ Review, ContactMessage, CareerApplication, Opportunity, SportsStory, Testimonial
 | StreamingWebhookEvent | UQ EventId (unfiltered); AssetId |
 | CertificationRule | UQ CourseId |
 | ExamSubmission | (CourseId, SubmissionStatusId, SubmittedAt DESC); (UserId, CourseId) |
-| Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0 |
-| Post | (CourseId, IsPinned DESC, CreatedAt DESC) |
-| Comment | (PostId, CreatedAt); ParentCommentId |
+| Certificate | UQ Code; UQ (UserId, CourseId) where IsRevoked = 0; CourseId |
+| Post | (CourseId, IsPinned DESC, CreatedAt DESC); AuthorUserId |
+| Comment | (PostId, CreatedAt); ParentCommentId; (CourseId, CreatedAt) |
 
 ### 13. Open questions (database)
-- `ExamSubmission.Score`: integer or decimal? (rule fields are integers.)
 - `Course.ContentUpdatedMonth` could be derived from `UpdatedAt`. Keep the column or derive?
 - Should `Course.Language` become a lookup table?
 - Lookup `Name` is English only. Need a Bangla name column?
@@ -1923,14 +1933,14 @@ CertificateDto      { id, code, userId, courseId, userName, courseTitle, instruc
                       examTypeCode:string|null, scorePercent:int|null, issuedAt, isRevoked:bool, revokedReason:string|null }
 RuleDto             { courseId, isEnabled:bool, modeCode, minProgress:int, examTypeCode, examTitle, examInstructions,
                       maxScore:int, passingScore:int, maxAttempts:int }
-SubmissionDto       { id, userId, userName, courseId, courseTitle, examTypeCode, examTitle, url, notes, submittedAt,
+SubmissionDto       { id, userId, userName, courseId, courseTitle, examTypeCode, examTitle, maxScore:int, passingScore:int, url, notes, submittedAt,
                       statusCode, score:number|null, feedback:string|null, reviewedBy:UserSummaryDto|null, reviewedAt }
 PostDto             { id, courseId, title, body, author:{id:int|null, name:string, badge:"admin"|"instructor"|"student"},
-                      createdAt, editedAt, isPinned, isLocked, isHidden, commentCount:int, canEdit:bool, canDelete:bool }
-CommentDto          { id, postId, parentId:int|null, body, author:{...as PostDto}, createdAt, editedAt, isHidden,
+                      createdAt, editedAt, isPinned, isLocked, isHidden, commentCount:int, canEdit:bool, canDelete:bool, canComment:bool }
+CommentDto          { id, postId, courseId, parentId:int|null, body, author:{...as PostDto}, createdAt, editedAt, isHidden,
                       canEdit:bool, canDelete:bool, replies:CommentDto[] }
 ```
-Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
+Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13). `SubmissionDto.examTitle/maxScore/passingScore` come from the course's current rule. `PostDto.commentCount` counts what the viewer can see (BR-COM-06).
 
 ### 3a. Lookups
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -2074,27 +2084,29 @@ CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
 | PUT | `/progress/sections/{sectionId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto`; 400 "Mark the videos of this section as complete instead." if the section has videos | `Learn` | BR-LRN-02,03,15 |
 | GET | `/me/upcoming-sessions` (not built) | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` (works it out from the catalogue for now) | BR-LRN-11 |
 
-### 11. Certification
+### 11. Certification (built in backend Step 8)
+Status and hand-in need `learn.view` and course access (active enrollment, or `courses.view` on the course); only an active enrollment earns a certificate. Text and score rules are checked in the service and answered with 400 and the BR message.
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | — | `RuleDto` (default if none) | `CertificationSettings` | BR-CERT-01 |
 | PUT | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | `RuleDto` without courseId | `RuleDto` | `CertificationSettings` | BR-CERT-02 |
-| GET | `/me/courses/{courseId}/certification` | — | `{ rule:RuleDto, progress:int, progressMet:bool, submissions:SubmissionDto[], attemptsLeft:int\|null, canSubmit:bool, certificate:CertificateDto\|null }` | `CourseCertificate` | BR-CERT-06,07,16 |
-| POST | `/me/courses/{courseId}/certificate` | — | `CertificateDto` \| null | `CourseCertificate` | BR-CERT-03,04 |
+| GET | `/me/courses/{courseId}/certification` | — | `{ rule:RuleDto, progress:int, progressMet:bool, submissions:SubmissionDto[], attemptsLeft:int\|null, canSubmit:bool, certificate:CertificateDto\|null, revokedCertificate:CertificateDto\|null }` | `CourseCertificate` | BR-CERT-06,07,16,17 |
+| POST | `/me/courses/{courseId}/certificate` | — | `CertificateDto` \| null (null while not met, or while revoked) | `CourseCertificate` | BR-CERT-03,04,17 |
 | POST | `/me/courses/{courseId}/exam-submissions` 🔒 learn.view + active enrollment | `{ url (https, ≤2048), notes? (≤1000) }` | `SubmissionDto` (201) | `CourseCertificate` | BR-CERT-06,08 |
 | GET | `/me/certificates` | — | `CertificateDto[]` (newest first) | `Dashboard` | — |
-| GET | `/admin/exam-submissions` 🔒 certificates.manage (course) | `status? (submitted\|passed\|failed; default submitted), courseId?, page, pageSize` | page of `SubmissionDto` | `AdminCertificates` | — |
-| POST | `/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{ score (0–maxScore), feedback? (≤1000) }` | `{ submission:SubmissionDto, certificate:CertificateDto\|null }` (409 if not `submitted`) | `AdminCertificates` | BR-CERT-09,10 |
-| GET | `/admin/certificates` 🔒 certificates.manage (course) | `search?, page, pageSize` | page of `CertificateDto` | `AdminCertificates` | — |
+| GET | `/admin/exam-submissions` 🔒 certificates.manage (course) | `status? (submitted\|passed\|failed\|all; default submitted), courseId?, page, pageSize` | page of `SubmissionDto` | `AdminCertificates` | — |
+| POST | `/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{ score (0–maxScore, ≤ 2 decimals), feedback? (≤1000) }` | `{ submission:SubmissionDto, certificate:CertificateDto\|null }` (409 if not `submitted`) | `AdminCertificates` | BR-CERT-09,10 |
+| GET | `/admin/certificates` 🔒 certificates.manage (course) | `search?, courseId?, page, pageSize` | page of `CertificateDto` | `AdminCertificates` | — |
 | POST | `/admin/certificates/{id}/revoke` 🔒 certificates.manage (course) | `{ reason? (≤200) }` | `CertificateDto` | `AdminCertificates` | BR-CERT-11 |
 | POST | `/admin/certificates/{id}/restore` 🔒 certificates.manage (course) | — | `CertificateDto` (409 if another valid one exists) | `AdminCertificates` | BR-CERT-11 |
 | GET | `/certificates/verify/{code}` (public) | — | `{ code, isRevoked, revokedReason, userName, courseTitle, modeCode, examTypeCode, scorePercent, instructorName, issuedAt }` (404 if unknown) | `Verify` | BR-CERT-13 |
 
-### 12. Community
+### 12. Community (built in backend Step 8)
+A hidden post answers 404 "This post was removed." to everyone but moderators.
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/courses/{slug}/community` | — | `{ canRead, canPost, canModerate, publicPostCount:int }` | `CourseCommunity`, `Learn` | BR-COM-01–03,14 |
-| GET | `/courses/{slug}/posts` 🔒 can read | `page, pageSize` | page of `PostDto` (pinned first, then newest; hidden only for moderators) | `CourseCommunity` | BR-COM-05 |
+| GET | `/courses/{slug}/posts` 🔒 can read | `page, pageSize` (the course page uses 20) | page of `PostDto` (pinned first, then newest; hidden only for moderators) | `CourseCommunity` | BR-COM-05 |
 | POST | `/courses/{slug}/posts` 🔒 can post | `{ title (1–120), body (1–2000) }` | `PostDto` (201) | `CourseCommunity` | BR-COM-03,11 |
 | PUT | `/posts/{id}` 🔒 author | `{ title, body }` | `PostDto` | `CourseCommunity` | BR-COM-08 |
 | DELETE | `/posts/{id}` 🔒 author or moderator | — | null (soft-deletes its comments) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
@@ -2104,8 +2116,8 @@ CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
 | PUT | `/comments/{id}` 🔒 author | `{ body }` | `CommentDto` | `CourseCommunity` | BR-COM-08 |
 | DELETE | `/comments/{id}` 🔒 author or moderator | — | null (soft-deletes replies) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
 | PATCH | `/comments/{id}/hidden` 🔒 moderator | `{ isHidden:bool }` | `CommentDto` | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
-| GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `PostDto` + `courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
-| GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `CommentDto` + `postTitle, courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
+| GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `{ post:PostDto, courseTitle, courseSlug }` | `AdminCommunity` | BR-COM-16 |
+| GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `{ comment:CommentDto, postTitle, courseTitle, courseSlug }[]` (newest first; limit ≤ 100) | `AdminCommunity` | BR-COM-16 |
 
 ### 13. Admin overview (overview built in backend Step 5)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -2160,7 +2172,7 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 
 
 ### Course Management
-- Deleting a course does **not** remove progress, certification rule, exam submissions or certificates for it. Keep (as history) or delete?
+- Deleting a course does **not** remove progress, certification rule, exam submissions or certificates for it. Certification data: decided 2026-11-20 to keep it (certificates still verify). Progress: still open.
 - Should course delete be a soft delete (archive) given payments reference it?
 - Publish toggle in list skips "needs sections / needs sessions" checks; a course with no sessions can be published from the list. Intended?
 - `language` is free text; should it be an enum (Bangla/English)?
@@ -2200,18 +2212,19 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 - Answered 2026-11-16: Live courses show their lessons like other courses; progress is per video with resume and 90% auto-complete for video files; sections without videos count as one lesson.
 - Seeking to the end of a video file counts as watched (no check that every part was played). Is that acceptable?
 - Video length is reported by the browser until uploads (backend Step 6) give the real length.
-- When certificates move to the API, should the completion rule's minimum progress use the lesson percentage? (Not decided; not built yet.)
+- ~~Should the completion rule's minimum progress use the lesson percentage?~~ — decided 2026-11-20: yes, in API mode (BR-CERT-04).
 - Demo mode still counts sections, so the same course can show a different % in demo and API mode.
 - Live meeting links are placeholders. Which provider (Zoom/Meet)? Attendance tracking?
 - `startsAt` has no timezone. Assume Asia/Dhaka?
 
 
 ### Certification
-- **Revoking a completion certificate is undone automatically**: the next section toggle or "Get my certificate" issues a new certificate because the revoked one no longer counts. Should revocation block re-issue?
+- ~~Revoking a completion certificate is undone automatically~~ — decided 2026-11-20: revocation blocks re-issue; only Restore (BR-CERT-17).
 - `evaluate` requires an active enrollment; instructors/admins with only a grant can't earn certificates. Intended.
 - Changing a rule from exam → completion leaves pending submissions; changing min progress doesn't affect issued certificates. OK?
-- Review score allows decimals (only range checked); rule fields require integers. Should score be integer?
-- Notes length is checked before trimming (whitespace counts toward 1000).
+- ~~Should the review score be an integer?~~ — decided 2026-11-20: decimals allowed (up to 2; `decimal(9,2)`).
+- ~~Notes length is checked before trimming~~ — fixed 2026-11-20: checked after trimming.
+- ~~What happens to certification data when a course is deleted?~~ — decided 2026-11-20: kept (BR-CERT-19).
 - Can a reviewer change a result after review? Not supported.
 - Should the student be notified (email) after review?
 - Bangla names don't render in the PDF (Latin fonts). Need Bangla font support?
@@ -2219,9 +2232,9 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 
 
 ### Course Community
-- Hard delete vs soft delete for posts/comments? (hidden already acts like soft delete.)
+- ~~Hard delete vs soft delete for posts/comments?~~ — API soft-deletes, like every table (BR-COM-09).
 - Reporting/flagging by students? Notifications for replies?
-- No pagination on post lists. Needed for large courses.
+- ~~No pagination on post lists~~ — decided 2026-11-20: 20 per page with "Load more discussions" (BR-COM-05).
 - Author can still edit a post after it is locked or hidden. Intended?
 - Revoked students lose read access; their posts stay. OK?
 
@@ -2239,18 +2252,18 @@ Static content (stories, opportunities, FAQ, testimonials, contact info) stays i
 
 
 ## C1b. Database & API open questions
-See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-api): token lifetimes/rotation, exam score type, ContentUpdatedMonth, Language lookup, Bangla lookup names, collation, error item shape, message language.
+See [B12 §13](#13-open-questions-database) and [B13 §15](#15-open-questions-api): token lifetimes/rotation, ContentUpdatedMonth, Language lookup, Bangla lookup names, collation, error item shape, message language.
 
 Security (from `docs/security-review.md`, 2026-11-17): tokens are kept in browser storage (an injected script could read them; httpOnly cookies would avoid that); no Content-Security-Policy yet (belongs on the web server hosting the Angular app); rate limiting covers only sign-in, sign-up and refresh. Decide whether to change these before going live.
 
 ## C2. Likely bugs & inconsistencies (found in the frontend code)
 1. ~~**Live courses can never be completed**~~ — **fixed in backend Step 5** (Live courses show their lessons and "Mark as complete", in both modes). Original note: the learning page hid "Mark as complete" for Live format, so demo course 2 (Live, exam rule needing 100%) could never award a certificate. (BR-LRN-08, BR-CERT-06)
-2. **Revoked completion certificates come back** — the next section toggle or "Get my certificate" issues a new one, because a revoked certificate no longer counts. (BR-CERT-03, BR-CERT-04, BR-CERT-11)
+2. ~~**Revoked completion certificates come back**~~ — **fixed in backend Step 8** (a revoked certificate blocks re-issue until Restore, in both modes; BR-CERT-17). Original note: the next section toggle or "Get my certificate" issued a new one. (BR-CERT-03, BR-CERT-04, BR-CERT-11)
 3. ~~**Successful payments can be deleted**~~ — **fixed in backend Step 4** (the server refuses it). Original note: only the button is disabled; `PaymentService.remove()` does not block it. Backend must enforce. (BR-PAY-12)
 4. ~~**Publish toggle skips validation**~~ — **fixed in backend Step 3** (server checks on every publish). Original note: publishing from the course list does not check "needs sections / needs live sessions". (BR-CMS-04, BR-CMS-05, BR-CMS-12)
-5. **Course delete leaves data behind** — progress, certification rule, exam submissions and certificates are not removed. (BR-CMS-13)
+5. **Course delete leaves data behind** — progress is not removed. Certification rule, exam submissions and certificates are kept on purpose (decided 2026-11-20, BR-CERT-19); posts and comments are removed with the course in the API (Step 8). (BR-CMS-13)
 6. ~~**Non-preview video links are public**~~ — **fixed in backend Step 3** (the API sends no locked links). Original note: all video URLs are sent to every visitor in the course data. Backend must hide them from non-enrolled users. (BR-CAT-13)
 7. **Password rules disagree** — login checks min 6 characters, register requires min 8 + letter + digit. (BR-AUTH-01, BR-AUTH-07)
-8. **Exam input checks** — notes length is checked before trimming; review score may be a decimal while rule fields must be integers. (BR-CERT-08, BR-CERT-09)
+8. ~~**Exam input checks**~~ — **fixed in backend Step 8**: notes are checked after trimming; decimal scores (up to 2) are allowed on purpose. (BR-CERT-08, BR-CERT-09)
 9. ~~**Free enrollment**~~ — **fixed in backend Step 4** (the server checks `checkout.view` and the price). Original note: `EnrollmentService.grant()` does not check `checkout.view`; only the route guard does. (BR-PAY-03, BR-ENR-04)
 10. ~~**Second curriculum save re-created new rows (API mode)**~~ — **fixed in backend Step 6** (the editor reloads the saved curriculum). Original note: after saving, new rows kept their temporary browser ids, so saving again without reloading removed and re-created them, losing their progress. (BR-CMS-20, BR-CMS-27)

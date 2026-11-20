@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Certificate } from '../../../core/models/certificate.model';
@@ -39,6 +39,17 @@ import { LocalDatePipe, TranslatePipe } from '../../../shared/pipes/translate.pi
                   <i class="bi bi-shield-check" aria-hidden="true"></i> {{ 'Verification page' | t }}
                 </a>
               </div>
+            </div>
+          } @else if (s.revokedCertificate; as revoked) {
+            <div class="revoked">
+              <p class="mb-1 fw-semibold"><i class="bi bi-x-octagon" aria-hidden="true"></i> {{ 'Your certificate for this course was revoked.' | t }}</p>
+              <p class="small mb-0">
+                {{ 'Certificate ID {0}' | t: [revoked.code] }}
+                @if (revoked.revokedReason) {
+                  · {{ 'Reason: {0}' | t: [revoked.revokedReason] }}
+                }
+              </p>
+              <p class="small text-muted mb-0 mt-1">{{ 'Please contact your instructor.' | t }}</p>
             </div>
           } @else {
             <p class="small text-muted">
@@ -127,6 +138,8 @@ import { LocalDatePipe, TranslatePipe } from '../../../shared/pipes/translate.pi
     .steps .done .bi { color: var(--ca-success); }
     .submission { margin-top: 0.5rem; padding: 0.6rem 0.8rem; border: 1px solid var(--ca-border); border-radius: var(--ca-radius-sm); overflow-wrap: anywhere; }
     .submission.failed { border-color: var(--ca-danger); background: var(--ca-danger-50); }
+    .revoked { padding: 0.85rem 1rem; border-radius: var(--ca-radius); background: var(--ca-danger-50); }
+    .revoked .bi-x-octagon { color: var(--ca-danger); }
     .instructions { padding: 0.6rem 0.8rem; border-left: 3px solid var(--ca-orange); background: var(--ca-orange-50); }
   `,
 })
@@ -148,6 +161,14 @@ export class CourseCertificate {
   protected url = '';
   protected notes = '';
 
+  constructor() {
+    // API mode: the status comes from the server; demo mode works it out at once.
+    effect(() => {
+      const course = this.course();
+      untracked(() => this.certificates.loadStatus(course).catch(() => this.toast.error('The certificate status could not be loaded. Please refresh the page.')));
+    });
+  }
+
   protected async submit(): Promise<void> {
     this.busy.set(true);
     try {
@@ -166,8 +187,8 @@ export class CourseCertificate {
     this.busy.set(true);
     try {
       if (await this.certificates.evaluate(this.course())) this.toast.success('Congratulations! Your certificate is ready.');
-    } catch {
-      this.toast.error('The certificate could not be saved. Browser storage may be full or blocked.');
+    } catch (error) {
+      this.toast.error(failureMessage(error, 'The certificate could not be saved. Browser storage may be full or blocked.'));
     } finally {
       this.busy.set(false);
     }

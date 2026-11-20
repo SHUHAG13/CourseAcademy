@@ -129,7 +129,7 @@ Lets admins and granted instructors create, edit, publish and delete courses, bu
 - **BR-CMS-10** New documents attach to the section's first video by default.
 - **BR-CMS-11** Every save sets `updated` = current `YYYY-MM`. `rating`, `ratingCount`, `students` are preserved (0 for new).
 - **BR-CMS-12** Publish/unpublish toggle from the list. (API) The server checks BR-CMS-04/05 on every save and on the toggle, so a course without sections, or a Live/Hybrid course without sessions, cannot be published from the list either.
-- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API, Step 3) The course is soft-deleted and its grants removed; enrollments and communities are removed by the API once they move there (Steps 4+); until then the browser removes them.
+- **BR-CMS-13** Delete course (after confirm) removes: all enrollments for it, all community posts/comments, all course grants, then the course. Payment transactions are kept (they hold a snapshot). (API) The course is soft-deleted with its enrollments, posts and comments, and its grants are removed. Its certification rule, hand-ins and certificates are kept (BR-CERT-19).
 - **BR-CMS-14** Instructor delete is blocked while any course (published or not) has that `instructorId`: "{name} teaches {n} course(s). Reassign them before deleting."
 - **BR-CMS-15** Instructor create/edit/delete require `instructors.create` / `.edit` / `.delete`.
 - **BR-CMS-16** Admin course list shows only courses where the user has `courses.view` (global or grant).
@@ -185,7 +185,7 @@ Uploaded file (API): `pending_upload` (browser sending) → `uploaded` (complete
 | `MediaService.remove` (unsaved upload replaced/removed) | `DELETE /api/v1/media/assets/{id}` |
 
 ## 9. Open Questions / Assumptions
-- Deleting a course does **not** remove progress, certification rule, exam submissions or certificates for it. Keep (as history) or delete?
+- Deleting a course does **not** remove progress, certification rule, exam submissions or certificates for it. Certification data: decided 2026-11-20 to keep it (certificates still verify). Progress: still open.
 - Should course delete be a soft delete (archive) given payments reference it?
 - Publish toggle in list skips "needs sections / needs sessions" checks; a course with no sessions can be published from the list. Intended?
 - `language` is free text; should it be an enum (Bangla/English)?

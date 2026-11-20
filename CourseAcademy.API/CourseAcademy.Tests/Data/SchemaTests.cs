@@ -15,9 +15,13 @@ public class SchemaTests
         Assert.All(tables, t => Assert.Contains(t.Schema, new[]
         {
             DbSchemas.Securities, DbSchemas.Lookups, DbSchemas.Catalog, DbSchemas.Commerce, DbSchemas.Learning, DbSchemas.Media,
+            DbSchemas.Certification, DbSchemas.Community,
         }));
         Assert.Contains(("User", DbSchemas.Securities), tables);
         Assert.Contains(("Section", DbSchemas.Catalog), tables);
         Assert.Contains(("PaymentTransaction", DbSchemas.Commerce), tables);
+        Assert.Contains(("Certificate", DbSchemas.Certification), tables);
+        Assert.Contains(("Comment", DbSchemas.Community), tables);
+        Assert.Contains(("ExamType", DbSchemas.Lookups), tables);
     }
 }

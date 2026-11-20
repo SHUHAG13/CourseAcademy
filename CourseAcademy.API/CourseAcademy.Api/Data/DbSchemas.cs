@@ -14,6 +14,8 @@ public static class DbSchemas
     public const string Commerce = "Commerce";
     public const string Learning = "Learning";
     public const string Media = "Media";
+    public const string Certification = "Certification";
+    public const string Community = "Community";
 
     private static readonly Dictionary<Type, string> Map = new()
     {
@@ -42,6 +44,9 @@ public static class DbSchemas
         [typeof(Currency)] = Lookups,
         [typeof(MediaKind)] = Lookups,
         [typeof(MediaAssetStatus)] = Lookups,
+        [typeof(CertificationMode)] = Lookups,
+        [typeof(ExamType)] = Lookups,
+        [typeof(SubmissionStatus)] = Lookups,
 
         // Courses, their curriculum and instructors.
         [typeof(Instructor)] = Catalog,
@@ -64,6 +69,15 @@ public static class DbSchemas
 
         [typeof(MediaAsset)] = Media,
         [typeof(StreamingWebhookEvent)] = Media,
+
+        // Certificate rules, central exam hand-ins and issued certificates.
+        [typeof(CertificationRule)] = Certification,
+        [typeof(ExamSubmission)] = Certification,
+        [typeof(Certificate)] = Certification,
+
+        // Course discussions.
+        [typeof(Post)] = Community,
+        [typeof(Comment)] = Community,
     };
 
     public static string Of(Type entityType) =>

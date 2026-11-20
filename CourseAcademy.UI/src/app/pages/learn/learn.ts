@@ -1,11 +1,10 @@
 import { API_MODE } from '../../core/api/api-mode';
-import { ComingSoon } from '../../shared/components/coming-soon/coming-soon';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { LanguageService } from '../../core/i18n/language.service';
-import { Section, SectionDocument } from '../../core/models/course.model';
+import { Course, Section, SectionDocument } from '../../core/models/course.model';
 import { CertificateService } from '../../core/services/certificate.service';
 import { CommunityService } from '../../core/services/community.service';
 import { CourseService, allSections, sectionMinutes } from '../../core/services/course.service';
@@ -25,7 +24,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 /** The course area for enrolled users: sections with their videos and documents, live classes and materials. */
 @Component({
   selector: 'app-learn',
-  imports: [ComingSoon, TranslatePipe, RouterLink, NgTemplateOutlet, EmptyState, FormatBadge, SessionList, VideoEmbed, DocumentList, CourseCertificate],
+  imports: [TranslatePipe, RouterLink, NgTemplateOutlet, EmptyState, FormatBadge, SessionList, VideoEmbed, DocumentList, CourseCertificate],
   templateUrl: './learn.html',
   styleUrl: './learn.scss',
 })
@@ -36,7 +35,7 @@ export class Learn {
   protected readonly progress = inject(ProgressService);
   protected readonly community = inject(CommunityService);
   private readonly certificates = inject(CertificateService);
-  /** Certificates and communities have not moved to the API yet. */
+  /** In API mode progress is kept per lesson (video) on the server. */
   protected readonly apiMode = inject(API_MODE);
 
   /** Bound from the `:slug` route param. */
@@ -157,11 +156,7 @@ export class Learn {
         this.sectionId.set(next.id);
       }
       if (complete && this.progress.percent(c) === 100) this.toast.success('You have completed every section of {0}!', [c.title]);
-      // Completion certificates are issued as soon as the requirement is met.
-      const hadCertificate = !!this.certificates.status(c)?.certificate;
-      if (!this.apiMode && complete && !hadCertificate && (await this.certificates.evaluate(c))) {
-        this.toast.success('Congratulations! Your certificate is ready.');
-      }
+      if (complete) await this.announceCertificate(c);
     } catch (error) {
       this.toast.error(failureMessage(error, 'Your progress could not be saved. Browser storage may be full or blocked.'));
     } finally {
@@ -187,6 +182,22 @@ export class Learn {
     if (!c || !this.apiMode) return;
     if (await this.progress.savePosition(c, videoId, watched.position, watched.duration)) {
       this.toast.success(this.progress.percent(c) === 100 ? 'You have completed every section of {0}!' : 'Lesson completed.', [c.title]);
+      await this.announceCertificate(c);
+    }
+  }
+
+  /**
+   * Completion certificates are issued as soon as the requirement is met (BR-CERT-04): in API mode by the server
+   * when the lesson is saved, in demo mode here.
+   */
+  private async announceCertificate(c: Course): Promise<void> {
+    const hadCertificate = !!this.certificates.status(c)?.certificate;
+    if (hadCertificate) return;
+    try {
+      const issued = this.apiMode ? (await this.certificates.loadStatus(c))?.certificate : await this.certificates.evaluate(c);
+      if (issued) this.toast.success('Congratulations! Your certificate is ready.');
+    } catch {
+      // The certificate box shows the state on the next load.
     }
   }
 }

@@ -115,6 +115,7 @@ public static class ApplicationBuilderExtensions
             }
             await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(CancellationToken.None);
             await scope.ServiceProvider.GetRequiredService<DemoCourseSeeder>().SeedAsync(CancellationToken.None);
+            await scope.ServiceProvider.GetRequiredService<DemoCertificationCommunitySeeder>().SeedAsync(CancellationToken.None);
         }
     }
 }

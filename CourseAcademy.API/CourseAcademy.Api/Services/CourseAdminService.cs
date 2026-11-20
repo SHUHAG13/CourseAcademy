@@ -35,6 +35,8 @@ public sealed class CourseAdminService(
     IRepository<SectionDocument> documents,
     IRepository<CourseGrant> grants,
     IEnrollmentRepository enrollments,
+    IPostRepository posts,
+    ICommentRepository comments,
     IMediaAssetRepository mediaAssets,
     MediaDeletionSignal mediaDeletions,
     IUnitOfWork unitOfWork,
@@ -111,8 +113,11 @@ public sealed class CourseAdminService(
         await currentUser.EnsureCanAsync(PermissionCodes.CoursesDelete, courseId, ct);
         var course = await courses.GetByIdAsync(courseId, ct) ?? throw new NotFoundException("Course not found.");
         courses.Remove(course);
-        // Its enrollments go with it (BR-CMS-13); payments stay as records. Communities follow when they move to the API.
+        // Its enrollments go with it (BR-CMS-13); payments stay as records, and so do certificates, which still verify.
         foreach (var enrollment in await enrollments.ListForCourseAsync(courseId, ct)) enrollments.Remove(enrollment);
+        // Its community goes too (BR-COM-15).
+        foreach (var comment in await comments.ListForCourseAsync(courseId, ct)) comments.Remove(comment);
+        foreach (var post in await posts.ListForCourseAsync(courseId, ct)) posts.Remove(post);
         // Grants on a deleted course mean nothing (BR-ACL-14).
         foreach (var grant in await grants.ListAsync(g => g.CourseId == courseId, ct))
         {

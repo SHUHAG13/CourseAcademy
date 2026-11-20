@@ -288,6 +288,304 @@ namespace CourseAcademy.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Certificate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CertificationModeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .IsUnicode(false)
+                        .HasColumnType("char(14)")
+                        .IsFixedLength();
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CourseTitle")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<int?>("ExamTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InstructorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("ScorePercent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CertificationModeId");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("ExamTypeId");
+
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique()
+                        .HasFilter("[IsRevoked] = 0 AND [IsDeleted] = 0");
+
+                    b.ToTable("Certificate", "Certification", t =>
+                        {
+                            t.HasCheckConstraint("CK_Certificate_ScorePercent", "[ScorePercent] IS NULL OR [ScorePercent] BETWEEN 0 AND 100");
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.CertificationMode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("CertificationMode", "Lookups");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "completion",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Course completion",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "exam",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Central exam",
+                            SortOrder = 2
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.CertificationRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CertificationModeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("ExamInstructions")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExamTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ExamTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("MaxAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("MaxScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("MinProgress")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("PassingScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(60);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CertificationModeId");
+
+                    b.HasIndex("CourseId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("ExamTypeId");
+
+                    b.ToTable("CertificationRule", "Certification", t =>
+                        {
+                            t.HasCheckConstraint("CK_CertificationRule_MaxAttempts", "[MaxAttempts] >= 0");
+
+                            t.HasCheckConstraint("CK_CertificationRule_MinProgress", "[MinProgress] BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("CK_CertificationRule_Scores", "[MaxScore] >= 1 AND [PassingScore] BETWEEN 1 AND [MaxScore]");
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsHidden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int?>("ParentCommentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("CourseId", "CreatedAt");
+
+                    b.HasIndex("PostId", "CreatedAt");
+
+                    b.ToTable("Comment", "Community");
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.Course", b =>
                 {
                     b.Property<int>("Id")
@@ -1078,6 +1376,148 @@ namespace CourseAcademy.Api.Data.Migrations
                             CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsDeleted = false,
                             Name = "Revoked",
+                            SortOrder = 2
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.ExamSubmission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<int>("ExamTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("ReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Score")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<int>("SubmissionStatusId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTypeId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("SubmissionStatusId");
+
+                    b.HasIndex("UserId", "CourseId");
+
+                    b.HasIndex("CourseId", "SubmissionStatusId", "SubmittedAt")
+                        .IsDescending(false, false, true);
+
+                    b.ToTable("ExamSubmission", "Certification", t =>
+                        {
+                            t.HasCheckConstraint("CK_ExamSubmission_Score", "[Score] IS NULL OR [Score] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.ExamType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ExamType", "Lookups");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "project",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Project",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "presentation",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Presentation",
                             SortOrder = 2
                         });
                 });
@@ -2412,6 +2852,71 @@ namespace CourseAcademy.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Post", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsHidden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsPinned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("CourseId", "IsPinned", "CreatedAt")
+                        .IsDescending(false, true, true);
+
+                    b.ToTable("Post", "Community");
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -3140,6 +3645,78 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.ToTable("StreamingWebhookEvent", "Media");
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.SubmissionStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("SubmissionStatus", "Lookups");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "submitted",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Waiting for review",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "passed",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Passed",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "failed",
+                            CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Not passed",
+                            SortOrder = 3
+                        });
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.Submodule", b =>
                 {
                     b.Property<int>("Id")
@@ -3293,6 +3870,79 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Certificate", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.CertificationMode", null)
+                        .WithMany()
+                        .HasForeignKey("CertificationModeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.ExamType", null)
+                        .WithMany()
+                        .HasForeignKey("ExamTypeId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.CertificationRule", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.CertificationMode", null)
+                        .WithMany()
+                        .HasForeignKey("CertificationModeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.ExamType", null)
+                        .WithMany()
+                        .HasForeignKey("ExamTypeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Comment", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Comment", null)
+                        .WithMany()
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CourseAcademy.Api.Entities.Post", null)
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CourseAcademy.Api.Entities.Course", b =>
                 {
                     b.HasOne("CourseAcademy.Api.Entities.Category", "Category")
@@ -3432,6 +4082,38 @@ namespace CourseAcademy.Api.Data.Migrations
                     b.Navigation("Status");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.ExamSubmission", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.ExamType", null)
+                        .WithMany()
+                        .HasForeignKey("ExamTypeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CourseAcademy.Api.Entities.SubmissionStatus", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionStatusId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.InstructorExpertise", b =>
@@ -3583,6 +4265,21 @@ namespace CourseAcademy.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Screen");
+                });
+
+            modelBuilder.Entity("CourseAcademy.Api.Entities.Post", b =>
+                {
+                    b.HasOne("CourseAcademy.Api.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CourseAcademy.Api.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CourseAcademy.Api.Entities.RefreshToken", b =>

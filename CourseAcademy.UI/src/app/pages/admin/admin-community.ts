@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Comment, Post } from '../../core/models/community.model';
@@ -59,9 +59,9 @@ type StatusFilter = 'all' | 'visible' | 'hidden' | 'pinned' | 'locked';
               <tr>
                 <td>
                   <span class="primary">{{ p.title }}</span>
-                  <span class="secondary">{{ community.authorName(p.authorId) | t }} · {{ p.createdAt | ldate: 'd MMM y' }}</span>
+                  <span class="secondary">{{ community.authorOf(p) | t }} · {{ p.createdAt | ldate: 'd MMM y' }}</span>
                 </td>
-                <td>{{ courseTitle(p.courseId) | t }}</td>
+                <td>{{ (p.courseTitle ?? courseTitle(p.courseId)) | t }}</td>
                 <td>{{ community.commentCount(p) }}</td>
                 <td class="text-nowrap">
                   @if (p.pinned) { <span class="tag me-1">{{ 'Pinned' | t }}</span> }
@@ -71,7 +71,7 @@ type StatusFilter = 'all' | 'visible' | 'hidden' | 'pinned' | 'locked';
                   }
                 </td>
                 <td class="actions text-nowrap">
-                  <a class="icon-btn" [routerLink]="['/courses', courseSlug(p.courseId)]" fragment="community"
+                  <a class="icon-btn" [routerLink]="['/courses', p.courseSlug ?? courseSlug(p.courseId)]" fragment="community"
                     [title]="'Open discussion' | t" [attr.aria-label]="'Open {0}' | t: [p.title]">
                     <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                   </a>
@@ -117,9 +117,9 @@ type StatusFilter = 'all' | 'visible' | 'hidden' | 'pinned' | 'locked';
             <tr>
               <td>
                 <span class="primary excerpt">{{ c.body }}</span>
-                <span class="secondary">{{ community.authorName(c.authorId) | t }} · {{ c.createdAt | ldate: 'd MMM y, h:mm a' }}</span>
+                <span class="secondary">{{ community.authorOf(c) | t }} · {{ c.createdAt | ldate: 'd MMM y, h:mm a' }}</span>
               </td>
-              <td>{{ postTitle(c.postId) }}</td>
+              <td>{{ c.postTitle ?? postTitle(c.postId) }}</td>
               <td>
                 @if (c.hidden) { <span class="tag red">{{ 'Hidden' | t }}</span> } @else { <span class="tag">{{ 'Visible' | t }}</span> }
               </td>
@@ -161,6 +161,18 @@ export class AdminCommunity {
   protected readonly courseId = signal(0);
   protected readonly status = signal<StatusFilter>('all');
 
+  constructor() {
+    // API mode: the server filters the lists; typing in the search box waits a moment before asking it.
+    effect((onCleanup) => {
+      const filter = { courseId: this.courseId(), status: this.status(), search: this.search() };
+      const timer = setTimeout(
+        () => untracked(() => this.community.loadModeration(filter).catch(() => this.toast.error('The discussions could not be loaded. Please refresh the page.'))),
+        filter.search ? 300 : 0,
+      );
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
+
   /** Courses whose community this user may moderate. */
   protected readonly moderated = computed(() => this.courses.courses().filter((c) => this.community.canModerate(c.id)));
 
@@ -187,7 +199,7 @@ export class AdminCommunity {
           !term ||
           p.title.toLowerCase().includes(term) ||
           p.body.toLowerCase().includes(term) ||
-          this.community.authorName(p.authorId).toLowerCase().includes(term),
+          this.community.authorOf(p).toLowerCase().includes(term),
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   });
@@ -199,7 +211,7 @@ export class AdminCommunity {
       .comments()
       .filter((c) => this.inScope(c.courseId))
       .filter((c) => status === 'all' || (status === 'hidden' ? c.hidden : status === 'visible' ? !c.hidden : true))
-      .filter((c) => !term || c.body.toLowerCase().includes(term) || this.community.authorName(c.authorId).toLowerCase().includes(term))
+      .filter((c) => !term || c.body.toLowerCase().includes(term) || this.community.authorOf(c).toLowerCase().includes(term))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 20);
   });

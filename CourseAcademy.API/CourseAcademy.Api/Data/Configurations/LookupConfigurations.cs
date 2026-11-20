@@ -79,6 +79,21 @@ public sealed class MediaAssetStatusConfiguration : LookupConfiguration<MediaAss
     protected override IEnumerable<MediaAssetStatus> Seed => LookupSeed.MediaAssetStatuses;
 }
 
+public sealed class CertificationModeConfiguration : LookupConfiguration<CertificationMode>
+{
+    protected override IEnumerable<CertificationMode> Seed => LookupSeed.CertificationModes;
+}
+
+public sealed class ExamTypeConfiguration : LookupConfiguration<ExamType>
+{
+    protected override IEnumerable<ExamType> Seed => LookupSeed.ExamTypes;
+}
+
+public sealed class SubmissionStatusConfiguration : LookupConfiguration<SubmissionStatus>
+{
+    protected override IEnumerable<SubmissionStatus> Seed => LookupSeed.SubmissionStatuses;
+}
+
 public sealed class CategoryConfiguration : LookupConfiguration<Category>
 {
     protected override IEnumerable<Category> Seed => LookupSeed.Categories;

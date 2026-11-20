@@ -1291,22 +1291,38 @@ const BN_INTERFACE: Record<string, string> = {
   'Enter a valid email address.': 'একটি সঠিক ইমেইল ঠিকানা দিন।',
   'Please accept the terms to continue.': 'চালিয়ে যেতে শর্তাবলিতে সম্মতি দিন।',
   'Use at least 8 characters with a letter and a number.': 'অন্তত ৮ অক্ষর ব্যবহার করুন, যেখানে অক্ষর ও সংখ্যা দুটোই থাকবে।',
-  'Coming soon': 'শীঘ্রই আসছে',
   'Paid through the test gateway. It is not a real receipt, and no money has moved.':
     'টেস্ট গেটওয়ের মাধ্যমে পেমেন্ট। এটি আসল রসিদ নয়, কোনো টাকা লেনদেন হয়নি।',
   'This course is not free. Please pay to enroll.': 'এই কোর্সটি ফ্রি নয়। ভর্তি হতে পেমেন্ট করুন।',
   "You're already enrolled in this course.": 'আপনি এই কোর্সে আগে থেকেই ভর্তি আছেন।',
   'We could not start the payment. Please try again in a moment.': 'পেমেন্ট শুরু করা যায়নি। একটু পরে আবার চেষ্টা করুন।',
-  'Users, roles, courses, enrollments, payments and learning progress are saved on the server. Certificates and communities are coming soon.':
-    'ইউজার, রোল, কোর্স, এনরোলমেন্ট, পেমেন্ট ও শেখার প্রগ্রেস সার্ভারে সংরক্ষিত হয়। সার্টিফিকেট ও কমিউনিটি শিগগিরই আসছে।',
+  'Users, roles, courses, enrollments, payments, learning progress, certificates and communities are saved on the server.':
+    'ইউজার, রোল, কোর্স, এনরোলমেন্ট, পেমেন্ট, শেখার প্রগ্রেস, সার্টিফিকেট ও কমিউনিটি সার্ভারে সংরক্ষিত হয়।',
   'Add a link for every new video.': 'প্রতিটি নতুন ভিডিওর জন্য একটি লিংক দিন।',
   'Every video needs a title.': 'প্রতিটি ভিডিওর একটি শিরোনাম দরকার।',
   'Every document needs a title.': 'প্রতিটি ডকুমেন্টের একটি শিরোনাম দরকার।',
   'Something in this course changed in the meantime. Reload the page and try again.':
     'এর মধ্যে এই কোর্সে কিছু বদলেছে। পেজটি রিলোড করে আবার চেষ্টা করুন।',
-  'This part is being moved to the new server and will be available again soon.':
-    'এই অংশটি নতুন সার্ভারে নেওয়া হচ্ছে, শীঘ্রই আবার পাওয়া যাবে।',
   'Topics in this section': 'এই সেকশনের টপিক',
+  // Certification and community on the API
+  'Your certificate for this course was revoked.': 'এই কোর্সে আপনার সার্টিফিকেট বাতিল করা হয়েছে।',
+  'Certificate ID {0}': 'সার্টিফিকেট আইডি {0}',
+  'Reason: {0}': 'কারণ: {0}',
+  'Please contact your instructor.': 'অনুগ্রহ করে আপনার ইনস্ট্রাক্টরের সাথে যোগাযোগ করুন।',
+  'The certificate status could not be loaded. Please refresh the page.': 'সার্টিফিকেটের অবস্থা লোড করা যায়নি। পেজটি রিফ্রেশ করুন।',
+  'Load more discussions': 'আরও আলোচনা দেখুন',
+  'The discussions could not be loaded. Please refresh the page.': 'আলোচনাগুলো লোড করা যায়নি। পেজটি রিফ্রেশ করুন।',
+  'The comments could not be loaded. Please try again.': 'মন্তব্যগুলো লোড করা যায়নি। আবার চেষ্টা করুন।',
+  'The certificates could not be loaded. Please refresh the page.': 'সার্টিফিকেটগুলো লোড করা যায়নি। পেজটি রিফ্রেশ করুন।',
+  'The certification settings could not be loaded. Please refresh the page.': 'সার্টিফিকেশন সেটিংস লোড করা যায়নি। পেজটি রিফ্রেশ করুন।',
+  'Checking the certificate…': 'সার্টিফিকেট যাচাই করা হচ্ছে…',
+  'The certificate could not be checked. Please try again.': 'সার্টিফিকেট যাচাই করা যায়নি। আবার চেষ্টা করুন।',
+  'Enroll in this course to earn its certificate.': 'সার্টিফিকেট পেতে এই কোর্সে ভর্তি হন।',
+  'Choose how the certificate is earned.': 'সার্টিফিকেট কীভাবে পাওয়া যাবে তা বেছে নিন।',
+  'Choose the type of central exam.': 'কেন্দ্রীয় পরীক্ষার ধরন বেছে নিন।',
+  'This rule was changed in the meantime. Reload the page and try again.': 'এর মধ্যে নিয়মটি বদলানো হয়েছে। পেজটি রিলোড করে আবার চেষ্টা করুন।',
+  'Choose a valid status.': 'একটি সঠিক স্ট্যাটাস বেছে নিন।',
+  'Course not found.': 'কোর্সটি পাওয়া যায়নি।',
 };
 
 export const BN_TRANSLATIONS: Record<string, string> = { ...BN_INTERFACE, ...BN_CONTENT };

@@ -32,6 +32,12 @@ public sealed class MediaKind : LookupEntity;
 
 public sealed class MediaAssetStatus : LookupEntity;
 
+public sealed class CertificationMode : LookupEntity;
+
+public sealed class ExamType : LookupEntity;
+
+public sealed class SubmissionStatus : LookupEntity;
+
 public sealed class Category : LookupEntity
 {
     public string ShortName { get; set; } = string.Empty;

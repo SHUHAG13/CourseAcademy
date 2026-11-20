@@ -1,11 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard, permissionGuard, screenGuard, sectionGuard } from './core/guards/auth.guards';
-import { environment } from '../environments/environment';
 import { Home } from './pages/home/home';
 
 /** Certificates and communities stay on demo data until they move to the API; in API mode their pages say so. */
-const comingSoon = () => import('./shared/components/coming-soon/coming-soon').then((m) => m.ComingSoon);
-const unlessApi = <T>(load: () => Promise<T>) => (environment.useApi ? comingSoon : load);
 
 const SITE = 'Course Academy';
 
@@ -122,7 +119,7 @@ export const routes: Routes = [
         path: 'courses/:id/certification',
         title: `Certification | ${SITE}`,
         canActivate: [permissionGuard('certificates.manage', { courseParam: 'id' })],
-        loadComponent: unlessApi(() => import('./pages/admin/certification-settings').then((m) => m.CertificationSettings)),
+        loadComponent: () => import('./pages/admin/certification-settings').then((m) => m.CertificationSettings),
       },
       {
         path: 'courses/:id',
@@ -158,13 +155,13 @@ export const routes: Routes = [
         path: 'certificates',
         title: `Certificates | ${SITE}`,
         canActivate: [screenGuard('certificates')],
-        loadComponent: unlessApi(() => import('./pages/admin/admin-certificates').then((m) => m.AdminCertificates)),
+        loadComponent: () => import('./pages/admin/admin-certificates').then((m) => m.AdminCertificates),
       },
       {
         path: 'community',
         title: `Community | ${SITE}`,
         canActivate: [screenGuard('community-moderation')],
-        loadComponent: unlessApi(() => import('./pages/admin/admin-community').then((m) => m.AdminCommunity)),
+        loadComponent: () => import('./pages/admin/admin-community').then((m) => m.AdminCommunity),
       },
       {
         path: 'security',
@@ -196,12 +193,12 @@ export const routes: Routes = [
   {
     path: 'verify',
     title: `Verify a Certificate | ${SITE}`,
-    loadComponent: unlessApi(() => import('./pages/verify/verify').then((m) => m.Verify)),
+    loadComponent: () => import('./pages/verify/verify').then((m) => m.Verify),
   },
   {
     path: 'verify/:code',
     title: `Verify a Certificate | ${SITE}`,
-    loadComponent: unlessApi(() => import('./pages/verify/verify').then((m) => m.Verify)),
+    loadComponent: () => import('./pages/verify/verify').then((m) => m.Verify),
   },
   {
     path: 'testimonials',

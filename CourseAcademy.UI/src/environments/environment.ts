@@ -8,6 +8,6 @@ export const environment = {
    * Cors:AllowedOrigins.
    */
   apiBaseUrl: '/api/v1',
-  /** Certificates and community still show "Coming soon" until they move to the API. */
+  /** Every feature that has moved to the API uses it; the rest keeps browser-storage demo data. */
   useApi: true,
 };

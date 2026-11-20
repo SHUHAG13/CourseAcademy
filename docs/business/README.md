@@ -48,9 +48,9 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 | Course Management | [course-management.md](modules/course-management.md) | `/admin/courses/**`, `/admin/instructors` | Done (API, with file uploads) | Course CRUD, curriculum, sessions, materials, instructors, video/document uploads — served by the API |
 | Checkout & Payments | [checkout-payments.md](modules/checkout-payments.md) | `/payment`, `/checkout/**`, `/admin/transactions` | Done (API; demo gateway, real ones plug in) | Purchase flow, transactions, refunds — served by the API |
 | Enrollments | [enrollments.md](modules/enrollments.md) | `/admin/enrollments` | Done (API) | Access records, revoke/restore — served by the API |
-| Learning & Progress | [learning-progress.md](modules/learning-progress.md) | `/dashboard`, `/learn/:slug` | Done (API; certificates Coming soon) | Learning area, per-video progress with resume, dashboard — served by the API |
-| Certification | [certification.md](modules/certification.md) | `/admin/courses/:id/certification`, `/admin/certificates`, `/verify[/:code]` | Done | Rules, exams, certificates, verify |
-| Community | [community.md](modules/community.md) | `/courses/:slug#community`, `/admin/community` | Done | Course discussions + moderation |
+| Learning & Progress | [learning-progress.md](modules/learning-progress.md) | `/dashboard`, `/learn/:slug` | Done (API) | Learning area, per-video progress with resume, dashboard — served by the API |
+| Certification | [certification.md](modules/certification.md) | `/admin/courses/:id/certification`, `/admin/certificates`, `/verify[/:code]` | Done (API) | Rules, exams, certificates, verify — served by the API |
+| Community | [community.md](modules/community.md) | `/courses/:slug#community`, `/admin/community` | Done (API) | Course discussions + moderation — served by the API |
 | Admin Overview | [admin-overview.md](modules/admin-overview.md) | `/admin` | Done (API) | Stats, recent payments, demo reset |
 | Site Content | [site-content.md](modules/site-content.md) | `/about`, `/sports`, `/career`, `/contact`, `/testimonials`, `/faq`, `/privacy`, `/terms`, `**` | Partial (forms not stored) | Static pages, contact & career forms, language |
 
@@ -62,7 +62,7 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 - **Dates**: stored as ISO 8601 UTC strings; displayed in viewer's locale/time zone. `LiveSession.startsAt` is local `YYYY-MM-DDTHH:mm` (no zone). `Course.updated` is `YYYY-MM`.
 - **IDs / codes (frontend demo)**: browser-created ids `<prefix>-<base36 timestamp>-<6 random>`; Course id = numeric timestamp (never reused); Transaction id `DEMO-YYYYMMDD-XXXXXX`; Certificate code `CA-YYYY-XXXXXX` (alphabet without I, O, 0, 1); Progress id `userId:courseId`; CertificationRule id = courseId. Backend: `int IDENTITY` PKs; slug, `TransactionNo` and certificate `Code` stay unique public identifiers.
 - **Snapshots**: Transactions copy user + course data; Certificates copy user, course and instructor names — later edits don't change them.
-- **Deletion**: frontend demo hard-deletes; **backend soft-deletes every table** (`IsDeleted`). Business states also exist: "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certificates).
+- **Deletion**: frontend demo hard-deletes; **backend soft-deletes every table** (`IsDeleted`). Business states also exist: "Soft" states instead: course `published=false`, enrollment `revoked`, certificate `revoked`, post/comment `hidden`. Course delete cascades enrollments, community, grants (not payments/progress/certification rule, hand-ins and certificates).
 - **Pagination**: API lists return `{items,total,page,pageSize}` (see api-contract). Frontend today: Client: catalogue "load more" 6 per page; admin community latest 20 comments; overview 5 recent payments; dashboard 5 upcoming classes.
 - **Sorting defaults**: newest first for admin lists/transactions/enrollments/certificates; catalogue by popularity.
 - **Text**: inputs trimmed before save; validation messages are English keys (translated in UI).
@@ -72,7 +72,7 @@ Online academy (Bangladesh) selling skills courses — Video Editing, Digital Ma
 ## Technical decisions (backend)
 | Topic | Decision |
 |---|---|
-| Database | SQL Server + EF Core; PascalCase singular table names in area schemas (`Securities.User`, `Catalog.Course`, …); one `InitialCreate` migration |
+| Database | SQL Server + EF Core; PascalCase singular table names in area schemas (`Securities`, `Lookups`, `Catalog`, `Commerce`, `Learning`, `Media`, `Certification`, `Community`); migrations `InitialCreate` + `AddCertificationAndCommunity` |
 | Primary keys | `int IDENTITY`; public unique fields: `Course.Slug`, `PaymentTransaction.TransactionNo`, `Certificate.Code` |
 | Delete | Soft delete (`IsDeleted`) except join/token tables, which are hard-deleted; FKs `NO ACTION`; filtered unique indexes |
 | Audit | `CreatedAt`, `UpdatedAt` on all tables |

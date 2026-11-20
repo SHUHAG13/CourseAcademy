@@ -36,7 +36,7 @@ Gives enrolled users a place to watch lessons, open documents and materials, joi
 - **BR-LRN-04** Reading order = for each module → submodule → section, the section then its topics depth-first. Each topic counts as one section.
 - **BR-LRN-05** Only completed ids that still exist in the course count (removed sections don't count).
 - **BR-LRN-06** Reaching 100% shows "You have completed every section of {course}!".
-- **BR-LRN-07** After each completion, a completion-mode certificate is evaluated and issued if the rule is met (BR-CERT-04).
+- **BR-LRN-07** After each completion, a completion-mode certificate is evaluated and issued if the rule is met (BR-CERT-04). API mode: the server does this when it saves the lesson (button or 90% watched), using the lesson %.
 - **BR-LRN-08** **Live** format courses work like the others: player, "Mark as complete" and a clickable outline, so their progress can move. (Changed 2026-11-16; before, Live courses showed a static outline only.)
 - **BR-LRN-09** Documents attached to a video show under that video; documents without `videoId` show for the whole section.
 - **BR-LRN-10** Live sessions are "past" when `startsAt + durationMinutes` < now.
@@ -77,14 +77,14 @@ Lesson state per user (API): `Not completed ⇄ Completed` (student toggles); a 
 | `setVideoComplete(course, videoId, bool)` | `PUT /api/v1/progress/videos/{id}/complete` `{completed}` |
 | `setComplete(course, sectionId, bool)` (section without videos) | `PUT /api/v1/progress/sections/{id}/complete` `{completed}` |
 | `savePosition(...)` (player) | `PUT /api/v1/progress/videos/{id}/position` `{positionSeconds, durationSeconds}` |
-| `percentFor(userId, course)` | demo only (certificate checks); certificates move to the API later |
+| `percentFor(userId, course)` | demo only (certificate checks); in API mode the certification status brings the lesson % |
 | `CourseService.bySlug` (learn) | `GET /api/v1/courses/{slug}` (lesson links included with course access) |
 
 ## 9. Open Questions / Assumptions
 - Answered 2026-11-16: Live courses show their lessons like other courses; progress is per video with resume and 90% auto-complete for video files; sections without videos count as one lesson.
 - Seeking to the end of a video file counts as watched (no check that every part was played). Is that acceptable?
 - Direct .mp4/.webm links still use the length the browser reports; uploads use Streaming's measured length (when Streaming reports one; the development fake does not).
-- When certificates move to the API, should the completion rule's minimum progress use the lesson percentage? (Not decided; not built yet.)
+- ~~Should the completion rule's minimum progress use the lesson percentage?~~ — decided 2026-11-20: yes, in API mode (BR-CERT-04).
 - Demo mode still counts sections, so the same course can show a different % in demo and API mode.
 - Live meeting links are placeholders. Which provider (Zoom/Meet)? Attendance tracking?
 - `startsAt` has no timezone. Assume Asia/Dhaka?

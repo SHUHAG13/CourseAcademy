@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Certificate, ExamSubmission, SubmissionStatus } from '../../core/models/certificate.model';
@@ -39,10 +39,10 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
           <tbody>
             @for (s of submissions(); track s.id) {
               <tr>
-                <td><span class="primary">{{ userName(s.userId) | t }}</span><span class="secondary">{{ s.submittedAt | ldate: 'd MMM y, h:mm a' }}</span></td>
+                <td><span class="primary">{{ (s.userName ?? userName(s.userId)) | t }}</span><span class="secondary">{{ s.submittedAt | ldate: 'd MMM y, h:mm a' }}</span></td>
                 <td>
-                  {{ courseTitle(s.courseId) | t }}
-                  <span class="secondary">{{ certificates.rule(s.courseId).examTitle | t }} · {{ (s.examType === 'presentation' ? 'Presentation' : 'Project') | t }}</span>
+                  {{ (s.courseTitle ?? courseTitle(s.courseId)) | t }}
+                  <span class="secondary">{{ certificates.examOf(s).title | t }} · {{ (s.examType === 'presentation' ? 'Presentation' : 'Project') | t }}</span>
                 </td>
                 <td class="work">
                   <a [href]="s.url" target="_blank" rel="noopener noreferrer">{{ s.url }}</a>
@@ -53,8 +53,8 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
                 <td class="text-nowrap">
                   @switch (s.status) {
                     @case ('submitted') { <span class="tag">{{ 'Waiting for review' | t }}</span> }
-                    @case ('passed') { <span class="tag blue">{{ 'Passed: {0} of {1}' | t: [s.score, certificates.rule(s.courseId).maxScore] }}</span> }
-                    @case ('failed') { <span class="tag red">{{ 'Not passed: {0} of {1}' | t: [s.score, certificates.rule(s.courseId).maxScore] }}</span> }
+                    @case ('passed') { <span class="tag blue">{{ 'Passed: {0} of {1}' | t: [s.score, certificates.examOf(s).maxScore] }}</span> }
+                    @case ('failed') { <span class="tag red">{{ 'Not passed: {0} of {1}' | t: [s.score, certificates.examOf(s).maxScore] }}</span> }
                   }
                 </td>
                 <td class="actions">
@@ -71,9 +71,9 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
                     <form class="d-flex flex-wrap align-items-end gap-2" (ngSubmit)="saveReview(s)" novalidate>
                       <div>
                         <label class="form-label small" [for]="'score-' + s.id">
-                          {{ 'Score (pass mark {0} of {1})' | t: [certificates.rule(s.courseId).passingScore, certificates.rule(s.courseId).maxScore] }}
+                          {{ 'Score (pass mark {0} of {1})' | t: [certificates.examOf(s).passingScore, certificates.examOf(s).maxScore] }}
                         </label>
-                        <input [id]="'score-' + s.id" name="score" type="number" min="0" [max]="certificates.rule(s.courseId).maxScore"
+                        <input [id]="'score-' + s.id" name="score" type="number" min="0" step="0.01" [max]="certificates.examOf(s).maxScore"
                           class="form-control form-control-sm score" [(ngModel)]="score" />
                       </div>
                       <div class="flex-grow-1">
@@ -176,7 +176,7 @@ import { LocalDatePipe, TranslatePipe } from '../../shared/pipes/translate.pipe'
     .review-row td { background: var(--ca-surface-muted); }
   `,
 })
-export class AdminCertificates {
+export class AdminCertificates implements OnInit {
   protected readonly certificates = inject(CertificateService);
   private readonly courses = inject(CourseService);
   private readonly auth = inject(AuthService);
@@ -190,6 +190,11 @@ export class AdminCertificates {
   protected score: number | null = null;
   protected feedback = '';
   protected reason = '';
+
+  ngOnInit(): void {
+    // API mode: the lists come from the server; demo mode has them already.
+    this.certificates.loadAdmin().catch(() => this.toast.error('The certificates could not be loaded. Please refresh the page.'));
+  }
 
   protected readonly submissions = computed(() =>
     this.certificates
@@ -217,7 +222,7 @@ export class AdminCertificates {
   }
 
   protected passes(submission: ExamSubmission): boolean {
-    return this.score !== null && this.score >= this.certificates.rule(submission.courseId).passingScore;
+    return this.score !== null && this.score >= this.certificates.examOf(submission).passingScore;
   }
 
   protected startReview(submission: ExamSubmission): void {
@@ -231,7 +236,7 @@ export class AdminCertificates {
     await this.run(async () => {
       await this.certificates.review(submission.id, Number(this.score), this.feedback);
       this.reviewing.set(null);
-    }, passed ? 'Passed. The certificate was issued to {0}.' : 'The result was saved for {0}.', [this.userName(submission.userId)]);
+    }, passed ? 'Passed. The certificate was issued to {0}.' : 'The result was saved for {0}.', [submission.userName ?? this.userName(submission.userId)]);
   }
 
   protected async revoke(certificate: Certificate): Promise<void> {

@@ -125,7 +125,15 @@ export class CertificationSettings implements OnInit {
 
   ngOnInit(): void {
     const course = this.course();
-    if (course) this.form.reset(this.certificates.rule(course.id));
+    if (!course) return;
+    this.form.reset(this.certificates.rule(course.id));
+    // API mode: the saved rule comes from the server.
+    this.certificates
+      .loadRule(course.id)
+      .then((rule) => {
+        if (this.form.pristine) this.form.reset(rule);
+      })
+      .catch((error) => this.toast.error(failureMessage(error, 'The certification settings could not be loaded. Please refresh the page.')));
   }
 
   protected invalid(name: keyof typeof this.form.controls): boolean {

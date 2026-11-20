@@ -77,14 +77,14 @@ CertificateDto      { id, code, userId, courseId, userName, courseTitle, instruc
                       examTypeCode:string|null, scorePercent:int|null, issuedAt, isRevoked:bool, revokedReason:string|null }
 RuleDto             { courseId, isEnabled:bool, modeCode, minProgress:int, examTypeCode, examTitle, examInstructions,
                       maxScore:int, passingScore:int, maxAttempts:int }
-SubmissionDto       { id, userId, userName, courseId, courseTitle, examTypeCode, examTitle, url, notes, submittedAt,
+SubmissionDto       { id, userId, userName, courseId, courseTitle, examTypeCode, examTitle, maxScore:int, passingScore:int, url, notes, submittedAt,
                       statusCode, score:number|null, feedback:string|null, reviewedBy:UserSummaryDto|null, reviewedAt }
 PostDto             { id, courseId, title, body, author:{id:int|null, name:string, badge:"admin"|"instructor"|"student"},
-                      createdAt, editedAt, isPinned, isLocked, isHidden, commentCount:int, canEdit:bool, canDelete:bool }
-CommentDto          { id, postId, parentId:int|null, body, author:{...as PostDto}, createdAt, editedAt, isHidden,
+                      createdAt, editedAt, isPinned, isLocked, isHidden, commentCount:int, canEdit:bool, canDelete:bool, canComment:bool }
+CommentDto          { id, postId, courseId, parentId:int|null, body, author:{...as PostDto}, createdAt, editedAt, isHidden,
                       canEdit:bool, canDelete:bool, replies:CommentDto[] }
 ```
-Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13).
+Deleted author → `author.id = null`, `name = "Former member"` (BR-COM-13). `SubmissionDto.examTitle/maxScore/passingScore` come from the course's current rule. `PostDto.commentCount` counts what the viewer can see (BR-COM-06).
 
 ## 3a. Lookups
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
@@ -228,27 +228,29 @@ CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
 | PUT | `/progress/sections/{sectionId}/complete` 🔒 | `{ completed:bool }` | `CourseProgressDto`; 400 "Mark the videos of this section as complete instead." if the section has videos | `Learn` | BR-LRN-02,03,15 |
 | GET | `/me/upcoming-sessions` (not built) | `limit? (default 5)` | `{ session:LiveSessionDto, courseSlug, courseTitle }[]` | `Dashboard` (works it out from the catalogue for now) | BR-LRN-11 |
 
-## 11. Certification
+## 11. Certification (built in backend Step 8)
+Status and hand-in need `learn.view` and course access (active enrollment, or `courses.view` on the course); only an active enrollment earns a certificate. Text and score rules are checked in the service and answered with 400 and the BR message.
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | — | `RuleDto` (default if none) | `CertificationSettings` | BR-CERT-01 |
 | PUT | `/admin/courses/{id}/certification-rule` 🔒 certificates.manage (course) | `RuleDto` without courseId | `RuleDto` | `CertificationSettings` | BR-CERT-02 |
-| GET | `/me/courses/{courseId}/certification` | — | `{ rule:RuleDto, progress:int, progressMet:bool, submissions:SubmissionDto[], attemptsLeft:int\|null, canSubmit:bool, certificate:CertificateDto\|null }` | `CourseCertificate` | BR-CERT-06,07,16 |
-| POST | `/me/courses/{courseId}/certificate` | — | `CertificateDto` \| null | `CourseCertificate` | BR-CERT-03,04 |
+| GET | `/me/courses/{courseId}/certification` | — | `{ rule:RuleDto, progress:int, progressMet:bool, submissions:SubmissionDto[], attemptsLeft:int\|null, canSubmit:bool, certificate:CertificateDto\|null, revokedCertificate:CertificateDto\|null }` | `CourseCertificate` | BR-CERT-06,07,16,17 |
+| POST | `/me/courses/{courseId}/certificate` | — | `CertificateDto` \| null (null while not met, or while revoked) | `CourseCertificate` | BR-CERT-03,04,17 |
 | POST | `/me/courses/{courseId}/exam-submissions` 🔒 learn.view + active enrollment | `{ url (https, ≤2048), notes? (≤1000) }` | `SubmissionDto` (201) | `CourseCertificate` | BR-CERT-06,08 |
 | GET | `/me/certificates` | — | `CertificateDto[]` (newest first) | `Dashboard` | — |
-| GET | `/admin/exam-submissions` 🔒 certificates.manage (course) | `status? (submitted\|passed\|failed; default submitted), courseId?, page, pageSize` | page of `SubmissionDto` | `AdminCertificates` | — |
-| POST | `/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{ score (0–maxScore), feedback? (≤1000) }` | `{ submission:SubmissionDto, certificate:CertificateDto\|null }` (409 if not `submitted`) | `AdminCertificates` | BR-CERT-09,10 |
-| GET | `/admin/certificates` 🔒 certificates.manage (course) | `search?, page, pageSize` | page of `CertificateDto` | `AdminCertificates` | — |
+| GET | `/admin/exam-submissions` 🔒 certificates.manage (course) | `status? (submitted\|passed\|failed\|all; default submitted), courseId?, page, pageSize` | page of `SubmissionDto` | `AdminCertificates` | — |
+| POST | `/admin/exam-submissions/{id}/review` 🔒 certificates.manage (course) | `{ score (0–maxScore, ≤ 2 decimals), feedback? (≤1000) }` | `{ submission:SubmissionDto, certificate:CertificateDto\|null }` (409 if not `submitted`) | `AdminCertificates` | BR-CERT-09,10 |
+| GET | `/admin/certificates` 🔒 certificates.manage (course) | `search?, courseId?, page, pageSize` | page of `CertificateDto` | `AdminCertificates` | — |
 | POST | `/admin/certificates/{id}/revoke` 🔒 certificates.manage (course) | `{ reason? (≤200) }` | `CertificateDto` | `AdminCertificates` | BR-CERT-11 |
 | POST | `/admin/certificates/{id}/restore` 🔒 certificates.manage (course) | — | `CertificateDto` (409 if another valid one exists) | `AdminCertificates` | BR-CERT-11 |
 | GET | `/certificates/verify/{code}` (public) | — | `{ code, isRevoked, revokedReason, userName, courseTitle, modeCode, examTypeCode, scorePercent, instructorName, issuedAt }` (404 if unknown) | `Verify` | BR-CERT-13 |
 
-## 12. Community
+## 12. Community (built in backend Step 8)
+A hidden post answers 404 "This post was removed." to everyone but moderators.
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
 |---|---|---|---|---|---|
 | GET | `/courses/{slug}/community` | — | `{ canRead, canPost, canModerate, publicPostCount:int }` | `CourseCommunity`, `Learn` | BR-COM-01–03,14 |
-| GET | `/courses/{slug}/posts` 🔒 can read | `page, pageSize` | page of `PostDto` (pinned first, then newest; hidden only for moderators) | `CourseCommunity` | BR-COM-05 |
+| GET | `/courses/{slug}/posts` 🔒 can read | `page, pageSize` (the course page uses 20) | page of `PostDto` (pinned first, then newest; hidden only for moderators) | `CourseCommunity` | BR-COM-05 |
 | POST | `/courses/{slug}/posts` 🔒 can post | `{ title (1–120), body (1–2000) }` | `PostDto` (201) | `CourseCommunity` | BR-COM-03,11 |
 | PUT | `/posts/{id}` 🔒 author | `{ title, body }` | `PostDto` | `CourseCommunity` | BR-COM-08 |
 | DELETE | `/posts/{id}` 🔒 author or moderator | — | null (soft-deletes its comments) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
@@ -258,8 +260,8 @@ CourseProgressSummaryDto  { courseId, completedLessons, totalLessons, percent }
 | PUT | `/comments/{id}` 🔒 author | `{ body }` | `CommentDto` | `CourseCommunity` | BR-COM-08 |
 | DELETE | `/comments/{id}` 🔒 author or moderator | — | null (soft-deletes replies) | `CourseCommunity`, `AdminCommunity` | BR-COM-09 |
 | PATCH | `/comments/{id}/hidden` 🔒 moderator | `{ isHidden:bool }` | `CommentDto` | `CourseCommunity`, `AdminCommunity` | BR-COM-10 |
-| GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `PostDto` + `courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
-| GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `CommentDto` + `postTitle, courseTitle, courseSlug` | `AdminCommunity` | BR-COM-16 |
+| GET | `/admin/community/posts` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden\|pinned\|locked), search?, page, pageSize` | page of `{ post:PostDto, courseTitle, courseSlug }` | `AdminCommunity` | BR-COM-16 |
+| GET | `/admin/community/comments` 🔒 community.moderate (course) | `courseId?, status? (all\|visible\|hidden), search?, limit? (default 20)` | `{ comment:CommentDto, postTitle, courseTitle, courseSlug }[]` (newest first; limit ≤ 100) | `AdminCommunity` | BR-COM-16 |
 
 ## 13. Admin overview (overview built in backend Step 5)
 | Method | Endpoint | Request | Response `data` | Used by | Rules |
